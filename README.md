@@ -55,15 +55,7 @@ Este projeto foi desenvolvido com as tecnologias mais recentes do ecossistema PH
 | **SQLite / MySQL** | Banco de dados (configurável). |
 | **Vite** | Bundler de assets para front-end ultra-rápido. |
 
----
 
-## 📸 Screenshots
-
-<div align="center">
-  <p><i>(Adicione prints da Home e do Dashboard aqui)</i></p>
-</div>
-
----
 
 ## 🛠️ Instalação e Configuração
 
