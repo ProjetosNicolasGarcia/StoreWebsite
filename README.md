@@ -1,59 +1,74 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<div align="center">
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+  <img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" alt="Logo" width="200"/>
 
-## About Laravel
+  # 🛒 StoreWebsite E-commerce
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+  <p>
+    Uma plataforma de e-commerce moderna, robusta e escalável.
+  </p>
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+  <p>
+    <a href="https://laravel.com"><img src="https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel 12"></a>
+    <a href="https://php.net"><img src="https://img.shields.io/badge/PHP-8.2+-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP 8.2"></a>
+    <a href="https://filamentphp.com"><img src="https://img.shields.io/badge/Filament-v3-FDAE4B?style=for-the-badge&logo=filament&logoColor=white" alt="FilamentPHP"></a>
+    <a href="https://tailwindcss.com"><img src="https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS"></a>
+  </p>
+</div>
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+<br />
 
-## Learning Laravel
+## 📖 Sobre o Projeto
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+O **StoreWebsite** é uma solução completa de loja virtual desenvolvida para oferecer uma experiência de compra fluida para os clientes e uma gestão poderosa para os administradores.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+O projeto utiliza o **Filament PHP** para criar um painel administrativo intuitivo, permitindo o gerenciamento total de produtos, pedidos, clientes e conteúdo do site, enquanto o front-end é construído com **Blade**, **Tailwind CSS** e **Alpine.js** para máxima performance e responsividade.
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## ✨ Funcionalidades Principais
 
-### Premium Partners
+### 🛍️ Para o Cliente (Front-end)
+- **Vitrine Moderna:** Layout responsivo com banners estilo "Hero" e destaque de produtos.
+- **Navegação Intuitiva:** Menu dinâmico de categorias e busca eficiente.
+- **Interatividade:** Carrinho de compras, lista de favoritos e zoom interativo em produtos.
+- **Detalhes do Produto:** Visualização de variações, preços e avaliações.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### ⚙️ Painel Administrativo (Back-end)
+- **Dashboard:** Visão geral com gráficos de vendas e estatísticas (`StatsOverview`, `SalesChart`).
+- **Catálogo:** Gestão completa de Produtos, Variantes, Categorias e Banners.
+- **Vendas:** Controle de Pedidos (`OrderResource`) e Transações.
+- **Usuários:** Gestão de Clientes, Endereços e Avaliações (`Reviews`).
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 🚀 Tecnologias Utilizadas
 
-## Code of Conduct
+Este projeto foi desenvolvido com as tecnologias mais recentes do ecossistema PHP:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Tecnologia | Função |
+| :--- | :--- |
+| **Laravel 12** | Framework PHP robusto para o back-end. |
+| **Filament v3** | Criação rápida do painel administrativo (TALL Stack). |
+| **Tailwind CSS** | Estilização utilitária e design responsivo. |
+| **Alpine.js** | Interatividade leve no front-end (Menus, Modais). |
+| **SQLite / MySQL** | Banco de dados (configurável). |
+| **Vite** | Bundler de assets para front-end ultra-rápido. |
 
-## Security Vulnerabilities
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
-## License
+## 🛠️ Instalação e Configuração
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Siga os passos abaixo para rodar o projeto localmente:
+
+### Pré-requisitos
+- PHP 8.2 ou superior
+- Composer
+- Node.js & NPM
+
+### Passo a Passo
+
+1. **Clone o repositório**
+   ```bash
+   git clone [https://github.com/seu-usuario/storewebsite.git](https://github.com/seu-usuario/storewebsite.git)
+   cd storewebsite
