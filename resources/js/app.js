@@ -2,7 +2,19 @@ import './bootstrap';
 
 // Lógica para o cabeçalho transparente que muda ao rolar
 document.addEventListener('DOMContentLoaded', function() {
+    
+    // >>> TRAVA DE SEGURANÇA <<<
+    // Verifica se NÃO estamos na Home Page ('/').
+    // Se a URL for diferente de '/', paramos o script imediatamente.
+    if (window.location.pathname !== '/') {
+        return;
+    }
+
     const header = document.getElementById('main-header');
+    
+    // Segurança extra: se não achar o header, não faz nada
+    if (!header) return;
+
     const headerLinks = header.querySelectorAll('nav a, .header-icons a');
     const headerLogo = document.getElementById('header-logo');
 
@@ -12,8 +24,10 @@ document.addEventListener('DOMContentLoaded', function() {
             header.classList.remove('bg-transparent', 'text-white', 'py-6');
             header.classList.add('bg-white', 'text-gray-900', 'shadow-md', 'py-4');
             
-            headerLogo.classList.remove('text-white');
-            headerLogo.classList.add('text-gray-900');
+            if (headerLogo) {
+                headerLogo.classList.remove('text-white');
+                headerLogo.classList.add('text-gray-900');
+            }
 
             headerLinks.forEach(link => {
                 link.classList.remove('text-white', 'hover:text-gray-300');
@@ -24,8 +38,10 @@ document.addEventListener('DOMContentLoaded', function() {
             header.classList.add('bg-transparent', 'text-white', 'py-6');
             header.classList.remove('bg-white', 'text-gray-900', 'shadow-md', 'py-4');
 
-            headerLogo.classList.add('text-white');
-            headerLogo.classList.remove('text-gray-900');
+            if (headerLogo) {
+                headerLogo.classList.add('text-white');
+                headerLogo.classList.remove('text-gray-900');
+            }
 
             headerLinks.forEach(link => {
                 link.classList.add('text-white', 'hover:text-gray-300');

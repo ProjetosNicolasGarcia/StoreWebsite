@@ -6,6 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class Banner extends Model
 {
-    //
-    protected $guarded = [];
+    // Substituímos o $guarded = [] por este bloco explicito:
+    protected $fillable = [
+        'image_url',
+        'title',
+        'description',
+        'link_url',
+        'position',
+        'is_active',
+        'location', 
+    ];
 }

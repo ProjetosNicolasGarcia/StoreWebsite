@@ -50,36 +50,82 @@ class BannerResource extends Resource
                     Forms\Components\Toggle::make('is_active')
                         ->label('Ativo no Site')
                         ->default(true),
-                ]),
-            ]),
-        ]);
+
+                   
+                    Forms\Components\Select::make('location')
+                        ->label('Localização do Banner')
+                        ->options([
+                            'hero' => 'Carrossel Principal (Topo)',
+                            'section' => 'Banner de Seção (Meio)',
+                        ])
+                        ->required()
+                        ->default('hero'),
+                    Forms\Components\Textarea::make('description')
+                        ->label('Descrição do Banner')
+                        ->rows(3)
+                        ->maxLength(500)
+                        ->columnSpanFull(), // Opcional: faz ocupar a largura toda
+                    // ...
+                                    ]),
+                                ]),
+                            ]);
 }
 
-   public static function table(Table $table): Table
+ public static function table(Table $table): Table
 {
     return $table
         ->columns([
-            // Mostra uma miniatura da imagem na lista
+            // Exibe a imagem em miniatura
             Tables\Columns\ImageColumn::make('image_url')
-                ->label('Preview')
-                ->height(50),
-
+                ->label('Imagem'),
+            
             Tables\Columns\TextColumn::make('title')
                 ->label('Título')
                 ->searchable(),
 
+            // NOVA COLUNA: Localização (Hero ou Seção)
+            Tables\Columns\TextColumn::make('location')
+                ->label('Local')
+                ->badge() // Deixa com visual de etiqueta colorida
+                ->color(fn (string $state): string => match ($state) {
+                    'hero' => 'success', // Verde para o topo
+                    'section' => 'info', // Azul para seções
+                    default => 'gray',
+                }),
+
+            // NOVA COLUNA: Descrição (limitada a 30 caracteres para não quebrar a tabela)
+            Tables\Columns\TextColumn::make('description')
+                ->label('Descrição')
+                ->limit(30)
+                ->toggleable(isToggledHiddenByDefault: true), // Escondido por padrão para não poluir
+
+            Tables\Columns\TextColumn::make('link_url')
+                ->label('Link')
+                ->limit(20),
+            
             Tables\Columns\TextColumn::make('position')
                 ->label('Ordem')
                 ->sortable(),
-
-            Tables\Columns\IconColumn::make('is_active')
-                ->boolean()
+            
+            Tables\Columns\ToggleColumn::make('is_active')
                 ->label('Ativo'),
+
+            Tables\Columns\TextColumn::make('created_at')
+                ->dateTime()
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
         ])
-        ->defaultSort('position', 'asc') // Ordena por posição automaticamente
+        ->filters([
+            //
+        ])
         ->actions([
             Tables\Actions\EditAction::make(),
             Tables\Actions\DeleteAction::make(),
+        ])
+        ->bulkActions([
+            Tables\Actions\BulkActionGroup::make([
+                Tables\Actions\DeleteBulkAction::make(),
+            ]),
         ]);
 }
     public static function getRelations(): array

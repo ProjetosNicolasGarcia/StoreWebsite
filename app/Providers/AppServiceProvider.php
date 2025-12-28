@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\Facades\View; // [Novo] Importação necessária para manipular views
-use App\Models\Category; // [Novo] Importação do seu modelo de Categoria
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\View; // Importar View
+use App\Models\Category; // Importar Model de Categoria
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,11 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // [Novo] Configura um "View Composer".
-        // Toda vez que o arquivo 'resources/views/components/layout.blade.php' for renderizado,
-        // o Laravel vai buscar todas as categorias no banco e injetar na variável $globalCategories.
-        View::composer('components.layout', function ($view) {
-            $view->with('globalCategories', Category::all());
-        });
+        // Compartilha a variável $globalCategories com todas as Views do site.
+        // Isso garante que o menu sempre terá as categorias, não importa em qual página você esteja.
+        // Se você tiver categorias "Pai" (parent_id null), pode filtrar aqui: Category::whereNull('parent_id')->get()
+        if (\Illuminate\Support\Facades\Schema::hasTable('categories')) {
+             View::share('globalCategories', Category::all());
+        }
     }
 }
