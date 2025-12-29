@@ -1,12 +1,9 @@
 <x-layout>
     {{-- CABEÇALHO SIMPLES (Apenas Título) --}}
-    {{-- 'pt-32': Espaço extra no topo para o título não ficar atrás do menu --}}
     <div class="container mx-auto px-4 pt-32 pb-8 text-center">
         <h1 class="text-4xl md:text-6xl font-black text-gray-900 uppercase tracking-tighter mb-4">
             {{ $title }}
         </h1>
-        
-        {{-- Descrição removida conforme solicitado --}}
     </div>
 
     {{-- LISTA DE PRODUTOS --}}
@@ -14,7 +11,8 @@
         @if($products->count() > 0)
             <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
                 @foreach($products as $product)
-                    <div class="group cursor-pointer">
+                    {{-- ALTERAÇÃO AQUI: 'a' em vez de 'div' --}}
+                    <a href="{{ route('shop.product', $product->slug) }}" class="block group cursor-pointer">
                         {{-- Imagem --}}
                         <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-gray-50 flex items-center justify-center">
                             
@@ -40,12 +38,12 @@
                             {{-- Botão Carrinho --}}
                             <div class="pt-2 h-10 flex items-center justify-center">
                                 <button class="bg-black text-white px-6 py-2 uppercase font-bold text-xs tracking-widest hover:bg-gray-800 shadow-md rounded 
-                                               opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                                              opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
                                     Adicionar ao Carrinho
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 @endforeach
             </div>
         @else

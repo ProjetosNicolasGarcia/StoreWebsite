@@ -72,12 +72,12 @@
         
         <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
             @foreach($newArrivals as $product)
-                {{-- CARD DO PRODUTO --}}
-                <div class="group cursor-pointer">
+                {{-- ALTERAÇÃO AQUI: Mudado de div para 'a' --}}
+                <a href="{{ route('shop.product', $product->slug) }}" class="block group cursor-pointer">
                     {{-- Imagem (Zoom no Hover) --}}
                     <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-gray-50 flex items-center justify-center">
                         
-                        {{-- >>> NOVA TAG DE LANÇAMENTO AQUI <<< --}}
+                        {{-- Tag de Lançamento --}}
                         <div class="absolute top-3 left-3 bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest z-10 shadow-sm">
                             Novo
                         </div>
@@ -86,7 +86,7 @@
                              class="object-contain w-full h-full p-4 transition duration-500 group-hover:scale-110">
                     </div>
                     
-                    {{-- Info + Botão Abaixo do Preço --}}
+                    {{-- Info --}}
                     <div class="text-center space-y-1">
                         @if($product->category)
                             <p class="text-xs text-gray-500 uppercase tracking-widest">{{ $product->category->name }}</p>
@@ -94,15 +94,14 @@
                         <h4 class="font-bold text-gray-900">{{ $product->name }}</h4>
                         <p class="text-gray-600">R$ {{ number_format($product->base_price, 2, ',', '.') }}</p>
                         
-                        {{-- Botão Adicionar ao Carrinho --}}
                         <div class="pt-2 h-10 flex items-center justify-center">
                             <button class="bg-black text-white px-6 py-2 uppercase font-bold text-xs tracking-widest hover:bg-gray-800 shadow-md rounded 
-                                           opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                                          opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
                                 Adicionar ao Carrinho
                             </button>
                         </div>
                     </div>
-                </div>
+                </a>
             @endforeach
         </div>
     </section>
@@ -136,7 +135,8 @@
             <div class="container mx-auto px-4">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
                     @foreach($collection->products as $product)
-                        <div class="group cursor-pointer">
+                        {{-- ALTERAÇÃO AQUI: Mudado de div para 'a' --}}
+                        <a href="{{ route('shop.product', $product->slug) }}" class="block group cursor-pointer">
                             <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-gray-50 flex items-center justify-center">
                                 <img src="{{ Storage::url($product->image_url) }}" 
                                      class="object-contain w-full h-full p-4 transition duration-500 group-hover:scale-110">
@@ -149,15 +149,14 @@
                                 <h4 class="font-bold text-gray-900">{{ $product->name }}</h4>
                                 <p class="text-gray-600">R$ {{ number_format($product->base_price, 2, ',', '.') }}</p>
 
-                                {{-- Botão Adicionar ao Carrinho --}}
                                 <div class="pt-2 h-10 flex items-center justify-center">
                                     <button class="bg-black text-white px-6 py-2 uppercase font-bold text-xs tracking-widest hover:bg-gray-800 shadow-md rounded 
-                                                   opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                                        Adicionar ao Carrinho
+                                                  opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                                            Adicionar ao Carrinho
                                     </button>
                                 </div>
                             </div>
-                        </div>
+                        </a>
                     @endforeach
                 </div>
 
