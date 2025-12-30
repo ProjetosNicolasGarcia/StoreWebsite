@@ -1,7 +1,7 @@
 <x-layout>
     {{-- CABEÇALHO SIMPLES (Apenas Título) --}}
     <div class="container mx-auto px-4 pt-32 pb-8 text-center">
-        <h1 class="text-4xl md:text-6xl font-black text-gray-900 uppercase tracking-tighter mb-4">
+        <h1 class="text-2xl md:text-3xl font-black text-gray-900 uppercase tracking-tighter mb-4">
             {{ $title }}
         </h1>
     </div>
@@ -49,7 +49,7 @@
         @else
             {{-- Caso não tenha produtos --}}
             <div class="text-center py-20 bg-gray-50 rounded-lg">
-                <p class="text-gray-500 text-xl font-light">Nenhum produto encontrado nesta seção.</p>
+                <p class="text-gray-500 text-xl font-light">Nenhum produto encontrado .</p>
                 <a href="{{ route('home') }}" class="inline-block mt-6 border-b-2 border-black text-black font-bold uppercase tracking-wide hover:text-gray-600 hover:border-gray-600 transition">
                     Voltar para a loja
                 </a>
