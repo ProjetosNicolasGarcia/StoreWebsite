@@ -132,4 +132,20 @@ class ShopController extends Controller
 
         return response()->json($products);
     }
+
+    // ofertas //
+
+    public function offers()
+    {
+        $products = Product::where('is_active', true)
+            ->onSaleQuery() // Usa o filtro criado no Model
+            ->latest()
+            ->get(); // Ou ->paginate(12) se tiver muitos produtos
+
+        return view('shop.listing', [
+            'products' => $products,
+            'title' => 'Ofertas '
+        ]);
+    }
 }
+

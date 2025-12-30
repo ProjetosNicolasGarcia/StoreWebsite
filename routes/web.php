@@ -207,6 +207,10 @@ Route::post('/fale-conosco', function (Request $request) {
 
 })->name('pages.contact.send');
 
+    // oferta //
+
+    Route::get('/offers', [ShopController::class, 'offers'])->name('shop.offers');
+
 // --- Observação ---
 // Removi as rotas de 'dashboard', 'profile' e o 'require auth.php' 
 // pois elas dependem de pacotes de autenticação (Breeze/Jetstream) 

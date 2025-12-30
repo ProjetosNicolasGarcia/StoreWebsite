@@ -12,6 +12,10 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
 
 class ProductResource extends Resource
 {
@@ -106,6 +110,26 @@ public static function form(Form $form): Form
                     ->columns(2)
                     ->defaultItems(1)
             ]),
+
+
+                // --- BLOCO 3: OFERTA E PROMOÇÃO ---
+       
+            Section::make('Oferta e Promoção')
+                ->schema([
+                    TextInput::make('sale_price')
+                        ->label('Preço Promocional')
+                        ->numeric()
+                        ->prefix('R$')
+                        // AQUI MUDOU: Valida se é menor que 'base_price' e não 'price'
+                        ->lt('base_price'), 
+                        
+                    DateTimePicker::make('sale_start_date')
+                        ->label('Início'),
+                        
+                    DateTimePicker::make('sale_end_date')
+                        ->label('Término')
+                        ->after('sale_start_date'), 
+                ])->columns(3),
         ]);
 }
 

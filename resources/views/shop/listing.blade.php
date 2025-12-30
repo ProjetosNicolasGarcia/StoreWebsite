@@ -33,7 +33,30 @@
                                 <p class="text-xs text-gray-500 uppercase tracking-widest">{{ $product->category->name }}</p>
                             @endif
                             <h4 class="font-bold text-gray-900">{{ $product->name }}</h4>
-                            <p class="text-gray-600">R$ {{ number_format($product->base_price, 2, ',', '.') }}</p>
+
+                        {{-- SUBSTITUIÇÃO DA EXIBIÇÃO DE PREÇO --}}
+                      <div class="mt-1">
+    @if($product->isOnSale())
+        <div class="flex flex-col items-center justify-center gap-0.5">
+            {{-- 1. Preço da Oferta (EM CIMA) --}}
+            <span class="font-bold text-red-600 text-lg leading-tight">
+                R$ {{ number_format($product->sale_price, 2, ',', '.') }}
+            </span>
+
+            {{-- 2. Linha de Baixo: Original + Porcentagem --}}
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-400 line-through">
+                    R$ {{ number_format($product->base_price, 2, ',', '.') }}
+                </span>
+                <span class="bg-red-100 text-red-800 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                    -{{ $product->discount_percentage }}%
+                </span>
+            </div>
+        </div>
+    @else
+        <p class="text-gray-600">R$ {{ number_format($product->base_price, 2, ',', '.') }}</p>
+    @endif
+</div>
                             
                             {{-- Botão Carrinho --}}
                             <div class="pt-2 h-10 flex items-center justify-center">

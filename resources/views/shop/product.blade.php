@@ -51,9 +51,38 @@
                         <span class="text-sm text-gray-500">({{ $product->reviews_count ?? 0 }} avaliações)</span>
                     </div>
 
-                    <p class="text-3xl font-bold text-gray-900 mt-6">
-                        R$ {{ number_format($product->base_price, 2, ',', '.') }}
-                    </p>
+                    {{-- BLOCO DE PREÇO E CONTADOR --}}
+                    <div class="mt-6">
+                        @if($product->isOnSale())
+                            <div class="flex flex-col items-start">
+                                <div class="flex items-end gap-3">
+                                    <span class="text-4xl font-black text-red-600">
+                                        R$ {{ number_format($product->sale_price, 2, ',', '.') }}
+                                    </span>
+                                    <span class="text-xl text-gray-400 line-through mb-1">
+                                        R$ {{ number_format($product->base_price, 2, ',', '.') }}
+                                    </span>
+                                    <span class="mb-2 bg-red-100 text-red-800 text-sm font-bold px-2.5 py-0.5 rounded">
+                                        {{ $product->discount_percentage }}% OFF
+                                    </span>
+                                </div>
+
+                                {{-- CONTADOR REGRESSIVO --}}
+                                @if($product->sale_end_date)
+                                    <div class="mt-4 w-full p-4 bg-red-50 border border-red-100 rounded-lg" x-data="countdown('{{ $product->sale_end_date->format('Y-m-d H:i:s') }}')">
+                                        <p class="text-red-800 text-xs font-bold uppercase tracking-widest mb-1">A oferta termina em:</p>
+                                        <div class="flex gap-4 text-red-700 font-mono text-xl font-bold" x-text="timerDisplay">
+                                            Carregando...
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        @else
+                            <p class="text-3xl font-bold text-gray-900">
+                                R$ {{ number_format($product->base_price, 2, ',', '.') }}
+                            </p>
+                        @endif
+                    </div>
                 </div>
 
                 {{-- Descrição Curta --}}
@@ -169,12 +198,62 @@
                         </div>
                         <div class="text-center">
                             <h3 class="font-bold text-gray-900 group-hover:text-gray-600 transition">{{ $related->name }}</h3>
-                            <p class="text-gray-500 mt-1">R$ {{ number_format($related->base_price, 2, ',', '.') }}</p>
+
+                        <div class="mt-1 flex justify-center items-center gap-2">
+                            @if($related->isOnSale())
+                                <span class="text-xs text-gray-400 line-through">
+                                    R$ {{ number_format($related->base_price, 2, ',', '.') }}
+                                </span>
+                                <span class="font-bold text-gray-900">
+                                    R$ {{ number_format($related->sale_price, 2, ',', '.') }}
+                                </span>
+                            @else
+                                <p class="text-gray-500">R$ {{ number_format($related->base_price, 2, ',', '.') }}</p>
+                            @endif
                         </div>
+
+                     </div>
                     </a>
                 @endforeach
             </div>
         </div>
 
     </div>
+
+    {{-- SCRIPT PARA O CONTADOR (ALPINE JS) --}}
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('countdown', (expiryDate) => ({
+            timerDisplay: 'Carregando...',
+            expiry: new Date(expiryDate).getTime(),
+            interval: null,
+
+            init() {
+                this.updateTimer();
+                this.interval = setInterval(() => {
+                    this.updateTimer();
+                }, 1000);
+            },
+
+            updateTimer() {
+                const now = new Date().getTime();
+                const distance = this.expiry - now;
+
+                if (distance < 0) {
+                    this.timerDisplay = "OFERTA EXPIRADA";
+                    clearInterval(this.interval);
+                    return;
+                }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                this.timerDisplay = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+            }
+        }))
+    })
+</script>
+
 </x-layout>
