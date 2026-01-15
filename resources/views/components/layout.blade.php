@@ -137,51 +137,28 @@
                         </svg>
                     </button>
 
-                   {{-- LOGICA DO USUÁRIO (LOGIN / LOGOUT) --}}
+{{-- LOGICA DO USUÁRIO (LOGIN / LOGOUT) --}}
 
 @auth
-    {{-- Usuário Logado: Mostra menu dropdown --}}
-    <div class="relative" x-data="{ userMenuOpen: false }">
-        <button @click="userMenuOpen = !userMenuOpen" 
-                class="transition-colors p-1 flex items-center gap-1 focus:outline-none" 
-                :class="scrolled ? 'hover:text-gray-600' : 'hover:text-gray-300'">
-            
-            {{-- Apenas o ícone --}}
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            
-            {{-- REMOVIDO: O span com o nome foi apagado aqui --}}
-        </button>
-
-        {{-- Dropdown de Logout (Mantido) --}}
-        <div x-show="userMenuOpen" 
-             @click.outside="userMenuOpen = false"
-             x-transition
-             style="display: none;"
-             class="absolute right-0 mt-2 w-40 bg-white shadow-xl rounded-md border border-gray-100 z-50">
-            <div class="py-1">
-                {{-- Opcional: Mostrar o nome aqui dentro do menu para confirmação --}}
-                <div class="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">
-                    {{ auth()->user()->name }}
-                </div>
-                
-                <form method="POST" action="{{ route('store.logout') }}">
-                    @csrf
-                    <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-red-600">
-                        Sair
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
+    {{-- Usuário Logado: Link direto para o Painel "Minha Conta" --}}
+    {{-- O botão "Sair" agora fica dentro do menu lateral do painel --}}
+    <a href="{{ route('profile.index') }}" 
+       class="transition-colors p-1 flex items-center gap-1 focus:outline-none" 
+       :class="scrolled ? 'hover:text-gray-600' : 'hover:text-gray-300'"
+       title="Meu Painel">
+        
+        {{-- Ícone de Usuário --}}
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+    </a>
 @else
-    {{-- Visitante: Botão que abre o Slider de Login (Mantido igual) --}}
+    {{-- Visitante: Botão que abre o Slider de Login (MANTIDO IGUAL) --}}
     <button type="button" 
             @click="$dispatch('open-auth-slider')" 
             class="transition-colors p-1 focus:outline-none" 
             :class="scrolled ? 'hover:text-gray-600' : 'hover:text-gray-300'"
-            title="Minha Conta">
+            title="Entrar / Cadastrar">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>

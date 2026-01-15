@@ -2,24 +2,20 @@
 
 namespace App\Models;
 
-// Mantenha seus imports originais
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
-// Se você usa API Tokens (Sanctum), mantenha essa linha:
-use Laravel\Sanctum\HasApiTokens; 
+use Laravel\Sanctum\HasApiTokens; // Caso use Sanctum
 
 class User extends Authenticatable implements FilamentUser
 {
-    // Adicione os Traits que faltarem (ex: HasApiTokens se usar API)
-    use HasFactory, Notifiable; 
+    use HasFactory, Notifiable;
 
     /**
-     * ATENÇÃO AO $fillable:
-     * Mantenha os campos que já existiam (name, email, password)
-     * e ADICIONE os novos campos do sistema de login/cadastro.
+     * Campos que podem ser preenchidos em massa.
+     * Mantém os originais e os novos do checkout/login social.
      */
     protected $fillable = [
         'name',
@@ -36,51 +32,44 @@ class User extends Authenticatable implements FilamentUser
     ];
 
     /**
-     * ATENÇÃO AO $hidden:
-     * Adicione 'two_factor_code' para segurança.
+     * Campos escondidos (segurança).
      */
     protected $hidden = [
         'password',
         'remember_token',
-        'two_factor_code', // Novo
+        'two_factor_code', // Importante esconder o código 2FA
     ];
 
     /**
-     * ATENÇÃO AO casts():
-     * Se seu Laravel for versão 10 ou anterior, isso pode ser uma propriedade protected $casts = [].
-     * Se for Laravel 11, é o método casts().
-     * Apenas garanta que as novas chaves estejam presentes.
+     * Conversão de tipos de dados.
      */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            // --- Novos Casts ---
             'birth_date' => 'date',
             'two_factor_expires_at' => 'datetime',
         ];
     }
 
     /* |--------------------------------------------------------------------------
-    | Lógica do Filament (Painel Admin)
+    | Lógica de Segurança do Filament (Painel Admin)
     |--------------------------------------------------------------------------
-    | MANTENHA A SUA LÓGICA ORIGINAL AQUI.
-    | O código anterior usou "return true", o que daria acesso admin para
-    | TODOS os clientes da loja. Isso seria perigoso!
+    | AQUI ESTÁ A MUDANÇA CRÍTICA.
+    | Só retorna true se o email estiver nesta lista.
     */
     public function canAccessPanel(Panel $panel): bool
     {
-        // Exemplo seguro: Apenas quem tem email @suaempresa.com ou flag is_admin
-        // return str_ends_with($this->email, '@sualoja.com.br');
-        
-        // Se você está em ambiente de desenvolvimento local, pode deixar true,
-        // mas lembre-se de restringir em produção.
-        return true; 
+        // Coloque aqui APENAS os emails que podem acessar o admin
+        return in_array($this->email, [
+            'teste@gmail.com', // Seu email (vi nos logs anteriores)
+            // 'outro.admin@loja.com',
+        ]);
     }
 
     /* |--------------------------------------------------------------------------
-    | Novas Funções para 2FA (Adicione estas funções)
+    | Funções para Autenticação de 2 Fatores (2FA)
     |--------------------------------------------------------------------------
     */
     public function generateTwoFactorCode()
@@ -100,10 +89,8 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /* |--------------------------------------------------------------------------
-    | Relacionamentos (NÃO APAGUE OS SEUS)
+    | Relacionamentos com o E-commerce
     |--------------------------------------------------------------------------
-    | Como vi que você tem tabelas de Orders e Addresses, provavelmente
-    | você tem (ou precisará) destes relacionamentos:
     */
     
     public function orders()
@@ -115,6 +102,4 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->hasMany(Address::class);
     }
-
-    // Se tiver reviews, favorites, etc, mantenha-os aqui.
 }

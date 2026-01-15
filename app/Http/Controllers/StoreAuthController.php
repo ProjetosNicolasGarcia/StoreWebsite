@@ -36,11 +36,10 @@ class StoreAuthController extends Controller
         // 2. Gerar e Enviar 2FA
         $user->generateTwoFactorCode();
         
-        // Tenta enviar e-mail, se falhar, loga erro mas não para o fluxo (opcional)
+        // Tenta enviar e-mail, se falhar, loga erro mas não para o fluxo
         try {
             Mail::to($user->email)->send(new TwoFactorCodeMail($user->two_factor_code));
         } catch (\Exception $e) {
-            // Em dev, as vezes não tem mailer configurado, então exibe no log
             \Log::error("Erro ao enviar email 2FA: " . $e->getMessage());
         }
 
@@ -72,7 +71,12 @@ class StoreAuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return response()->json(['status' => 'success']);
+        // --- ALTERAÇÃO AQUI ---
+        // Retorna a URL de redirecionamento para o JS processar
+        return response()->json([
+            'status' => 'success',
+            'redirect_url' => route('profile.index')
+        ]);
     }
 
     // --- CADASTRO ---
@@ -96,10 +100,7 @@ class StoreAuthController extends Controller
             'birth_date' => $validated['birth_date'] ?? null,
         ]);
 
-        // --- MUDANÇA AQUI ---
-        // Antes: Auth::login($user); (Logava direto)
-        
-        // Agora: Gera código e pede 2FA
+        // Gera código e pede 2FA (Fluxo mantido)
         $user->generateTwoFactorCode();
         
         try {
@@ -108,14 +109,13 @@ class StoreAuthController extends Controller
             \Log::error("Erro ao enviar email 2FA: " . $e->getMessage());
         }
 
-        // Retorna o status pedindo verificação, igual ao login
         return response()->json([
             'status' => '2fa_required',
             'message' => 'Conta criada! Verifique seu e-mail.'
         ]);
     }
 
-    // --- LOGOUT (A função que estava faltando) ---
+    // --- LOGOUT ---
     public function logout(Request $request) {
         Auth::logout();
         $request->session()->invalidate();
@@ -154,14 +154,17 @@ class StoreAuthController extends Controller
             }
 
             Auth::login($user);
-            return redirect('/');
+            
+            // --- ALTERAÇÃO AQUI ---
+            // Redireciona para o Painel do Usuário em vez da Home
+            return redirect()->route('profile.index');
 
         } catch (\Exception $e) {
             return redirect('/')->with('error', 'Erro ao logar com Google.');
         }
     }
 
-    // --- RECUPERAÇÃO DE SENHA ---
+    // --- RECUPERAÇÃO DE SENHA (MANTIDO IGUAL) ---
     public function sendResetLinkEmail(Request $request)
     {
         $request->validate(['email' => 'required|email']);
@@ -192,18 +195,14 @@ class StoreAuthController extends Controller
             'password' => 'required|min:8|confirmed',
         ]);
 
-        // --- NOVA VALIDAÇÃO DE SEGURANÇA ---
-        // Busca o usuário pelo e-mail antes de resetar
+        // Validação de segurança extra
         $user = User::where('email', $request->email)->first();
 
-        // Se o usuário existir e a senha nova for igual à atual no banco
         if ($user && Hash::check($request->password, $user->password)) {
-            // Retorna um erro e impede a mudança
             throw ValidationException::withMessages([
                 'password' => ['Sua nova senha não pode ser igual à senha atual.'],
             ]);
         }
-        // -----------------------------------
 
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
@@ -226,6 +225,4 @@ class StoreAuthController extends Controller
             ->withInput($request->only('email'))
             ->withErrors(['email' => __($status)]);
     }
-
-    
 }

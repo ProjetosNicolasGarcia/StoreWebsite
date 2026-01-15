@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\ContactMail;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\StoreAuthController;
+use App\Http\Controllers\ProfileController;
 
 // Rota da Página Inicial
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -233,6 +234,23 @@ Route::get('/auth/google/callback', [StoreAuthController::class, 'handleGoogleCa
 Route::post('/forgot-password', [StoreAuthController::class, 'sendResetLinkEmail'])->name('password.email');
 Route::get('/reset-password/{token}', [StoreAuthController::class, 'showResetForm'])->name('password.reset');
 Route::post('/reset-password', [StoreAuthController::class, 'resetPassword'])->name('password.update');
+
+// ---  PAINEL DO CLIENTE (Protegido por Login) ---
+Route::middleware(['auth'])->prefix('minha-conta')->group(function () {
+    
+    // Painel Principal (Dados Pessoais)
+    Route::get('/', [ProfileController::class, 'index'])->name('profile.index');
+    Route::put('/update', [ProfileController::class, 'update'])->name('profile.update');
+
+    // Pedidos
+    Route::get('/pedidos', [ProfileController::class, 'orders'])->name('profile.orders');
+    
+    // Endereços
+    Route::get('/enderecos', [ProfileController::class, 'addresses'])->name('profile.addresses');
+    Route::post('/enderecos', [ProfileController::class, 'storeAddress'])->name('profile.address.store');
+    Route::delete('/enderecos/{id}', [ProfileController::class, 'destroyAddress'])->name('profile.address.delete');
+
+});
 
 // --- Observação ---
 // Removi as rotas de 'dashboard', 'profile' e o 'require auth.php' 

@@ -212,21 +212,25 @@
                         <label class="block text-sm font-bold text-gray-700 mb-1">Email</label>
                         <input type="email" x-model="email" class="block w-full h-12 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-1">CPF</label>
-                            <input type="text" x-model="cpf" @input="cpf = formatCPF($el.value)" maxlength="14" placeholder="000.000.000-00"
-                                   class="block w-full h-12 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-1">Telefone</label>
-                            <input type="text" x-model="phone" @input="phone = formatPhone($el.value)" maxlength="15" placeholder="(00) 00000-0000"
-                                   class="block w-full h-12 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
-                        </div>
+                   <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">CPF</label>
+                                {{-- Adicionado 'px-4' na classe abaixo --}}
+                                <input type="text" x-model="cpf" @input="cpf = formatCPF($el.value)" maxlength="14" placeholder="000.000.000-00"
+                                    class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Telefone</label>
+                                {{-- Adicionado 'px-4' na classe abaixo --}}
+                                <input type="text" x-model="phone" @input="phone = formatPhone($el.value)" maxlength="15" placeholder="(00) 00000-0000"
+                                    class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                            </div>
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Data de Nascimento</label>
-                        <input type="date" x-model="birth_date" class="block w-full h-12 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                        {{-- Adicionado 'px-4' na classe --}}
+                        <input type="date" x-model="birth_date" 
+                        class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     </div>
                     
                     <div>
