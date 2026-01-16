@@ -4,22 +4,47 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon; // [ADICIONADO] Importante para manipular as datas
+use Carbon\Carbon;
 
 class Product extends Model
 {
     use HasFactory;
 
-    protected $guarded = [];
+    /**
+     * O $fillable define quais campos podem ser salvos no banco.
+     * Adicionamos aqui os novos campos de Dimensões e Peso.
+     */
+    protected $fillable = [
+        'category_id',
+        'name',
+        'slug',
+        'description',
+        'base_price',
+        'image_url',
+        'images', // Mantido caso você crie esta coluna para galeria
+        'is_active',
+        // Campos de Oferta
+        'sale_price',
+        'sale_start_date',
+        'sale_end_date',
+        // Campos de Dimensões e Peso (O "Resto" que você adicionou)
+        'weight',
+        'height',
+        'width',
+        'length',
+        // 'stock', // Descomente se você criar a migration de estoque
+    ];
 
-    // IMPORTANTE: Garante que o campo images seja tratado como array pelo Laravel
     protected $casts = [
         'images' => 'array',
         'is_active' => 'boolean',
-        // [ADICIONADO] Garante que o Laravel entenda esses campos como datas reais
         'sale_start_date' => 'datetime',
         'sale_end_date' => 'datetime',
+        // Casting para garantir que o peso venha como número (float)
+        'weight' => 'decimal:3', 
     ];
+
+    // --- RELACIONAMENTOS ---
 
     public function category()
     {
@@ -31,26 +56,19 @@ class Product extends Model
         return $this->hasMany(ProductVariant::class);
     }
 
-    // Nome correto no plural (Muitos-para-Muitos)
     public function collections()
     {
         return $this->belongsToMany(Collection::class, 'collection_product');
     }
 
-    // ADICIONE ISTO: Relacionamento com Avaliações
     public function reviews()
     {
         return $this->hasMany(Review::class);
     }
 
-    // ==========================================================
-    // NOVAS FUNÇÕES PARA A LÓGICA DE PROMOÇÃO
-    // ==========================================================
+    // --- LÓGICA DE PROMOÇÃO ---
 
-    /**
-     * Verifica se o produto está em promoção no momento atual.
-     */
- public function isOnSale()
+    public function isOnSale()
     {
         if (!$this->sale_price) return false;
         
@@ -64,7 +82,6 @@ class Product extends Model
 
     public function getDiscountPercentageAttribute()
     {
-        // Alterado de $this->price para $this->base_price
         if (!$this->base_price || !$this->sale_price) return 0;
         
         return round((($this->base_price - $this->sale_price) / $this->base_price) * 100);
@@ -86,12 +103,9 @@ class Product extends Model
 
     public function getFinalPriceAttribute()
     {
-        // Se tiver oferta ativa e válida
-        if ($this->sale_price && $this->sale_price < $this->base_price) {
-            // Aqui você pode adicionar verificação de data (sale_start_date / sale_end_date) se quiser
+        if ($this->sale_price && $this->isOnSale()) {
             return $this->sale_price;
         }
         return $this->base_price;
     }
-
 }

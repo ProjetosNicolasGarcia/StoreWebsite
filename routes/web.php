@@ -252,6 +252,10 @@ Route::middleware(['auth'])->prefix('minha-conta')->group(function () {
 
 });
 
+    // Rotas de compras
+
+    Route::post('/shipping/calculate', [ShopController::class, 'simulateShipping'])->name('shipping.calculate');
+
 // --- Observação ---
 // Removi as rotas de 'dashboard', 'profile' e o 'require auth.php' 
 // pois elas dependem de pacotes de autenticação (Breeze/Jetstream) 

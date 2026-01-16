@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Collection;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use App\Services\ShippingService; // [ADICIONADO] Importante para o cálculo
 
 class ShopController extends Controller
 {
@@ -147,5 +148,27 @@ class ShopController extends Controller
             'title' => 'Ofertas '
         ]);
     }
-}
 
+    // [ADICIONADO] Simulação de Frete
+    public function simulateShipping(Request $request, ShippingService $shippingService)
+    {
+        $request->validate(['zip_code' => 'required|size:8']); // Valida CEP sem traço
+        
+        // Cenário A: Simulando na página de um Produto Específico
+        if ($request->has('product_id')) {
+            $product = Product::findOrFail($request->product_id);
+            // Simula uma coleção com 1 item (o produto) com quantidade 1
+            // Usamos 'collect' para o ShippingService tratar igual a um carrinho
+            $items = collect([$product]); 
+        } 
+        // Cenário B: Simulando para o Carrinho Inteiro (Futuro)
+        else {
+            return response()->json(['error' => 'Nenhum produto selecionado'], 400);
+        }
+
+        // Chama o serviço que criamos
+        $options = $shippingService->calculate($request->zip_code, $items);
+
+        return response()->json($options);
+    }
+}

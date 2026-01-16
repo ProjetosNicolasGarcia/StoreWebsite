@@ -112,15 +112,86 @@
     </form>
 </div>
 
-                {{-- Calculadora de Frete --}}
-                <div class="border-t border-b border-gray-200 py-6">
-                    <label class="block text-xs font-bold text-gray-900 uppercase tracking-widest mb-3">Calcular Frete</label>
-                    <div class="flex gap-2">
-                        <input type="text" placeholder="00000-000" class="border-gray-300 focus:border-black focus:ring-black rounded-sm flex-1">
-                        <button class="bg-gray-200 text-gray-900 px-6 py-2 rounded-sm hover:bg-gray-300 font-bold text-sm uppercase">OK</button>
-                    </div>
-                    <a href="#" class="text-xs text-gray-500 mt-2 inline-block hover:underline">Não sei meu CEP</a>
+             {{-- Calculadora de Frete (Funcional) --}}
+<div class="border-t border-b border-gray-200 py-6"
+     x-data="{ 
+         zipCode: '', 
+         loading: false, 
+         result: null, 
+         error: null,
+         
+         async calculate() {
+             // Limpa o CEP (deixa só números)
+             const cleanCep = this.zipCode.replace(/\D/g, '');
+             
+             if (cleanCep.length !== 8) {
+                 this.error = 'Digite um CEP válido.';
+                 this.result = null;
+                 return;
+             }
+
+             this.loading = true;
+             this.error = null;
+             this.result = null;
+
+             try {
+                 // Chama a rota que criamos no ShopController
+                 const response = await axios.post('{{ route('shipping.calculate') }}', {
+                     zip_code: cleanCep,
+                     product_id: {{ $product->id }}
+                 });
+                 this.result = response.data;
+             } catch (e) {
+                 this.error = 'Erro ao calcular. Verifique o CEP.';
+                 console.error(e);
+             } finally {
+                 this.loading = false;
+             }
+         }
+     }">
+    
+    <label class="block text-xs font-bold text-gray-900 uppercase tracking-widest mb-3">Calcular Frete</label>
+    
+    <div class="flex gap-2">
+        <input type="text" 
+               x-model="zipCode" 
+               @keydown.enter.prevent="calculate()"
+               @input="$el.value = $el.value.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2')"
+               placeholder="00000-000" 
+               maxlength="9"
+               class="border-gray-300 focus:border-black focus:ring-black rounded-sm flex-1 h-10 text-sm">
+        
+        <button @click="calculate()" 
+                :disabled="loading"
+                class="bg-gray-200 text-gray-900 px-6 py-2 rounded-sm hover:bg-gray-300 font-bold text-sm uppercase disabled:opacity-50 transition-colors">
+            <span x-show="!loading">OK</span>
+            <span x-show="loading">...</span>
+        </button>
+    </div>
+
+    {{-- Mensagem de Erro --}}
+    <div x-show="error" style="display: none;" class="mt-3 text-xs text-red-600 font-bold flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+        <span x-text="error"></span>
+    </div>
+
+    {{-- Resultados do Cálculo --}}
+    <div x-show="result" style="display: none;" class="mt-4 space-y-2">
+        <template x-for="option in result" :key="option.name">
+            <div class="flex justify-between items-center text-sm border-b border-gray-100 last:border-0 pb-2 last:pb-0">
+                <div class="flex flex-col">
+                    <span class="font-bold text-gray-900 uppercase" x-text="option.name"></span>
+                    <span class="text-gray-500 text-xs">Até <span x-text="option.days"></span> dias úteis</span>
                 </div>
+                <div class="font-bold text-gray-900">
+                    R$ <span x-text="new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(option.price)"></span>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <a href="https://buscacepinter.correios.com.br/app/endereco/index.php" target="_blank" class="text-xs text-gray-500 mt-2 inline-block hover:underline">Não sei meu CEP</a>
+</div>
 
                 {{-- Botão de Compartilhar (SÓ ÍCONE) --}}
                 <div class="flex items-center gap-4" x-data="{ copied: false }">

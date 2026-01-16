@@ -130,7 +130,21 @@ public static function form(Form $form): Form
                         ->label('Término')
                         ->after('sale_start_date'), 
                 ])->columns(3),
-        ]);
+
+            Section::make('Envio e Entrega')
+                ->schema([
+                    TextInput::make('weight')
+                        ->label('Peso (Kg)')
+                        ->numeric()
+                        ->step(0.001)
+                        ->required(),
+                    TextInput::make('height')->label('Altura (cm)')->numeric()->required(),
+                    TextInput::make('width')->label('Largura (cm)')->numeric()->required(),
+                    TextInput::make('length')->label('Comprimento (cm)')->numeric()->required(),
+                ])->columns(4)
+                    ]);
+
+        
 }
 
     public static function table(Table $table): Table
