@@ -105,7 +105,7 @@
                                             </span>
                                         </button>
 
-                                        <div x-show="open" x-collapse class="bg-gray-50">
+                                        <div x-show="open" x-collapse class="bg-white">
                                             <div class="p-6 pt-0 text-gray-600 leading-relaxed">
                                                 {!! $item['answer'] !!}
                                             </div>

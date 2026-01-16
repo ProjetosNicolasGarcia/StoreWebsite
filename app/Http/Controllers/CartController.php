@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Session;
 
 class CartController extends Controller
 {
-    // Método auxiliar para pegar o carrinho atual (Reutilizável)
+    // ... (Mantenha os métodos getCartItems e index como estão) ...
     private function getCartItems()
     {
         $sessionId = Session::getId();
@@ -31,7 +31,6 @@ class CartController extends Controller
     {
         $items = $this->getCartItems();
 
-        // CÁLCULO CORRIGIDO: Usa o preço de oferta se existir
         $total = $items->sum(function ($item) {
             $price = $item->product->isOnSale() ? $item->product->sale_price : $item->product->base_price;
             return $item->quantity * $price;
@@ -64,17 +63,21 @@ class CartController extends Controller
             CartItem::create($data);
         }
 
-        // Alterado para apenas recarregar a página e abrir o carrinho (via sessão)
+        // --- ALTERAÇÃO AQUI ---
+        // Se o request vier com 'redirect_to_cart' verdadeiro, redireciona para o carrinho
+        if ($request->input('redirect_to_cart') === 'true') {
+            return redirect()->route('cart.index');
+        }
+
         return redirect()->back()->with('open_cart', true);
     }
 
-    // NOVA FUNÇÃO: Atualizar quantidade (+ ou -)
+    // ... (Mantenha o restante dos métodos update e remove) ...
     public function update(Request $request, $id)
     {
         $sessionId = Session::getId();
         $userId = Auth::id();
 
-        // Garante segurança (só edita o próprio item)
         $item = CartItem::where('id', $id)
             ->where(function ($query) use ($userId, $sessionId) {
                 if ($userId) $query->where('user_id', $userId);
@@ -87,7 +90,7 @@ class CartController extends Controller
             if ($item->quantity > 1) {
                 $item->decrement('quantity');
             } else {
-                $item->delete(); // Remove se for 0
+                $item->delete();
             }
         }
 

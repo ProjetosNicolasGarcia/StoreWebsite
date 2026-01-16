@@ -72,20 +72,21 @@
         
         <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
             @foreach($newArrivals as $product)
-                {{-- MUDANÇA: O container agora é uma DIV, não um A. Mantém a classe 'group' para o hover funcionar. --}}
                 <div class="block group relative">
                     
-                    {{-- O LINK envolve apenas a imagem e as informações --}}
                     <a href="{{ route('shop.product', $product->slug) }}" class="block cursor-pointer">
-                        <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-gray-50 flex items-center justify-center">
+                        {{-- 
+                            IMAGEM NOVIDADES
+                            Alterações: Sem bg-gray-50, sem p-4, com object-cover
+                        --}}
+                        <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-white flex items-center justify-center">
                             
-                            {{-- Tag de Lançamento --}}
-                            <div class="absolute top-3 left-3 bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest z-10 shadow-sm">
+                            <div class="absolute top-3 left-3  bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest z-10 shadow-sm">
                                 Novo
                             </div>
 
                             <img src="{{ Storage::url($product->image_url) }}" 
-                                 class="object-contain w-full h-full p-4 transition duration-500 group-hover:scale-110">
+                                 class="object-cover w-full h-full transition duration-500 group-hover:scale-110">
                         </div>
                         
                         <div class="text-center space-y-1">
@@ -117,14 +118,16 @@
                         </div>
                     </a>
 
-                    {{-- MUDANÇA: O Botão agora é um FORMULÁRIO fora do link <a> --}}
+                    {{-- Botão Carrinho --}}
                     <div class="pt-2 h-10 flex items-center justify-center">
                         <form action="{{ route('cart.add', $product->id) }}" method="POST">
                             @csrf
-                            <button type="submit" class="bg-black text-white px-6 py-2 uppercase font-bold text-xs tracking-widest hover:bg-gray-800 shadow-md rounded 
-                                                   opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                                Adicionar ao Carrinho
-                            </button>
+                          <button type="submit" 
+                            class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
+                                opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
+                                hover:bg-white hover:text-black transition-all duration-300">
+                            Adicionar ao Carrinho
+                         </button>
                         </form>
                     </div>
                 </div>
@@ -147,13 +150,11 @@
 
                  <div class="absolute bottom-0 left-0 p-6 md:p-12 w-full md:max-w-4xl flex flex-col justify-end items-start text-left z-10">
     
-                    {{-- TÍTULO: Menor no mobile (text-3xl), grande no desktop (md:text-5xl) --}}
                     <h2 class="text-3xl md:text-5xl font-black uppercase mb-2 tracking-tighter drop-shadow-md text-white">
                         {{ $collection->title }}
                     </h2>
 
                     @if($collection->description)
-                        {{-- DESCRIÇÃO: Menor no mobile (text-sm), grande no desktop (md:text-xl) --}}
                         <p class="text-sm md:text-xl text-white/90 font-medium drop-shadow-sm max-w-2xl">
                             {{ $collection->description }}
                         </p>
@@ -162,16 +163,19 @@
                 </div>
             </div>
 
-            {{-- GRADE DE PRODUTOS --}}
+            {{-- GRADE DE PRODUTOS DA COLEÇÃO --}}
             <div class="container mx-auto px-4">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
                     @foreach($collection->products as $product)
-                        {{-- MUDANÇA: Estrutura corrigida igual acima --}}
                         <div class="block group relative">
                             <a href="{{ route('shop.product', $product->slug) }}" class="block cursor-pointer">
-                                <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-gray-50 flex items-center justify-center">
+                                {{-- 
+                                    IMAGEM COLEÇÕES
+                                    Alterações: Sem bg-gray-50, sem p-4, com object-cover
+                                --}}
+                                <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-white flex items-center justify-center">
                                     <img src="{{ Storage::url($product->image_url) }}" 
-                                         class="object-contain w-full h-full p-4 transition duration-500 group-hover:scale-110">
+                                         class="object-cover w-full h-full transition duration-500 group-hover:scale-110">
                                 </div>
                                 
                                 <div class="text-center space-y-1">
@@ -207,10 +211,12 @@
                             <div class="pt-2 h-10 flex items-center justify-center">
                                 <form action="{{ route('cart.add', $product->id) }}" method="POST">
                                     @csrf
-                                    <button type="submit" class="bg-black text-white px-6 py-2 uppercase font-bold text-xs tracking-widest hover:bg-gray-800 shadow-md rounded 
-                                                           opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                                        Adicionar ao Carrinho
-                                    </button>
+                                        <button type="submit" 
+                                            class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
+                                                opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
+                                                hover:bg-white hover:text-black transition-all duration-300">
+                                            Adicionar ao Carrinho
+                                        </button>
                                 </form>
                             </div>
                         </div>
@@ -219,7 +225,7 @@
 
                 <div class="flex justify-center">
                     <a href="{{ url('/collections/' . $collection->slug) }}" 
-                       class="inline-block border border-black bg-white text-black px-12 py-3 uppercase font-bold text-sm tracking-widest hover:bg-black hover:text-white transition duration-300">
+                       class="inline-block border border-black rounded-xl bg-white text-black px-12 py-3 uppercase font-bold text-sm tracking-widest hover:bg-black hover:text-white transition duration-300">
                         Ver mais
                     </a>
                 </div>

@@ -23,6 +23,7 @@ class Product extends Model
         'image_url',
         'images', // Mantido caso você crie esta coluna para galeria
         'is_active',
+        'characteristics',
         // Campos de Oferta
         'sale_price',
         'sale_start_date',
@@ -40,6 +41,7 @@ class Product extends Model
         'is_active' => 'boolean',
         'sale_start_date' => 'datetime',
         'sale_end_date' => 'datetime',
+        'characteristics' => 'array',
         // Casting para garantir que o peso venha como número (float)
         'weight' => 'decimal:3', 
     ];

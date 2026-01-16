@@ -16,6 +16,7 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\KeyValue;
 
 class ProductResource extends Resource
 {
@@ -78,6 +79,18 @@ public static function form(Form $form): Form
                 Forms\Components\Toggle::make('is_active')
                     ->default(true)
                     ->label('Ativo na Loja'),
+
+                Section::make('Detalhes do Produto')
+                ->schema([
+                    // ... seus campos existentes (nome, descrição, etc)
+                    
+                    // Adicione este campo:
+                    KeyValue::make('characteristics')
+                        ->label('Características Técnicas')
+                        ->keyLabel('Nome (Ex: Material)')
+                        ->valueLabel('Valor (Ex: Algodão)')
+                        ->reorderable(),
+                ]),    
             ]),
 
             // --- BLOCO 2: VARIAÇÕES DE ESTOQUE (Mantendo o que fizemos antes) ---
@@ -142,6 +155,8 @@ public static function form(Form $form): Form
                     TextInput::make('width')->label('Largura (cm)')->numeric()->required(),
                     TextInput::make('length')->label('Comprimento (cm)')->numeric()->required(),
                 ])->columns(4)
+
+            
                     ]);
 
         

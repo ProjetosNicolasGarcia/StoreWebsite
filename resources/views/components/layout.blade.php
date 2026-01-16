@@ -30,7 +30,11 @@
             }
         });
     </script>
-    
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
@@ -104,7 +108,7 @@
                                     <div class="grid grid-cols-2 gap-x-8 gap-y-2">
                                         @if(isset($globalCategories) && $globalCategories->count() > 0)
                                             @foreach($globalCategories as $category)
-                                                <a href="{{ route('shop.category', $category->slug) }}" class="block !text-gray-600 hover:!text-red-600 font-medium text-sm transition-colors py-1">
+                                                <a href="{{ route('shop.category', $category->slug) }}" class="block !text-gray-600 hover:!text-black font-medium text-sm transition-colors py-1">
                                                     {{ $category->name }}
                                                 </a>
                                             @endforeach
@@ -407,65 +411,83 @@
                     <span class="text-gray-500 uppercase text-xs tracking-widest">Subtotal</span>
                     <span class="font-black text-xl">R$ {{ number_format($globalCartTotal ?? 0, 2, ',', '.') }}</span>
                 </div>
-                <button class="w-full bg-black text-white py-4 font-bold uppercase tracking-widest hover:bg-gray-800 transition">
-                    Finalizar Compra
-                </button>
+                    <button class="w-full bg-black text-white border border-black rounded-xl py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300">
+                        Finalizar Compra
+                    </button>
             </div>
         @endif
     </div>
 
     {{-- Rodapé --}}
-    <footer class="bg-gray-100 text-gray-600 py-16 mt-20 text-sm border-t border-gray-200">
+    {{-- Rodapé Dark Mode --}}
+    {{-- 
+        Mudanças principais:
+        1. bg-gray-100 -> bg-gray-900 (Fundo quase preto)
+        2. text-gray-600 -> text-gray-300 (Texto cinza claro/quase branco)
+        3. border-gray-200 -> border-gray-800 (Bordas escuras para suavizar)
+    --}}
+    <footer class="bg-[#080808] text-gray-300 py-16 mt-20 text-sm border-t border-[#080808]">
         <div class="container mx-auto px-8 grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-            <div>
-                <h4 class="text-gray-900 font-bold uppercase mb-6 tracking-wider">Sobre a Loja</h4>
-                <ul class="space-y-3">
-                    <li><a href="#" class="hover:text-gray-900 transition">Nossa história</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4 class="text-gray-900 font-bold uppercase mb-6 tracking-wider">Ajuda</h4>
-                <ul class="space-y-3">
-                    <li><a href="{{ route('pages.faq') }}" class="hover:text-gray-900 transition">Dúvidas Gerais (FAQ)</a></li>
-                    <li><a href="{{ route('pages.contact') }}" class="hover:text-gray-900 transition">Fale Conosco</a></li>
-                </ul>
-            </div>
-         <div>
-    <h4 class="text-gray-900 font-bold uppercase mb-6 tracking-wider">Siga-nos</h4>
-    <div class="flex space-x-5">
-        {{-- Instagram --}}
-            <a href="https://www.instagram.com/" class="text-gray-500 hover:text-pink-600 transition transform hover:-translate-y-1" title="Instagram">
-                <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.324a4.162 4.162 0 1 1 0-8.324 4.162 4.162 0 0 1 0 8.324zm6.406-11.845a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z" /></svg>
-            </a>
             
-            {{-- X (Twitter) --}}
-            <a href="https://x.com/" class="text-gray-500 hover:text-black transition transform hover:-translate-y-1" title="X (Twitter)">
-                <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            </a>
-
-            {{-- YouTube (Novo) --}}
-            <a href="https://www.youtube.com/@" class="text-gray-500 hover:text-red-600 transition transform hover:-translate-y-1" title="YouTube">
-                <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-            </a>
-
-            {{-- TikTok (Novo) --}}
-            <a href="https://www.tiktok.com/@" class="text-gray-500 hover:text-black transition transform hover:-translate-y-1" title="TikTok">
-                <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
-            </a>
-        </div>
-    </div>
-
+            {{-- Coluna 1 --}}
             <div>
-                <h4 class="text-gray-900 font-bold uppercase mb-6 tracking-wider">Informações Legais</h4>
+                {{-- Títulos agora são text-white para destaque --}}
+                <h4 class="text-white font-bold uppercase mb-6 tracking-wider">Sobre a Loja</h4>
                 <ul class="space-y-3">
-                    <li><a href="{{ route('pages.terms') }}" class="hover:text-gray-900 transition">Termos de Uso</a></li>
-                    <li><a href="{{ route('pages.privacy') }}" class="hover:text-gray-900 transition">Política de Privacidade</a></li>
-                    <li><a href="{{ route('pages.cookies') }}" class="hover:text-gray-900 transition">Política de cookies</a></li>
-                    <li><a href="{{ route('pages.accessibility') }}" class="hover:text-gray-900 transition">Acessibilidade</a></li>
+                    {{-- Links agora ficam brancos ao passar o mouse --}}
+                    <li><a href="#" class="hover:text-white transition">Nossa história</a></li>
+                </ul>
+            </div>
+
+            {{-- Coluna 2 --}}
+            <div>
+                <h4 class="text-white font-bold uppercase mb-6 tracking-wider">Ajuda</h4>
+                <ul class="space-y-3">
+                    <li><a href="{{ route('pages.faq') }}" class="hover:text-white transition">Dúvidas Gerais (FAQ)</a></li>
+                    <li><a href="{{ route('pages.contact') }}" class="hover:text-white transition">Fale Conosco</a></li>
+                </ul>
+            </div>
+
+            {{-- Coluna 3: Redes Sociais --}}
+            <div>
+                <h4 class="text-white font-bold uppercase mb-6 tracking-wider">Siga-nos</h4>
+                <div class="flex space-x-5">
+                    {{-- Instagram --}}
+                    <a href="https://www.instagram.com/" class="text-white hover:text-pink-500 transition transform hover:-translate-y-1" title="Instagram">
+                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.324a4.162 4.162 0 1 1 0-8.324 4.162 4.162 0 0 1 0 8.324zm6.406-11.845a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z" /></svg>
+                    </a>
+                    
+                    {{-- X (Twitter) - Mudado hover de black para white --}}
+                    <a href="https://x.com/" class="text-white hover:text-white transition transform hover:-translate-y-1" title="X (Twitter)">
+                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    </a>
+
+                    {{-- YouTube --}}
+                    <a href="https://www.youtube.com/@" class="text-white hover:text-red-500 transition transform hover:-translate-y-1" title="YouTube">
+                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                    </a>
+
+                    {{-- TikTok - Mudado hover de black para white --}}
+                    <a href="https://www.tiktok.com/@" class="text-white hover:text-white transition transform hover:-translate-y-1" title="TikTok">
+                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
+                    </a>
+                </div>
+            </div>
+
+            {{-- Coluna 4 --}}
+            <div>
+                <h4 class="text-white font-bold uppercase mb-6 tracking-wider">Informações Legais</h4>
+                <ul class="space-y-3">
+                    <li><a href="{{ route('pages.terms') }}" class="hover:text-white transition">Termos de Uso</a></li>
+                    <li><a href="{{ route('pages.privacy') }}" class="hover:text-white transition">Política de Privacidade</a></li>
+                    <li><a href="{{ route('pages.cookies') }}" class="hover:text-white transition">Política de cookies</a></li>
+                    <li><a href="{{ route('pages.accessibility') }}" class="hover:text-white transition">Acessibilidade</a></li>
                 </ul>
             </div>
         </div>
-        <div class="container mx-auto px-8 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center text-xs">
+
+        {{-- Copyright Bar --}}
+        <div class="container mx-auto px-8 pt-8  flex flex-col md:flex-row justify-between items-center text-xs text-gray-300">
             <p>&copy; {{ date('Y') }} Minha Loja. Todos os direitos reservados.</p>
         </div>
     </footer>

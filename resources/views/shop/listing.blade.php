@@ -11,13 +11,19 @@
         @if($products->count() > 0)
             <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
                 @foreach($products as $product)
-                    {{-- MUDANÇA: Container DIV com group --}}
+                    {{-- Container do Produto --}}
                     <div class="block group relative">
                         
                         {{-- O Link envolve Imagem + Texto --}}
                         <a href="{{ route('shop.product', $product->slug) }}" class="block cursor-pointer">
-                            {{-- Imagem --}}
-                            <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-gray-50 flex items-center justify-center">
+                            
+                            {{-- 
+                                IMAGEM
+                                Alterações: 
+                                1. Removido 'bg-gray-50'
+                                2. Mantido 'aspect-[3/4]' para garantir o formato retangular vertical igual para todos
+                            --}}
+                            <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-white flex items-center justify-center">
                                 
                                 {{-- Tag de Novo --}}
                                 @if($product->created_at->diffInDays(now()) < 30)
@@ -26,8 +32,13 @@
                                     </div>
                                 @endif
 
+                                {{-- 
+                                    Alterações na IMG:
+                                    1. 'object-contain' -> 'object-cover' (Para preencher todo o espaço)
+                                    2. Removido 'p-4' (Para a imagem encostar nas bordas)
+                                --}}
                                 <img src="{{ Storage::url($product->image_url) }}" 
-                                     class="object-contain w-full h-full p-4 transition duration-500 group-hover:scale-110">
+                                     class="object-cover w-full h-full transition duration-500 group-hover:scale-110">
                             </div>
                             
                             {{-- Informações --}}
@@ -37,7 +48,7 @@
                                 @endif
                                 <h4 class="font-bold text-gray-900">{{ $product->name }}</h4>
 
-                                {{-- Preço (Logica de Oferta) --}}
+                                {{-- Preço (Lógica de Oferta) --}}
                                 <div class="mt-1">
                                     @if($product->isOnSale())
                                         <div class="flex flex-col items-center justify-center gap-0.5">
@@ -60,12 +71,14 @@
                             </div>
                         </a>
                         
-                        {{-- MUDANÇA: Botão Carrinho independente --}}
+                        {{-- Botão Carrinho --}}
                         <div class="pt-2 h-10 flex items-center justify-center">
                             <form action="{{ route('cart.add', $product->id) }}" method="POST">
                                 @csrf
-                                <button type="submit" class="bg-black text-white px-6 py-2 uppercase font-bold text-xs tracking-widest hover:bg-gray-800 shadow-md rounded 
-                                                       opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                                <button type="submit" 
+                                    class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
+                                        opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
+                                        hover:bg-white hover:text-black transition-all duration-300">
                                     Adicionar ao Carrinho
                                 </button>
                             </form>
