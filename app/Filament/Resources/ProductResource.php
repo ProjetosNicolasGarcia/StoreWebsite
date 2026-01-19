@@ -54,6 +54,16 @@ public static function form(Form $form): Form
                     ->label('Imagem de Capa')
                     ->required(),
 
+                // 2.5 FOTOS DO CARROSSEL DE IMAGENS DO PRODUTO
+
+                Forms\Components\FileUpload::make('gallery')
+                    ->label('Galeria de Imagens')
+                    ->image()
+                    ->directory('products/gallery')
+                    ->multiple() // Permite vários arquivos
+                    ->reorderable() // Permite arrastar para mudar a ordem
+                    ->columnSpanFull(),
+
                 // 3. Nome e Slug
                 Forms\Components\TextInput::make('name')
                     ->required()

@@ -1,7 +1,7 @@
 <x-layout>
     {{-- CABEÇALHO SIMPLES (Apenas Título) --}}
-    <div class="container mx-auto px-4 pt-32 pb-8 text-center">
-        <h1 class="text-2xl md:text-3xl font-black text-gray-900 uppercase tracking-tighter mb-4">
+    <div class="container mx-auto px-4 pt-32 pb-8 text-left">
+        <h1 class="text-2xl md:text-3xl font-black text-black uppercase tracking-tighter mb-4">
             {{ $title }}
         </h1>
     </div>

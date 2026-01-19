@@ -4,32 +4,77 @@
         {{-- Seção Principal: Grid de 2 Colunas --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
             
-            {{-- Coluna 1: Carrossel de Imagens --}}
-            <div x-data="{ 
-                activeImage: '{{ is_array($product->images) ? ($product->images[0] ?? '') : $product->image_url }}',
-                images: {{ is_array($product->images) ? json_encode($product->images) : json_encode([$product->image_url]) }}
-            }" class="space-y-4">
-                
-                {{-- Imagem Principal (Fundo Branco) --}}
-                <div class="aspect-[3/4] md:aspect-square bg-white rounded-lg overflow-hidden relative group border border-gray-100">
-                    <img :src="'/storage/' + activeImage" alt="{{ $product->name }}" class="w-full h-full object-contain p-4">
-                </div>
+{{-- Coluna 1: Carrossel de Imagens --}}
+<div class="space-y-4" 
+    {{-- Preparamos o array de imagens no PHP para ficar limpo no JS --}}
+    @php
+        $gallery = $product->gallery ?? [];
+        $allImages = array_merge([$product->image_url], $gallery);
+        // Mapeia para adicionar o caminho completo do storage
+        $jsImages = array_map(fn($img) => asset('storage/' . $img), $allImages);
+    @endphp
 
-                {{-- Miniaturas --}}
-                @if(is_array($product->images) && count($product->images) > 1)
-                    <div class="grid grid-cols-4 gap-4">
-                        <template x-for="image in images">
-                            <button 
-                                @click="activeImage = image"
-                                class="aspect-square rounded-md overflow-hidden border-2 bg-white"
-                                :class="activeImage === image ? 'border-black' : 'border-transparent hover:border-gray-300'"
-                            >
-                                <img :src="'/storage/' + image" class="w-full h-full object-contain p-1">
-                            </button>
-                        </template>
-                    </div>
-                @endif
-            </div>
+    x-data="{ 
+        activeSlide: 0,
+        images: {{ json_encode($jsImages) }}
+    }">
+    
+    {{-- Imagem Principal --}}
+    <div class="relative w-full overflow-hidden rounded-2xl border border-gray-100 group">
+        <div class="relative h-[500px] w-full bg-white flex items-center justify-center">
+            <template x-for="(image, index) in images" :key="index">
+                <img 
+                    x-show="activeSlide === index"
+                    :src="image" 
+                    class="absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
+                    x-transition:enter="opacity-0"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    alt="{{ $product->name }}"
+                >
+            </template>
+        </div>
+
+        {{-- Setas de Navegação (Só aparecem se tiver mais de 1 imagem) --}}
+        <button 
+            x-show="images.length > 1"
+            @click="activeSlide = activeSlide === 0 ? images.length - 1 : activeSlide - 1" 
+            class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-black p-3 rounded-full shadow-lg backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+        </button>
+
+        <button 
+            x-show="images.length > 1"
+            @click="activeSlide = activeSlide === images.length - 1 ? 0 : activeSlide + 1" 
+            class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-black p-3 rounded-full shadow-lg backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 translate-x-[10px] group-hover:translate-x-0"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+        </button>
+
+        {{-- Contador --}}
+        <div x-show="images.length > 1" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 px-4 py-1.5 rounded-full text-white text-xs font-bold backdrop-blur-md tracking-widest">
+            <span x-text="activeSlide + 1"></span> / <span x-text="images.length"></span>
+        </div>
+    </div>
+
+    {{-- Miniaturas (Thumbnails) --}}
+   <div class="flex flex-wrap gap-2" x-show="images.length > 1">
+    <template x-for="(image, index) in images" :key="index">
+        <button 
+            @click="activeSlide = index"
+            class="w-16 h-16 rounded-lg overflow-hidden border border-transparent bg-gray-50 transition-all duration-200 flex-shrink-0"
+            :class="activeSlide === index ? 'border-black ring-1 ring-black' : 'hover:border-gray-300 opacity-70 hover:opacity-100'"
+        >
+            <img :src="image" class="w-full h-full object-cover">
+        </button>
+    </template>
+</div>
+</div>
 
             {{-- Coluna 2: Informações e Ações --}}
             <div class="flex flex-col space-y-8">
