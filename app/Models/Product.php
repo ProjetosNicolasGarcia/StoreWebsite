@@ -11,40 +11,34 @@ class Product extends Model
     use HasFactory;
 
     /**
-     * O $fillable define quais campos podem ser salvos no banco.
-     * Adicionamos aqui os novos campos de Dimensões e Peso.
+     * O $fillable foi limpo.
+     * Removemos: base_price, sale_price, sale_start_date, sale_end_date.
+     * Mantivemos: Dimensões (assumindo que são gerais, mas podem ser movidas para variantes no futuro se necessário).
      */
     protected $fillable = [
         'category_id',
         'name',
         'slug',
         'description',
-        'base_price',
-        'image_url',
-        'gallery',
+        'image_url', // Capa principal do produto (vitrine)
+        'gallery',   // Galeria geral (opcional, já que variantes terão as suas)
         'is_active',
         'characteristics',
-        // Campos de Oferta
-        'sale_price',
-        'sale_start_date',
-        'sale_end_date',
-        // Campos de Dimensões e Peso (O "Resto" que você adicionou)
+        // Dimensões e Peso (Mantidos no pai por enquanto, mas idealmente iriam para a variante se mudarem por tamanho)
         'weight',
         'height',
         'width',
         'length',
-        // 'stock', // Descomente se você criar a migration de estoque
     ];
 
     protected $casts = [
-        'images' => 'array',
         'is_active' => 'boolean',
-        'sale_start_date' => 'datetime',
-        'sale_end_date' => 'datetime',
         'characteristics' => 'array',
-        'gallery' => 'array', 
-        // Casting para garantir que o peso venha como número (float)
-        'weight' => 'decimal:3', 
+        'gallery' => 'array',
+        'weight' => 'decimal:3',
+        'height' => 'decimal:2',
+        'width' => 'decimal:2',
+        'length' => 'decimal:2',
     ];
 
     // --- RELACIONAMENTOS ---
@@ -54,9 +48,16 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
+    // Relacionamento principal com as variações
     public function variants()
     {
         return $this->hasMany(ProductVariant::class);
+    }
+
+    // Helper para pegar a variante padrão (Útil para listar preço na Home)
+    public function defaultVariant()
+    {
+        return $this->hasOne(ProductVariant::class)->where('is_default', true);
     }
 
     public function collections()
@@ -69,46 +70,77 @@ class Product extends Model
         return $this->hasMany(Review::class);
     }
 
-    // --- LÓGICA DE PROMOÇÃO ---
+    // --- ACCESSORS (CAMADA DE COMPATIBILIDADE) ---
+    // Estes métodos permitem que você chame $product->price mesmo sem ter a coluna na tabela.
 
+    /**
+     * Retorna o menor preço entre as variantes para exibir "A partir de R$..."
+     */
+    public function getPriceAttribute()
+    {
+        // Se tiver variante padrão, usa o preço dela. Se não, pega o menor preço geral.
+        if ($this->defaultVariant) {
+            return $this->defaultVariant->price;
+        }
+        return $this->variants->min('price') ?? 0;
+    }
+
+    /**
+     * Mantém compatibilidade com código antigo que chama 'base_price'
+     */
+    public function getBasePriceAttribute()
+    {
+        return $this->price; // Reutiliza a lógica acima
+    }
+
+    /**
+     * Verifica se ALGUMA variante está em promoção
+     */
     public function isOnSale()
     {
-        if (!$this->sale_price) return false;
-        
-        $now = Carbon::now();
-        
-        if ($this->sale_start_date && $now->lt($this->sale_start_date)) return false;
-        if ($this->sale_end_date && $now->gt($this->sale_end_date)) return false;
-
-        return true;
+        // Verifica se existe alguma variante com sale_price definido e válido
+        return $this->variants->contains(function ($variant) {
+            return $variant->sale_price > 0 && $variant->sale_price < $variant->price;
+        });
     }
 
+    /**
+     * Retorna a porcentagem de desconto da variante padrão (ou da maior promoção encontrada)
+     */
     public function getDiscountPercentageAttribute()
     {
-        if (!$this->base_price || !$this->sale_price) return 0;
-        
-        return round((($this->base_price - $this->sale_price) / $this->base_price) * 100);
+        $variant = $this->defaultVariant ?? $this->variants->first();
+
+        if (!$variant || !$variant->sale_price || $variant->sale_price >= $variant->price) {
+            return 0;
+        }
+
+        return round((($variant->price - $variant->sale_price) / $variant->price) * 100);
     }
 
-    public function scopeOnSaleQuery($query)
-    {
-        return $query->whereNotNull('sale_price')
-                     ->where('sale_price', '<', \Illuminate\Support\Facades\DB::raw('base_price'))
-                     ->where(function ($q) {
-                         $q->whereNull('sale_start_date')
-                           ->orWhere('sale_start_date', '<=', now());
-                     })
-                     ->where(function ($q) {
-                         $q->whereNull('sale_end_date')
-                           ->orWhere('sale_end_date', '>=', now());
-                     });
-    }
-
+    /**
+     * Retorna o preço final para exibição na listagem (considerando a variante padrão)
+     */
     public function getFinalPriceAttribute()
     {
-        if ($this->sale_price && $this->isOnSale()) {
-            return $this->sale_price;
-        }
-        return $this->base_price;
+        $variant = $this->defaultVariant ?? $this->variants->sortBy('price')->first();
+
+        if (!$variant) return 0;
+
+        return $variant->sale_price ?? $variant->price;
+    }
+
+    // --- SCOPES (FILTROS DE BANCO DE DADOS) ---
+
+    /**
+     * Filtra produtos que tenham pelo menos uma variante em promoção.
+     * Atualizado para usar whereHas nas variantes.
+     */
+    public function scopeOnSaleQuery($query)
+    {
+        return $query->whereHas('variants', function ($q) {
+            $q->whereNotNull('sale_price')
+              ->whereColumn('sale_price', '<', 'price');
+        });
     }
 }

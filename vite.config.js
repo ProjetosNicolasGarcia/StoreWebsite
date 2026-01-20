@@ -10,9 +10,15 @@ export default defineConfig({
         }),
         tailwindcss(),
     ],
-    server: {
+    server: { 
+        // Força o Vite a rodar em 127.0.0.1 para não conflitar com o DNS do Windows
+        host: '127.0.0.1',
+        hmr: {
+            host: 'localhost',
+        },
         watch: {
-            ignored: ['**/storage/framework/views/**'],
+            // Ignora pastas pesadas para poupar CPU do Windows
+            ignored: ['**/storage/framework/views/**', '**/vendor/**'],
         },
     },
 });
