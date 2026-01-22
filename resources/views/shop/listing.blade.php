@@ -38,13 +38,18 @@
                                          x-transition:enter-end="opacity-100 translate-y-0"
                                          class="absolute bottom-3 left-0 right-0 flex justify-center gap-2 px-2 z-20 flex-wrap">
                                         
-                                        @foreach($product->variants->whereNotNull('image')->unique('image')->take(4) as $variant)
-                                            <div @mouseenter="currentImage = '{{ Storage::url($variant->image) }}'"
-                                                 @mouseleave="currentImage = originalImage"
-                                                 class="w-10 h-10 rounded-md border border-gray-200 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all transform hover:scale-110 flex items-center justify-center">
-                                                {{-- [CORREÇÃO]: Imagem da variante inteira dentro do ícone --}}
-                                                <img src="{{ Storage::url($variant->image) }}" class="w-full h-full object-contain p-0.5">
-                                            </div>
+                                        @foreach($product->visual_variants as $variant)
+                                          <div 
+    @mouseenter="currentImage = '{{ Storage::url($variant->image) }}'"
+    @mouseleave="currentImage = originalImage"
+    
+    {{-- ALTERAÇÃO AQUI: Adicionado .prevent ao lado de .stop --}}
+    @click.stop.prevent="window.location.href = '{{ route('shop.product', $product->slug) }}?variant={{ $variant->id }}'"
+    
+    class="w-10 h-10 rounded-md border border-gray-200 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all transform hover:scale-110 flex items-center justify-center">
+    
+    <img src="{{ Storage::url($variant->image) }}" class="w-full h-full object-contain p-0.5">
+</div>
                                         @endforeach
                                     </div>
                                 @endif
@@ -71,13 +76,40 @@
                         </a>
                         
                         <div class="pt-2 h-10 flex items-center justify-center">
-                            <form action="{{ route('cart.add', $product->id) }}" method="POST">
-                                @csrf
-                                <button type="submit" class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300">
-                                    Adicionar ao Carrinho
-                                </button>
-                            </form>
-                        </div>
+    @php
+        // Conta as variantes uma vez para evitar múltiplas chamadas
+        $variantCount = $product->variants->count();
+    @endphp
+
+    @if($variantCount > 1)
+        {{-- CASO A: Tem opções (Cor/Tamanho) -> Redireciona para escolher --}}
+        <a href="{{ route('shop.product', $product->slug) }}" 
+           class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
+                  opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
+                  hover:bg-white hover:text-black transition-all duration-300 flex items-center justify-center">
+            ADICIONAR AO CARRINHO
+        </a>
+    @elseif($variantCount === 1)
+        {{-- CASO B: Só tem 1 opção (Produto Simples) -> Adiciona direto --}}
+        <form action="{{ route('cart.add', $product->id) }}" method="POST">
+            @csrf
+            {{-- O PULO DO GATO: Injetamos o ID da única variante disponível --}}
+            <input type="hidden" name="variant_id" value="{{ $product->variants->first()->id }}">
+            
+            <button type="submit" 
+                class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
+                    opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
+                    hover:bg-white hover:text-black transition-all duration-300">
+                Adicionar ao Carrinho
+            </button>
+        </form>
+    @else
+        {{-- CASO C: Produto sem variantes (Erro de cadastro ou Indisponível) --}}
+        <span class="text-xs text-gray-400 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+            Indisponível
+        </span>
+    @endif
+</div>
                     </div>
                 @endforeach
             </div>

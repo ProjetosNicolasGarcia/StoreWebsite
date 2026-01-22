@@ -172,4 +172,34 @@ class Product extends Model
               ->whereColumn('sale_price', '<', 'price');
         });
     }
+
+    // --- NOVO MÉTODO PARA MINIATURAS ÚNICAS ---
+
+    /**
+     * Retorna apenas as variantes visualmente únicas (ex: 1 de cada cor),
+     * removendo duplicatas de tamanho (38, 39, 40 usam a mesma foto).
+     */
+    public function getVisualVariantsAttribute()
+    {
+        return $this->variants
+            ->whereNotNull('image') // Garante que tem imagem
+            ->unique(function ($variant) {
+                // 1. Tenta encontrar a opção de "Cor" para agrupar
+                $options = $variant->options ?? [];
+                // Lista de possíveis nomes para o atributo Cor
+                $keys = ['Cor', 'Color', 'COR', 'cor', 'color', 'Tonalidade', 'Matiz'];
+                
+                foreach ($keys as $key) {
+                    if (isset($options[$key])) {
+                        // Retorna o valor da cor (ex: "Azul") normalizado.
+                        // Assim, "Azul 38" e "Azul 39" serão considerados iguais.
+                        return mb_strtolower(trim($options[$key]));
+                    }
+                }
+
+                // 2. Se não tiver atributo de cor, usa o caminho da imagem como fallback
+                // Isso garante que se a imagem for idêntica, não repete.
+                return $variant->image;
+            });
+    }
 }

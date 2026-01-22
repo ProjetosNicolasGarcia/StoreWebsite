@@ -1,7 +1,7 @@
 <x-layout>
     {{-- 
         =================================================================
-        BLOCO PHP: DADOS E LÓGICA (Mantido)
+        BLOCO PHP: DADOS E LÓGICA
         =================================================================
     --}}
     @php
@@ -19,7 +19,10 @@
         $normalizedVariants = [];
         $colorImagesFallback = []; 
         $onSaleOptions = []; 
-        $bestInitialVariant = null;
+        
+        // Variáveis de controle de seleção
+        $bestInitialVariant = null; // A "Melhor opção" calculada automaticamente (menor preço)
+        $userSelectedVariant = null; // A opção exata que o usuário clicou na vitrine
 
         if ($product->variants) {
             foreach ($product->variants as $variant) {
@@ -67,7 +70,14 @@
 
                 if ($vArray['is_on_sale'] && $cKey) $onSaleOptions[] = $cKey;
 
-                // F. Melhor Preço Inicial
+                // --- LÓGICA DE SELEÇÃO ATUALIZADA ---
+                
+                // 1. Verifica se essa é a variante que veio da URL
+                if (isset($preSelectedVariant) && $variant->id == $preSelectedVariant->id) {
+                    $userSelectedVariant = $vArray;
+                }
+
+                // 2. Lógica padrão (Melhor Preço Inicial) - Mantida como fallback
                 if (!$bestInitialVariant) {
                     $bestInitialVariant = $vArray;
                 } else {
@@ -87,7 +97,13 @@
 
         foreach ($optionsMap as $key => $values) $optionsMap[$key] = array_values(array_unique($values));
 
-        // Fallback
+        // --- DEFINIÇÃO FINAL DA VARIANTE INICIAL ---
+        // Se o usuário clicou numa variante específica, ela tem prioridade total sobre a "mais barata"
+        if ($userSelectedVariant) {
+            $bestInitialVariant = $userSelectedVariant;
+        }
+
+        // Fallback final se nada existir
         if (!$bestInitialVariant) {
             $bestInitialVariant = [
                 'id' => null,
@@ -122,7 +138,7 @@
             'optionsMap' => $optionsMap,
             'baseImages' => $parentImages,
             'colorImages' => $colorImagesFallback,
-            'initialVariant' => $bestInitialVariant,
+            'initialVariant' => $bestInitialVariant, // Agora carrega a variante correta (da URL ou a mais barata)
             'initialPromoText' => $initialPromoText,
             'isInWishlist' => false 
         ];
@@ -190,15 +206,10 @@
                                     </div>
 
                                     <div x-show="timerDisplay" class="flex items-center gap-2 text-red-700 bg-red-100/50 px-3 py-2 rounded-lg border border-red-100 w-fit mt-1">
-                                        {{-- Aumentei o ícone de w-3 h-3 para w-4 h-4 --}}
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        
-                                        {{-- Aumentei de text-[10px] para text-xs (12px) --}}
                                         <span class="text-xs font-bold uppercase tracking-wide">Expira em:</span>
-                                        
-                                        {{-- Aumentei de text-[10px] para text-sm (14px) para os números ficarem mais legíveis --}}
                                         <span class="text-sm font-black font-mono" x-text="timerDisplay"></span>
                                     </div>
                                 </div>
@@ -211,7 +222,7 @@
                                 </div>
                             </template>
 
-                            {{-- MENSAGEM PERSISTENTE (Vermelha + Exclamação) --}}
+                            {{-- MENSAGEM PERSISTENTE --}}
                             <template x-if="promoText">
                                 <p class="text-[10px] text-red-600 font-bold mt-2 flex items-center gap-1.5 pt-2  uppercase tracking-wide">
                                     <svg class="w-3.5 h-3.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -243,7 +254,6 @@
                 </div>
 
                 {{-- AÇÃO DE COMPRA --}}
-               {{-- AÇÃO DE COMPRA (Menos largo: max-w-sm e altura h-12) --}}
                 <div class="flex flex-col gap-2 max-w-sm">
                     <form action="{{ route('cart.add', $product->id) }}" method="POST" class="w-full" @submit.prevent="submitCart($el)">
                         @csrf <input type="hidden" name="variant_id" :value="cartVariant ? cartVariant.id : ''">
@@ -259,9 +269,9 @@
                     </div>
                 </div>
 
-                {{-- FRETE E AÇÕES SECUNDÁRIAS (Compacto max-w-sm) --}}
+                {{-- FRETE E AÇÕES SECUNDÁRIAS --}}
                 <div class="pt-4  max-w-sm space-y-4">
-                    {{-- Frete (Altura h-12 para combinar com compra) --}}
+                    {{-- Frete --}}
                     <div x-data="{ zipCode: '', loading: false, result: null, error: null, async calculate() { const cleanCep = this.zipCode.replace(/\D/g, ''); if (cleanCep.length !== 8) { this.error = 'CEP Inválido'; return; } this.loading = true; this.error = null; this.result = null; try { const response = await axios.post('{{ route('shipping.calculate') }}', { zip_code: cleanCep, product_id: {{ $product->id }} }); this.result = response.data; } catch (e) { this.error = 'Erro ao calcular.'; } finally { this.loading = false; } } }">
                         <div class="flex gap-2 mb-2">
                             <input type="text" x-model="zipCode" @keydown.enter.prevent="calculate()" @input="$el.value = $el.value.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2')" placeholder="CEP" class="w-full h-12 px-3 rounded-lg border border-gray-300 bg-white text-xs text-gray-900 focus:border-black focus:ring-black">
@@ -272,7 +282,7 @@
                         <div x-show="result" style="display: none;" class="mt-2 text-xs"><template x-for="option in result" :key="option.name"><div class="flex justify-between pb-1"><span><span class="font-bold" x-text="option.name"></span> (<span x-text="option.days"></span> dias)</span><span class="font-bold">R$ <span x-text="new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(option.price)"></span></span></div></template></div>
                     </div>
 
-                    {{-- Ícones Secundários (Apenas Ícones, largura fixa) --}}
+                    {{-- Ícones Secundários --}}
                     <div class="flex gap-2 justify-start">
                         <button @click="toggleWishlist()" class="w-12 h-12 flex items-center justify-center border rounded-lg transition-all" :class="isInWishlist ? 'bg-red-50 border-red-200 text-red-600' : 'border-gray-200 text-gray-500 hover:border-black hover:text-black'">
                             <svg x-show="isInWishlist" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
@@ -327,14 +337,30 @@
                 copied: false,
 
                 init() {
-                    if (this.displayVariant && this.displayVariant.gallery) {
-                        this.galleryImages = this.displayVariant.gallery;
-                        this.currentImage = this.galleryImages[0];
+                    // Inicialização com a variante correta vinda do PHP (seja automática ou por URL)
+                    if (this.displayVariant) {
+                        // 1. Define as imagens corretas
+                        if (this.displayVariant.gallery) {
+                            this.galleryImages = this.displayVariant.gallery;
+                            this.currentImage = this.galleryImages[0];
+                        }
+                        
+                        // 2. Pré-seleciona as opções (Cor, Tamanho)
+                        // Isso faz os botões já aparecerem "clicados" visualmente
+                        if (this.displayVariant.options) {
+                            this.selectedOptions = { ...this.displayVariant.options };
+                            
+                            // Valida se já pode adicionar ao carrinho (sim, pois já temos variante completa)
+                            this.checkCartReadiness();
+                        }
                     }
+
+                    // Se não tiver opções mas tiver variante (produto simples), seleciona auto
                     if (Object.keys(this.optionsMap).length === 0 && this.variants.length > 0) {
                         this.cartVariant = this.variants[0];
                         this.displayVariant = this.cartVariant;
                     }
+
                     this.updateTimerFromDisplay();
                 },
 

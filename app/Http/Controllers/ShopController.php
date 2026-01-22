@@ -47,12 +47,22 @@ class ShopController extends Controller
     }
 
     // Exibe a página de um Produto Específico
-    public function show($slug)
+ public function show($slug)
     {
         $product = Product::where('slug', $slug)
             ->where('is_active', true)
             ->with(['category', 'collections', 'reviews.user', 'variants'])
             ->firstOrFail();
+
+        // --- CORREÇÃO AQUI ---
+        // Verifica se existe um ID de variante na URL (ex: ?variant=5)
+        $preSelectedVariant = null;
+        if (request()->has('variant')) {
+            // [CORREÇÃO]: Usamos where('id', ...) para garantir a busca pelo ID real do banco
+            // ao invés do índice da coleção em memória.
+            $preSelectedVariant = $product->variants->where('id', request()->query('variant'))->first();
+        }
+        // ---------------------
 
         $relatedProducts = Product::where('is_active', true)
             ->where('id', '!=', $product->id)
@@ -73,9 +83,10 @@ class ShopController extends Controller
             ->inRandomOrder()
             ->get();
 
-        return view('shop.product', compact('product', 'relatedProducts'));
+        // Passamos a variável $preSelectedVariant para a view
+        return view('shop.product', compact('product', 'relatedProducts', 'preSelectedVariant'));
     }
-
+    
     // Busca
     public function search(Request $request)
     {
