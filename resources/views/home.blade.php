@@ -1,5 +1,5 @@
 <x-layout>
-    {{-- 1. CARROSSEL PRINCIPAL (HERO) - Lógica Alpine Preservada --}}
+    {{-- 1. CARROSSEL PRINCIPAL (HERO) --}}
     @if($heroBanners->count() > 0)
         <div x-data="{ 
                 activeSlide: 0, 
@@ -15,7 +15,6 @@
              @mouseleave="startAutoplay()"
              class="relative w-full h-[65vh] md:h-screen group overflow-hidden bg-black">
             
-            {{-- Slides --}}
             @foreach($heroBanners as $index => $banner)
                 <div x-show="activeSlide === {{ $index }}"
                      x-transition:enter="transition transform duration-700 ease-in-out"
@@ -44,7 +43,6 @@
                 </div>
             @endforeach
 
-            {{-- Navegação --}}
             <button @click="prev()" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-full transition hidden md:group-hover:block z-20">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
             </button>
@@ -72,21 +70,46 @@
         
         <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
             @foreach($newArrivals as $product)
-                <div class="block group relative">
+                {{-- CARD PRODUTO COM INTERATIVIDADE ALPINE --}}
+                <div class="block group relative"
+                     x-data="{ 
+                         currentImage: '{{ Storage::url($product->image_url) }}', 
+                         originalImage: '{{ Storage::url($product->image_url) }}',
+                         hovering: false 
+                     }"
+                     @mouseenter="hovering = true"
+                     @mouseleave="hovering = false">
                     
                     <a href="{{ route('shop.product', $product->slug) }}" class="block cursor-pointer">
-                        {{-- 
-                            IMAGEM NOVIDADES
-                            Alterações: Sem bg-gray-50, sem p-4, com object-cover
-                        --}}
                         <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-white flex items-center justify-center">
                             
-                            <div class="absolute top-3 left-3  bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest z-10 shadow-sm">
+                            <div class="absolute top-3 left-3 bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest z-10 shadow-sm">
                                 Novo
                             </div>
 
-                            <img src="{{ Storage::url($product->image_url) }}" 
-                                 class="object-cover w-full h-full transition duration-500 group-hover:scale-110">
+                            {{-- Imagem Principal Reativa --}}
+                            <img :src="currentImage" 
+                                 class="object-contain w-full h-full transition duration-500 p-2"
+                                 :class="hovering ? 'scale-105' : ''">
+
+                            {{-- Miniaturas das Variantes (Aparecem no Hover) --}}
+                            @if($product->variants->whereNotNull('image')->count() > 0)
+                                <div x-show="hovering"
+                                     x-transition:enter="transition ease-out duration-200"
+                                     x-transition:enter-start="opacity-0 translate-y-2"
+                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                     class="absolute bottom-3 left-0 right-0 flex justify-center gap-2 px-2 z-20 flex-wrap">
+                                    
+                                    @foreach($product->variants->whereNotNull('image')->unique('image')->take(4) as $variant)
+                                        <div @mouseenter="currentImage = '{{ Storage::url($variant->image) }}'"
+                                             @mouseleave="currentImage = originalImage"
+                                             class="w-10 h-10 rounded-md border border-gray-200 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all transform hover:scale-110 flex items-center justify-center">
+                                            {{-- [CORREÇÃO]: object-contain e p-0.5 para a imagem da variante não cortar --}}
+                                            <img src="{{ Storage::url($variant->image) }}" class="w-full h-full object-contain p-0.5">
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
                         </div>
                         
                         <div class="text-center space-y-1">
@@ -95,7 +118,6 @@
                             @endif
                             <h4 class="font-bold text-gray-900">{{ $product->name }}</h4>
 
-                            {{-- Preço --}}
                             <div class="mt-1">
                                 @if($product->isOnSale())
                                     <div class="flex flex-col items-center justify-center gap-0.5">
@@ -118,16 +140,15 @@
                         </div>
                     </a>
 
-                    {{-- Botão Carrinho --}}
                     <div class="pt-2 h-10 flex items-center justify-center">
                         <form action="{{ route('cart.add', $product->id) }}" method="POST">
                             @csrf
-                          <button type="submit" 
-                            class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
-                                opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
-                                hover:bg-white hover:text-black transition-all duration-300">
-                            Adicionar ao Carrinho
-                         </button>
+                            <button type="submit" 
+                                class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
+                                    opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
+                                    hover:bg-white hover:text-black transition-all duration-300">
+                                Adicionar ao Carrinho
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -138,7 +159,6 @@
     {{-- 3. COLEÇÕES --}}
     @foreach($collections as $collection)
         <section class="mb-24">
-            {{-- BANNER DA COLEÇÃO --}}
             <div class="relative w-full h-[300px] md:h-[950px] mb-12 group overflow-hidden">
                  @if($collection->image_url)
                     <img src="{{ Storage::url($collection->image_url) }}" class="w-full h-full object-cover transition duration-700 group-hover:scale-105">
@@ -149,33 +169,56 @@
                  <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20"></div>
 
                  <div class="absolute bottom-0 left-0 p-6 md:p-12 w-full md:max-w-4xl flex flex-col justify-end items-start text-left z-10">
-    
                     <h2 class="text-3xl md:text-5xl font-black uppercase mb-2 tracking-tighter drop-shadow-md text-white">
                         {{ $collection->title }}
                     </h2>
-
                     @if($collection->description)
                         <p class="text-sm md:text-xl text-white/90 font-medium drop-shadow-sm max-w-2xl">
                             {{ $collection->description }}
                         </p>
                     @endif
-
                 </div>
             </div>
 
-            {{-- GRADE DE PRODUTOS DA COLEÇÃO --}}
             <div class="container mx-auto px-4">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
                     @foreach($collection->products as $product)
-                        <div class="block group relative">
+                        {{-- CARD PRODUTO COM INTERATIVIDADE ALPINE --}}
+                        <div class="block group relative"
+                             x-data="{ 
+                                 currentImage: '{{ Storage::url($product->image_url) }}', 
+                                 originalImage: '{{ Storage::url($product->image_url) }}',
+                                 hovering: false 
+                             }"
+                             @mouseenter="hovering = true"
+                             @mouseleave="hovering = false">
+                            
                             <a href="{{ route('shop.product', $product->slug) }}" class="block cursor-pointer">
-                                {{-- 
-                                    IMAGEM COLEÇÕES
-                                    Alterações: Sem bg-gray-50, sem p-4, com object-cover
-                                --}}
                                 <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-white flex items-center justify-center">
-                                    <img src="{{ Storage::url($product->image_url) }}" 
-                                         class="object-cover w-full h-full transition duration-500 group-hover:scale-110">
+                                    
+                                    {{-- Imagem Reativa --}}
+                                    <img :src="currentImage" 
+                                         class="object-contain w-full h-full transition duration-500 p-2"
+                                         :class="hovering ? 'scale-105' : ''">
+
+                                    {{-- Miniaturas das Variantes --}}
+                                    @if($product->variants->whereNotNull('image')->count() > 0)
+                                        <div x-show="hovering"
+                                             x-transition:enter="transition ease-out duration-200"
+                                             x-transition:enter-start="opacity-0 translate-y-2"
+                                             x-transition:enter-end="opacity-100 translate-y-0"
+                                             class="absolute bottom-3 left-0 right-0 flex justify-center gap-2 px-2 z-20 flex-wrap">
+                                            
+                                            @foreach($product->variants->whereNotNull('image')->unique('image')->take(4) as $variant)
+                                                <div @mouseenter="currentImage = '{{ Storage::url($variant->image) }}'"
+                                                     @mouseleave="currentImage = originalImage"
+                                                     class="w-10 h-10 rounded-md border border-gray-200 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all transform hover:scale-110 flex items-center justify-center">
+                                                    {{-- [CORREÇÃO]: object-contain e p-0.5 aqui também --}}
+                                                    <img src="{{ Storage::url($variant->image) }}" class="w-full h-full object-contain p-0.5">
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </div>
                                 
                                 <div class="text-center space-y-1">
@@ -184,7 +227,6 @@
                                     @endif
                                     <h4 class="font-bold text-gray-900">{{ $product->name }}</h4>
                                     
-                                    {{-- Preço --}}
                                     <div class="mt-1">
                                         @if($product->isOnSale())
                                             <div class="flex flex-col items-center justify-center gap-0.5">
@@ -207,16 +249,15 @@
                                 </div>
                             </a>
 
-                            {{-- Botão de Adicionar --}}
                             <div class="pt-2 h-10 flex items-center justify-center">
                                 <form action="{{ route('cart.add', $product->id) }}" method="POST">
                                     @csrf
-                                        <button type="submit" 
-                                            class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
-                                                opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
-                                                hover:bg-white hover:text-black transition-all duration-300">
-                                            Adicionar ao Carrinho
-                                        </button>
+                                    <button type="submit" 
+                                        class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
+                                            opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
+                                            hover:bg-white hover:text-black transition-all duration-300">
+                                        Adicionar ao Carrinho
+                                    </button>
                                 </form>
                             </div>
                         </div>

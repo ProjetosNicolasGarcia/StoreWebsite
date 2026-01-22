@@ -70,120 +70,143 @@ class ProductResource extends Resource
                             ->description('Gerencie tamanhos, cores, preços e estoques específicos.')
                             ->headerActions([
                                 // --- AÇÃO DE PROMOÇÃO EM MASSA (COM SELECTS) ---
-                                Action::make('apply_promotion')
-                                    ->label('Aplicar Promoção em Massa')
-                                    ->icon('heroicon-m-tag')
-                                    ->color('warning')
-                                    ->form([
-                                        // 1. Toggle para decidir se aplica a tudo
-                                        Forms\Components\Toggle::make('apply_to_all')
-                                            ->label('Aplicar a TODAS as variantes existentes?')
-                                            ->helperText('Se marcado, ignorará os filtros e aplicará a promoção a tudo (incluindo a variante padrão).')
-                                            ->default(false)
-                                            ->live(), // Faz os campos abaixo aparecerem/sumirem
+   Action::make('apply_promotion')
+    ->label('Aplicar Promoção em Massa')
+    ->icon('heroicon-m-tag')
+    ->color('warning')
+    ->form([
+        // 1. Toggle
+        Forms\Components\Toggle::make('apply_to_all')
+            ->label('Aplicar a TODAS as variantes desta lista?')
+            ->helperText('Ignora filtros e aplica a todas as variantes visíveis acima.')
+            ->default(false)
+            ->live(),
 
-                                        // 2. Selecionar o Atributo (Escondido se apply_to_all for true)
-                                        Select::make('target_attribute')
-                                            ->label('Escolha o Atributo')
-                                            ->placeholder('Selecione... (Ex: Cor)')
-                                            ->options(function (?Product $record) {
-                                                if (!$record) return [];
-                                                $keys = [];
-                                                foreach ($record->variants as $variant) {
-                                                    if ($variant->options) {
-                                                        foreach (array_keys($variant->options) as $key) {
-                                                            $keys[$key] = $key;
-                                                        }
-                                                    }
-                                                }
-                                                return $keys;
-                                            })
-                                            ->live()
-                                            // Só é obrigatório se NÃO for aplicar a todos
-                                            ->required(fn (Get $get) => !$get('apply_to_all'))
-                                            ->hidden(fn (Get $get) => $get('apply_to_all')),
+        // 2. Selecionar o Atributo
+        Select::make('target_attribute')
+            ->label('Escolha o Atributo')
+            ->placeholder('Selecione... (Ex: Cor)')
+            ->options(function (\Livewire\Component $livewire) {
+                // CORREÇÃO: Acessamos os dados direto do Livewire ($livewire->data)
+                // Isso garante que pegamos as variantes mesmo antes de salvar o produto.
+                $variants = $livewire->data['variants'] ?? [];
+                
+                $attributes = [];
+                foreach ($variants as $variant) {
+                    $options = $variant['options'] ?? [];
+                    if (is_array($options)) {
+                        foreach (array_keys($options) as $key) {
+                            $attributes[$key] = $key;
+                        }
+                    }
+                }
+                return $attributes; // Retorna array limpo (Ex: ['Cor' => 'Cor', 'Tamanho' => 'Tamanho'])
+            })
+            ->live()
+            ->required(fn (Forms\Get $get) => !$get('apply_to_all'))
+            ->hidden(fn (Forms\Get $get) => $get('apply_to_all')),
 
-                                        // 3. Selecionar o Valor (Escondido se apply_to_all for true)
-                                        Select::make('target_value')
-                                            ->label('Escolha o Valor')
-                                            ->placeholder('Selecione... (Ex: Branco)')
-                                            ->options(function (Get $get, ?Product $record) {
-                                                $attribute = $get('target_attribute');
-                                                if (!$record || !$attribute) return [];
-                                                $values = [];
-                                                foreach ($record->variants as $variant) {
-                                                    if (isset($variant->options[$attribute])) {
-                                                        $val = $variant->options[$attribute];
-                                                        $values[$val] = $val;
-                                                    }
-                                                }
-                                                return array_unique($values);
-                                            })
-                                            // Só é obrigatório se NÃO for aplicar a todos
-                                            ->required(fn (Get $get) => !$get('apply_to_all'))
-                                            ->hidden(fn (Get $get) => $get('apply_to_all')),
+        // 3. Selecionar o Valor
+        Select::make('target_value')
+            ->label('Escolha o Valor')
+            ->placeholder('Selecione... (Ex: Branco)')
+            ->options(function (Forms\Get $get, \Livewire\Component $livewire) {
+                // Acessa dados do Modal
+                $attribute = $get('target_attribute');
+                if (!$attribute) return [];
 
-                                        // 4. Dados da Promoção
-                                        Forms\Components\Group::make([
-                                            Forms\Components\TextInput::make('bulk_sale_price')
-                                                ->label('Novo Preço Promocional')
-                                                ->numeric()
-                                                ->prefix('R$')
-                                                ->required(),
-                                        ])->columnSpanFull(),
+                // Acessa dados do Formulário Principal
+                $variants = $livewire->data['variants'] ?? [];
+                
+                $values = [];
+                foreach ($variants as $variant) {
+                    $options = $variant['options'] ?? [];
+                    if (isset($options[$attribute])) {
+                        $val = $options[$attribute];
+                        $values[$val] = $val;
+                    }
+                }
+                return array_unique($values);
+            })
+            ->required(fn (Forms\Get $get) => !$get('apply_to_all'))
+            ->hidden(fn (Forms\Get $get) => $get('apply_to_all')),
 
-                                        Forms\Components\Group::make([
-                                            Forms\Components\DateTimePicker::make('bulk_start_date')->label('Início')->native(false)->seconds(false),
-                                            Forms\Components\DateTimePicker::make('bulk_end_date')->label('Fim')->native(false)->seconds(false),
-                                        ])->columns(2),
-                                    ])
-                                    ->action(function (array $data, Forms\Get $get, Forms\Set $set) {
-                                        $variants = $get('variants'); 
-                                        
-                                        if (!$variants) {
-                                            Notification::make()->title("Erro")->body("Não há variantes criadas para aplicar a promoção.")->danger()->send();
-                                            return;
-                                        }
+        // 4. Dados da Promoção
+        Forms\Components\Group::make([
+            Forms\Components\TextInput::make('bulk_sale_price')
+                ->label('Novo Preço Promocional')
+                ->numeric()
+                ->prefix('R$')
+                ->required(),
+        ])->columnSpanFull(),
 
-                                        $updatedCount = 0;
-                                        $applyToAll = $data['apply_to_all'] ?? false;
-                                        
-                                        // Se não for aplicar a todos, pega os filtros
-                                        $targetAttribute = $applyToAll ? null : $data['target_attribute'];
-                                        $targetValue = $applyToAll ? null : $data['target_value'];
+        Forms\Components\Group::make([
+            Forms\Components\DateTimePicker::make('bulk_start_date')
+                ->label('Início')
+                ->native(false)
+                ->seconds(false),
+            Forms\Components\DateTimePicker::make('bulk_end_date')
+                ->label('Fim')
+                ->native(false)
+                ->seconds(false),
+        ])->columns(2),
+    ])
+    ->action(function (array $data, \Livewire\Component $livewire, Forms\Set $set) {
+        // CORREÇÃO: Buscamos as variantes da fonte da verdade (Livewire Data)
+        $variants = $livewire->data['variants'] ?? [];
+        
+        if (empty($variants)) {
+            Notification::make()
+                ->title("Erro")
+                ->body("Não há variantes criadas para aplicar a promoção.")
+                ->danger()
+                ->send();
+            return;
+        }
 
-                                        foreach ($variants as $key => $variant) {
-                                            $shouldUpdate = false;
+        $updatedCount = 0;
+        $applyToAll = $data['apply_to_all'] ?? false;
+        
+        $targetAttribute = $data['target_attribute'] ?? null;
+        $targetValue = $data['target_value'] ?? null;
 
-                                            // CASO 1: Aplicar a TUDO
-                                            if ($applyToAll) {
-                                                $shouldUpdate = true;
-                                            } 
-                                            // CASO 2: Aplicar com Filtro
-                                            else {
-                                                $options = $variant['options'] ?? [];
-                                                if (isset($options[$targetAttribute]) && $options[$targetAttribute] == $targetValue) {
-                                                    $shouldUpdate = true;
-                                                }
-                                            }
+        foreach ($variants as $key => $variant) {
+            $shouldUpdate = false;
 
-                                            // Realiza a atualização se passou na condição
-                                            if ($shouldUpdate) {
-                                                $variants[$key]['sale_price'] = $data['bulk_sale_price'];
-                                                $variants[$key]['sale_start_date'] = $data['bulk_start_date'];
-                                                $variants[$key]['sale_end_date'] = $data['bulk_end_date'];
-                                                $updatedCount++;
-                                            }
-                                        }
+            if ($applyToAll) {
+                $shouldUpdate = true;
+            } else {
+                $options = $variant['options'] ?? [];
+                // Compara frouxamente (==) para evitar problemas de tipo string/int
+                if (isset($options[$targetAttribute]) && $options[$targetAttribute] == $targetValue) {
+                    $shouldUpdate = true;
+                }
+            }
 
-                                        $set('variants', $variants);
-                                        
-                                        Notification::make()
-                                            ->title("Sucesso!")
-                                            ->body("Promoção aplicada a {$updatedCount} variantes.")
-                                            ->success()
-                                            ->send();
-                                    }),
+            if ($shouldUpdate) {
+                // Atualização usando Dot Notation no $set do Formulário
+                // Isso atualiza visualmente os campos na tela
+                $set("variants.{$key}.sale_price", $data['bulk_sale_price']);
+                $set("variants.{$key}.sale_start_date", $data['bulk_start_date']);
+                $set("variants.{$key}.sale_end_date", $data['bulk_end_date']);
+                $updatedCount++;
+            }
+        }
+        
+        if ($updatedCount > 0) {
+            Notification::make()
+                ->title("Sucesso!")
+                ->body("Promoção aplicada a {$updatedCount} variantes. Salve o produto para persistir.")
+                ->success()
+                ->send();
+        } else {
+            Notification::make()
+                ->title("Atenção")
+                ->body("Nenhuma variante correspondeu aos critérios (Atributo: $targetAttribute, Valor: $targetValue).")
+                ->warning()
+                ->send();
+        }
+    }),
                             ])
                             ->schema([
                                 Repeater::make('variants')

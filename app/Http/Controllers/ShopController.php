@@ -6,7 +6,7 @@ use App\Models\Category;
 use App\Models\Collection;
 use App\Models\Product;
 use Illuminate\Http\Request;
-use App\Services\ShippingService; // [ADICIONADO] Importante para o cálculo
+use App\Services\ShippingService;
 
 class ShopController extends Controller
 {
@@ -14,8 +14,11 @@ class ShopController extends Controller
     public function category($slug)
     {
         $item = Category::where('slug', $slug)->firstOrFail();
-        // Busca produtos ativos dessa categoria
-        $products = $item->products()->where('is_active', true)->get();
+        
+        $products = $item->products()
+            ->where('is_active', true)
+            ->with('variants') // Carrega variantes para o preço correto
+            ->get();
 
         return view('shop.listing', [
             'title' => $item->name,
@@ -29,7 +32,11 @@ class ShopController extends Controller
     public function collection($slug)
     {
         $item = Collection::where('slug', $slug)->where('is_active', true)->firstOrFail();
-        $products = $item->products()->where('is_active', true)->get();
+        
+        $products = $item->products()
+            ->where('is_active', true)
+            ->with('variants')
+            ->get();
 
         return view('shop.listing', [
             'title' => $item->title,
@@ -44,7 +51,7 @@ class ShopController extends Controller
     {
         $product = Product::where('slug', $slug)
             ->where('is_active', true)
-            ->with(['category', 'collections', 'reviews.user'])
+            ->with(['category', 'collections', 'reviews.user', 'variants'])
             ->firstOrFail();
 
         $relatedProducts = Product::where('is_active', true)
@@ -61,6 +68,7 @@ class ShopController extends Controller
                     });
                 }
             })
+            ->with('variants')
             ->take(8)
             ->inRandomOrder()
             ->get();
@@ -68,17 +76,15 @@ class ShopController extends Controller
         return view('shop.product', compact('product', 'relatedProducts'));
     }
 
-    // --- BUSCA CORRIGIDA ---
+    // Busca
     public function search(Request $request)
     {
         $query = $request->input('q');
 
-        // Se a busca for vazia, retorna array vazio ou redireciona
         if (!$query) {
              return redirect()->route('home');
         }
 
-        // Quebra a frase em palavras
         $terms = explode(' ', $query);
 
         $products = Product::where('is_active', true)
@@ -94,6 +100,7 @@ class ShopController extends Controller
                     });
                 }
             })
+            ->with('variants')
             ->get();
 
         return view('shop.listing', [
@@ -104,7 +111,7 @@ class ShopController extends Controller
         ]);
     }
 
-    // --- SUGESTÕES (AUTOCOMPLETE) ---
+    // Sugestões (Autocomplete)
     public function suggestions(Request $request)
     {
         $query = $request->input('q');
@@ -128,20 +135,32 @@ class ShopController extends Controller
                     });
                 }
             })
+            ->with('variants')
             ->take(5)
-            ->get(['id', 'name', 'slug', 'image_url', 'base_price']);
+            ->get(['id', 'name', 'slug', 'image_url']);
 
-        return response()->json($products);
+        // Mapeia para adicionar o preço calculado (Accessor)
+        $results = $products->map(function($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'slug' => $product->slug,
+                'image_url' => $product->image_url,
+                'base_price' => $product->base_price, 
+            ];
+        });
+
+        return response()->json($results);
     }
 
-    // ofertas //
-
+    // Ofertas
     public function offers()
     {
         $products = Product::where('is_active', true)
-            ->onSaleQuery() // Usa o filtro criado no Model
+            ->onSaleQuery()
+            ->with('variants')
             ->latest()
-            ->get(); // Ou ->paginate(12) se tiver muitos produtos
+            ->get();
 
         return view('shop.listing', [
             'products' => $products,
@@ -149,24 +168,19 @@ class ShopController extends Controller
         ]);
     }
 
-    // [ADICIONADO] Simulação de Frete
+    // Simulação de Frete
     public function simulateShipping(Request $request, ShippingService $shippingService)
     {
-        $request->validate(['zip_code' => 'required|size:8']); // Valida CEP sem traço
+        $request->validate(['zip_code' => 'required|size:8']);
         
-        // Cenário A: Simulando na página de um Produto Específico
         if ($request->has('product_id')) {
             $product = Product::findOrFail($request->product_id);
-            // Simula uma coleção com 1 item (o produto) com quantidade 1
-            // Usamos 'collect' para o ShippingService tratar igual a um carrinho
             $items = collect([$product]); 
         } 
-        // Cenário B: Simulando para o Carrinho Inteiro (Futuro)
         else {
             return response()->json(['error' => 'Nenhum produto selecionado'], 400);
         }
 
-        // Chama o serviço que criamos
         $options = $shippingService->calculate($request->zip_code, $items);
 
         return response()->json($options);

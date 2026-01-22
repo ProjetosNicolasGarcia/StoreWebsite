@@ -11,9 +11,7 @@ class Product extends Model
     use HasFactory;
 
     /**
-     * O $fillable foi limpo.
-     * Removemos: base_price, sale_price, sale_start_date, sale_end_date.
-     * Mantivemos: Dimensões (assumindo que são gerais, mas podem ser movidas para variantes no futuro se necessário).
+     * O $fillable define quais campos podem ser salvos no banco.
      */
     protected $fillable = [
         'category_id',
@@ -21,10 +19,10 @@ class Product extends Model
         'slug',
         'description',
         'image_url', // Capa principal do produto (vitrine)
-        'gallery',   // Galeria geral (opcional, já que variantes terão as suas)
+        'gallery',   // Galeria geral
         'is_active',
         'characteristics',
-        // Dimensões e Peso (Mantidos no pai por enquanto, mas idealmente iriam para a variante se mudarem por tamanho)
+        // Dimensões e Peso
         'weight',
         'height',
         'width',
@@ -48,13 +46,12 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
-    // Relacionamento principal com as variações
     public function variants()
     {
         return $this->hasMany(ProductVariant::class);
     }
 
-    // Helper para pegar a variante padrão (Útil para listar preço na Home)
+    // Helper para pegar a variante padrão
     public function defaultVariant()
     {
         return $this->hasOne(ProductVariant::class)->where('is_default', true);
@@ -70,71 +67,103 @@ class Product extends Model
         return $this->hasMany(Review::class);
     }
 
-    // --- ACCESSORS (CAMADA DE COMPATIBILIDADE) ---
-    // Estes métodos permitem que você chame $product->price mesmo sem ter a coluna na tabela.
+    // --- LÓGICA DE VITRINE INTELIGENTE (CORREÇÃO DE BUGS VISUAIS) ---
 
     /**
-     * Retorna o menor preço entre as variantes para exibir "A partir de R$..."
+     * Define qual variante será usada para "representar" o produto na listagem (Home/Shop).
+     * Lógica:
+     * 1. Se tiver Variante Padrão (ex: cor principal), usa ela.
+     * 2. Se não, tenta pegar a variante mais barata QUE ESTEJA EM OFERTA (para atrair clique).
+     * 3. Se não tiver oferta, pega a variante mais barata geral.
      */
-    public function getPriceAttribute()
+   public function getShowcaseVariantAttribute()
     {
-        // Se tiver variante padrão, usa o preço dela. Se não, pega o menor preço geral.
-        if ($this->defaultVariant) {
-            return $this->defaultVariant->price;
+        // Carrega as variantes da memória
+        $variants = $this->variants;
+
+        if ($variants->isEmpty()) {
+            return null;
         }
-        return $this->variants->min('price') ?? 0;
+
+        // 1. PRIORIDADE MÁXIMA: Menor preço promocional
+        // Se houver QUALQUER variante em oferta, ela deve "furar a fila" para aparecer na vitrine.
+        $cheapestPromo = $variants->filter(function ($v) {
+            return $v->isOnSale();
+        })->sortBy('sale_price')->first();
+
+        if ($cheapestPromo) {
+            return $cheapestPromo;
+        }
+
+        // 2. Se NINGUÉM estiver em oferta, usamos a Variante Padrão definida no Admin
+        // Nota: Acessamos via relationLoaded para evitar query extra se já estiver carregado, 
+        // ou filtramos a coleção manualmente para performance.
+        $default = $variants->firstWhere('is_default', true);
+        if ($default) {
+            return $default;
+        }
+
+        // 3. Último caso: Menor preço base geral (A partir de...)
+        return $variants->sortBy('price')->first();
+    }
+
+    // --- ACCESSORS DE COMPATIBILIDADE (VIEW) ---
+
+    /**
+     * Retorna o preço de venda (Sale Price) da variante de vitrine.
+     * Corrige o bug de aparecer "R$ 0,00" quando o produto pai não tem preço.
+     */
+    public function getSalePriceAttribute()
+    {
+        return $this->showcase_variant?->sale_price;
     }
 
     /**
-     * Mantém compatibilidade com código antigo que chama 'base_price'
+     * Retorna o preço original (Base Price) da variante de vitrine.
+     * Garante consistência: Se mostramos a oferta da Variante X, mostramos o preço original da Variante X.
      */
     public function getBasePriceAttribute()
     {
-        return $this->price; // Reutiliza a lógica acima
+        return $this->showcase_variant?->price;
     }
 
     /**
-     * Verifica se ALGUMA variante está em promoção
+     * Verifica se o produto está em promoção baseando-se na variante escolhida para a vitrine.
      */
     public function isOnSale()
     {
-        // Verifica se existe alguma variante com sale_price definido e válido
-        return $this->variants->contains(function ($variant) {
-            return $variant->sale_price > 0 && $variant->sale_price < $variant->price;
-        });
+        return $this->showcase_variant?->isOnSale() ?? false;
     }
 
     /**
-     * Retorna a porcentagem de desconto da variante padrão (ou da maior promoção encontrada)
+     * Retorna a porcentagem de desconto correta baseada na variante de vitrine.
      */
     public function getDiscountPercentageAttribute()
     {
-        $variant = $this->defaultVariant ?? $this->variants->first();
+        $variant = $this->showcase_variant;
 
-        if (!$variant || !$variant->sale_price || $variant->sale_price >= $variant->price) {
+        if (!$variant || !$this->isOnSale()) {
             return 0;
         }
+
+        // Evita divisão por zero
+        if ($variant->price <= 0) return 0;
 
         return round((($variant->price - $variant->sale_price) / $variant->price) * 100);
     }
 
     /**
-     * Retorna o preço final para exibição na listagem (considerando a variante padrão)
+     * Apenas um alias para manter compatibilidade com códigos que chamam ->price direto
      */
-    public function getFinalPriceAttribute()
+    public function getPriceAttribute()
     {
-        $variant = $this->defaultVariant ?? $this->variants->sortBy('price')->first();
-
-        if (!$variant) return 0;
-
-        return $variant->sale_price ?? $variant->price;
+        return $this->base_price;
     }
 
     // --- SCOPES (FILTROS DE BANCO DE DADOS) ---
 
     /**
      * Filtra produtos que tenham pelo menos uma variante em promoção.
-     * Atualizado para usar whereHas nas variantes.
      */
     public function scopeOnSaleQuery($query)
     {
