@@ -89,7 +89,7 @@
                 </div>
 
                 {{-- CENTRO --}}
-                <a href="{{ route('home') }}" id="header-logo" class="justify-self-center text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight lg:tracking-widest uppercase transition-colors whitespace-nowrap z-10 text-center">MinhaLoja</a>
+                <a href="{{ route('home') }}" id="header-logo" class="justify-self-center text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight lg:tracking-widest uppercase transition-colors whitespace-nowrap z-10 text-center">NOME DA LOJA</a>
 
                 {{-- DIREITA --}}
                 <div class="flex items-center justify-end space-x-2 sm:space-x-4 lg:space-x-6 header-icons z-20">

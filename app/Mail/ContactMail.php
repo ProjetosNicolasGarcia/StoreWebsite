@@ -9,35 +9,60 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Address;
 
+/**
+ * Mailable responsável pelo envio de mensagens do formulário de "Fale Conosco".
+ * Encaminha as dúvidas dos clientes para o e-mail administrativo da loja.
+ */
 class ContactMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $data; // Aqui guardamos os dados do formulário
+    /**
+     * Armazena os dados validados do formulário (nome, email, mensagem, etc).
+     * @var array
+     */
+    public $data;
 
+    /**
+     * Cria uma nova instância da mensagem.
+     *
+     * @param array $data Dados recebidos do Controller.
+     */
     public function __construct($data)
     {
         $this->data = $data;
     }
 
-   public function envelope(): Envelope
-{
-    return new Envelope(
-        subject: 'Contato do Site: ' . ($this->data['subject'] ?? 'Sem Assunto'),
-        // ADICIONE ESTA LINHA ABAIXO:
-        replyTo: [
-            new Address($this->data['email'], $this->data['name'])
-        ],
-    );
-}
-
-    public function content(): Content
+    /**
+     * Define o envelope do e-mail (Assunto, Remetente e Destinatários).
+     */
+    public function envelope(): Envelope
     {
-        return new Content(
-            view: 'emails.contact', // Vamos criar essa view no próximo passo
+        return new Envelope(
+            subject: 'Contato do Site: ' . ($this->data['subject'] ?? 'Sem Assunto'),
+            
+            // [UX/Usabilidade] Configura o "Responder Para" (Reply-To).
+            // Permite que o admin clique em "Responder" no seu cliente de e-mail (Gmail/Outlook)
+            // e a resposta vá diretamente para o cliente, em vez do e-mail do sistema.
+            replyTo: [
+                new Address($this->data['email'], $this->data['name'])
+            ],
         );
     }
 
+    /**
+     * Define o conteúdo visual do e-mail.
+     */
+    public function content(): Content
+    {
+        return new Content(
+            view: 'emails.contact', // Aponta para resources/views/emails/contact.blade.php
+        );
+    }
+
+    /**
+     * Define anexos do e-mail (vazio por padrão).
+     */
     public function attachments(): array
     {
         return [];

@@ -12,18 +12,27 @@ use Filament\Tables\Table;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Section;
 
+/**
+ * Resource responsável pelo gerenciamento de Pedidos (Orders).
+ * Centraliza o fluxo de vendas, permitindo visualizar itens comprados,
+ * atualizar status de entrega e inserir códigos de rastreio.
+ */
 class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
 
-    // Ícone de "Sacola de Compras" ou "Caminhão"
+    // Ícone de "Sacola de Compras" para fácil identificação visual
     protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
 
-    // Traduções
+    // Definições de Labels para o Menu Admin
     protected static ?string $modelLabel = 'Pedido';
     protected static ?string $pluralModelLabel = 'Pedidos';
     protected static ?string $navigationLabel = 'Pedidos';
 
+    /**
+     * Define o formulário de visualização e edição do pedido.
+     * Nota: Muitos campos são 'disabled' para garantir a integridade fiscal/histórica do pedido.
+     */
     public static function form(Form $form): Form
     {
         return $form
@@ -34,6 +43,7 @@ class OrderResource extends Resource
                         Section::make('Itens do Pedido')
                             ->description('Lista de produtos comprados neste pedido.')
                             ->schema([
+                                // Repeater usado apenas para visualização (disabled), listando os OrderItems relacionados
                                 Forms\Components\Repeater::make('items')
                                     ->hiddenLabel() // Remove o label "Items" para limpar o visual
                                     ->relationship()
@@ -41,25 +51,25 @@ class OrderResource extends Resource
                                         Forms\Components\Select::make('product_id')
                                             ->relationship('product', 'name')
                                             ->label('Produto')
-                                            ->disabled()
-                                            ->columnSpan(2), // Ocupa mais espaço
+                                            ->disabled() // Impede troca de produto após venda
+                                            ->columnSpan(2),
 
                                         Forms\Components\TextInput::make('quantity')
                                             ->label('Qtd.')
                                             ->numeric()
-                                            ->disabled()
+                                            ->disabled() // Impede alteração de quantidade
                                             ->columnSpan(1),
 
                                         Forms\Components\TextInput::make('unit_price')
                                             ->label('Valor Un.')
                                             ->prefix('R$')
-                                            ->disabled()
+                                            ->disabled() // Impede alteração de preço histórico
                                             ->columnSpan(1),
                                     ])
                                     ->columns(4) // Grid de 4 colunas dentro do repeater
-                                    ->addable(false)
-                                    ->deletable(false)
-                                    ->reorderable(false),
+                                    ->addable(false)     // Não permite adicionar novos itens
+                                    ->deletable(false)   // Não permite remover itens
+                                    ->reorderable(false), // Não permite mudar a ordem
                             ]),
                     ])
                     ->columnSpan(['lg' => 2]),
@@ -69,25 +79,26 @@ class OrderResource extends Resource
                     ->schema([
                         Section::make('Gerenciamento')
                             ->schema([
+                                // Campo principal de controle de fluxo do pedido
                                 Forms\Components\Select::make('status')
                                     ->label('Status do Pedido')
                                     ->options([
-                                        'pending' => 'Pendente',
-                                        'paid' => 'Pago (Aprovado)',
+                                        'pending'    => 'Pendente',
+                                        'paid'       => 'Pago (Aprovado)',
                                         'processing' => 'Em Processamento',
-                                        'shipped' => 'Enviado / Em Trânsito',
-                                        'delivered' => 'Entregue',
-                                        'canceled' => 'Cancelado',
-                                        'refunded' => 'Reembolsado',
+                                        'shipped'    => 'Enviado / Em Trânsito',
+                                        'delivered'  => 'Entregue',
+                                        'canceled'   => 'Cancelado',
+                                        'refunded'   => 'Reembolsado',
                                     ])
                                     ->required()
-                                    ->native(false)
+                                    ->native(false) // Componente UI melhorado
                                     ->selectablePlaceholder(false),
 
                                 Forms\Components\TextInput::make('tracking_code')
                                     ->label('Código de Rastreio')
                                     ->placeholder('Ex: AA123456789BR')
-                                    ->helperText('Informe após o envio.'),
+                                    ->helperText('Informe este código após despachar o produto.'),
                             ]),
 
                         Section::make('Resumo Financeiro')
@@ -95,13 +106,13 @@ class OrderResource extends Resource
                                 Forms\Components\Select::make('user_id')
                                     ->relationship('user', 'name')
                                     ->label('Cliente')
-                                    ->disabled(),
+                                    ->disabled(), // Não permite transferir o pedido para outro usuário
 
                                 Forms\Components\TextInput::make('total_amount')
                                     ->label('Total do Pedido')
                                     ->prefix('R$')
                                     ->disabled()
-                                    ->dehydrated() // Garante que o valor seja enviado caso precise
+                                    ->dehydrated() // IMPORTANTE: Envia o valor ao banco mesmo estando disabled (caso seja necessário recalcular)
                                     ->numeric(),
                             ]),
 
@@ -119,9 +130,12 @@ class OrderResource extends Resource
                     ])
                     ->columnSpan(['lg' => 1]),
             ])
-            ->columns(3);
+            ->columns(3); // Layout mestre de 3 colunas
     }
 
+    /**
+     * Define a tabela de listagem de pedidos.
+     */
     public static function table(Table $table): Table
     {
         return $table
@@ -137,31 +151,32 @@ class OrderResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                // Coluna de Status com Badge colorida e tradução direta
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'pending' => 'Pendente',
-                        'paid' => 'Pago',
+                        'pending'    => 'Pendente',
+                        'paid'       => 'Pago',
                         'processing' => 'Processando',
-                        'shipped' => 'Enviado',
-                        'delivered' => 'Entregue',
-                        'canceled' => 'Cancelado',
-                        'refunded' => 'Reembolsado',
-                        default => $state,
+                        'shipped'    => 'Enviado',
+                        'delivered'  => 'Entregue',
+                        'canceled'   => 'Cancelado',
+                        'refunded'   => 'Reembolsado',
+                        default      => $state,
                     })
                     ->color(fn (string $state): string => match ($state) {
-                        'pending' => 'gray',
-                        'paid', 'processing' => 'info',
-                        'shipped' => 'warning',
-                        'delivered' => 'success',
-                        'canceled', 'refunded' => 'danger',
-                        default => 'gray',
+                        'pending'               => 'gray',
+                        'paid', 'processing'    => 'info',    // Azul
+                        'shipped'               => 'warning', // Amarelo
+                        'delivered'             => 'success', // Verde
+                        'canceled', 'refunded'  => 'danger',  // Vermelho
+                        default                 => 'gray',
                     }),
 
                 Tables\Columns\TextColumn::make('total_amount')
                     ->label('Total')
-                    ->money('BRL')
+                    ->money('BRL') // Formata automaticamente para moeda brasileira
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('created_at')
@@ -176,27 +191,24 @@ class OrderResource extends Resource
                     ->icon('heroicon-m-truck')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('created_at', 'desc') // Exibe pedidos mais recentes primeiro
             ->filters([
-                // Filtro Rápido por Status
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Filtrar por Status')
                     ->options([
-                        'pending' => 'Pendente',
-                        'paid' => 'Pago',
+                        'pending'    => 'Pendente',
+                        'paid'       => 'Pago',
                         'processing' => 'Em Processamento',
-                        'shipped' => 'Enviado',
-                        'delivered' => 'Entregue',
-                        'canceled' => 'Cancelado',
+                        'shipped'    => 'Enviado',
+                        'delivered'  => 'Entregue',
+                        'canceled'   => 'Cancelado',
                     ]),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->label('Gerenciar'), // Alterei para "Gerenciar" pois dá ideia de controle
+                    ->label('Gerenciar'), // Termo mais adequado que "Editar" para pedidos
             ])
             ->bulkActions([
-                // Pedidos geralmente não devem ser deletados em massa por segurança fiscal/histórico
-                // Mas mantive a opção caso precise limpar testes
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
@@ -206,7 +218,7 @@ class OrderResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            // Relações extras podem ser adicionadas aqui
         ];
     }
 

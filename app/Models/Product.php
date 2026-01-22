@@ -6,35 +6,51 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
+/**
+ * Class Product
+ * * Representa a entidade central do catálogo de produtos.
+ * * Arquitetura: Atua como um agregador para múltiplas variantes (SKUs).
+ * * Lógica de Negócio: Centraliza a decisão de precificação e exibição dinâmica 
+ * através do conceito de "Showcase Variant" (Variante de Vitrine).
+ *
+ * @package App\Models
+ */
 class Product extends Model
 {
     use HasFactory;
 
     /**
-     * Lista de chaves usadas para identificar variações de cor.
-     * Centralizado aqui para facilitar a manutenção.
+     * Lista de chaves usadas para identificar variações de cor em diferentes idiomas/formatos.
+     * Centralizado aqui para facilitar a normalização em métodos de agrupamento visual.
+     * @see getVisualVariantsAttribute
      */
     const COLOR_KEYS = ['Cor', 'Color', 'COR', 'cor', 'color', 'Tonalidade', 'Matiz'];
 
     /**
-     * O $fillable define quais campos podem ser salvos no banco.
+     * Atributos atribuíveis em massa.
+     * * 'image_url': Capa principal do produto usada como fallback.
+     * * 'characteristics': Armazena especificações técnicas em formato JSON.
+     * * 'gallery': Armazena caminhos de imagens adicionais do produto pai.
      */
     protected $fillable = [
         'category_id',
         'name',
         'slug',
         'description',
-        'image_url', // Capa principal do produto (vitrine)
-        'gallery',   // Galeria geral
+        'image_url', 
+        'gallery',   
         'is_active',
         'characteristics',
-        // Dimensões e Peso
         'weight',
         'height',
         'width',
         'length',
     ];
 
+    /**
+     * Conversão de tipos (Casting).
+     * Garante que campos decimais mantenham a precisão necessária para logística (frete).
+     */
     protected $casts = [
         'is_active' => 'boolean',
         'characteristics' => 'array',
@@ -45,19 +61,26 @@ class Product extends Model
         'length' => 'decimal:2',
     ];
 
-    // --- RELACIONAMENTOS ---
+    // =========================================================================
+    // RELACIONAMENTOS (Eloquent Relations)
+    // =========================================================================
 
     public function category()
     {
         return $this->belongsTo(Category::class);
     }
 
+    /**
+     * Relacionamento com as variações específicas do produto (SKUs).
+     */
     public function variants()
     {
         return $this->hasMany(ProductVariant::class);
     }
 
-    // Helper para pegar a variante padrão
+    /**
+     * Helper para identificar a variante definida como principal pelo administrador.
+     */
     public function defaultVariant()
     {
         return $this->hasOne(ProductVariant::class)->where('is_default', true);
@@ -73,26 +96,27 @@ class Product extends Model
         return $this->hasMany(Review::class);
     }
 
-    // --- LÓGICA DE VITRINE INTELIGENTE (CORREÇÃO DE BUGS VISUAIS) ---
+    // =========================================================================
+    // LÓGICA DE VITRINE INTELIGENTE
+    // =========================================================================
 
     /**
-     * Define qual variante será usada para "representar" o produto na listagem (Home/Shop).
-     * Lógica:
-     * 1. Se tiver Variante Padrão (ex: cor principal), usa ela.
-     * 2. Se não, tenta pegar a variante mais barata QUE ESTEJA EM OFERTA (para atrair clique).
-     * 3. Se não tiver oferta, pega a variante mais barata geral.
+     * Accessor: Define qual variante representa o produto nas listagens (Home/Shop).
+     * * Algoritmo de Prioridade:
+     * 1. Promoção: Prioriza variantes em oferta para maximizar conversão.
+     * 2. Padrão: Usa a variante marcada como 'is_default'.
+     * 3. Preço: Fallback para a variante de menor custo ("A partir de").
+     * * @return ProductVariant|null
      */
    public function getShowcaseVariantAttribute()
     {
-        // Carrega as variantes da memória
         $variants = $this->variants;
 
         if ($variants->isEmpty()) {
             return null;
         }
 
-        // 1. PRIORIDADE MÁXIMA: Menor preço promocional
-        // Se houver QUALQUER variante em oferta, ela deve "furar a fila" para aparecer na vitrine.
+        // 1. PRIORIDADE MÁXIMA: Menor preço promocional ativo.
         $cheapestPromo = $variants->filter(function ($v) {
             return $v->isOnSale();
         })->sortBy('sale_price')->first();
@@ -101,23 +125,23 @@ class Product extends Model
             return $cheapestPromo;
         }
 
-        // 2. Se NINGUÉM estiver em oferta, usamos a Variante Padrão definida no Admin
-        // Nota: Acessamos via relationLoaded para evitar query extra se já estiver carregado, 
-        // ou filtramos a coleção manualmente para performance.
+        // 2. PRIORIDADE MÉDIA: Curadoria do Admin.
         $default = $variants->firstWhere('is_default', true);
         if ($default) {
             return $default;
         }
 
-        // 3. Último caso: Menor preço base geral (A partir de...)
+        // 3. FALLBACK: Menor preço base geral.
         return $variants->sortBy('price')->first();
     }
 
-    // --- ACCESSORS DE COMPATIBILIDADE (VIEW) ---
+    // =========================================================================
+    // ACCESSORS DE COMPATIBILIDADE (Interface para Views)
+    // =========================================================================
 
     /**
-     * Retorna o preço de venda (Sale Price) da variante de vitrine.
-     * Corrige o bug de aparecer "R$ 0,00" quando o produto pai não tem preço.
+     * Retorna o preço de venda da variante de vitrine.
+     * Previne inconsistências visuais em produtos com múltiplas faixas de preço.
      */
     public function getSalePriceAttribute()
     {
@@ -125,8 +149,7 @@ class Product extends Model
     }
 
     /**
-     * Retorna o preço original (Base Price) da variante de vitrine.
-     * Garante consistência: Se mostramos a oferta da Variante X, mostramos o preço original da Variante X.
+     * Retorna o preço base original da variante de vitrine.
      */
     public function getBasePriceAttribute()
     {
@@ -134,7 +157,7 @@ class Product extends Model
     }
 
     /**
-     * Verifica se o produto está em promoção baseando-se na variante escolhida para a vitrine.
+     * Verifica se o produto (via sua variante de vitrine) possui oferta ativa.
      */
     public function isOnSale()
     {
@@ -142,7 +165,8 @@ class Product extends Model
     }
 
     /**
-     * Retorna a porcentagem de desconto correta baseada na variante de vitrine.
+     * Calcula a porcentagem de desconto para badges de vitrine.
+     * @return float|int
      */
     public function getDiscountPercentageAttribute()
     {
@@ -152,24 +176,25 @@ class Product extends Model
             return 0;
         }
 
-        // Evita divisão por zero
         if ($variant->price <= 0) return 0;
 
         return round((($variant->price - $variant->sale_price) / $variant->price) * 100);
     }
 
     /**
-     * Apenas um alias para manter compatibilidade com códigos que chamam ->price direto
+     * Alias de compatibilidade para chamadas diretas ao preço base.
      */
     public function getPriceAttribute()
     {
         return $this->base_price;
     }
 
-    // --- SCOPES (FILTROS DE BANCO DE DADOS) ---
+    // =========================================================================
+    // SCOPES (Filtros de Banco de Dados)
+    // =========================================================================
 
     /**
-     * Filtra produtos que tenham pelo menos uma variante em promoção.
+     * Filtra produtos que possuam ao menos uma variante com preço promocional válido.
      */
     public function scopeOnSaleQuery($query)
     {
@@ -179,31 +204,31 @@ class Product extends Model
         });
     }
 
-    // --- NOVO MÉTODO PARA MINIATURAS ÚNICAS (REFATORADO) ---
+    // =========================================================================
+    // MÉTODOS DE AGRUPAMENTO VISUAL
+    // =========================================================================
 
     /**
-     * Retorna apenas as variantes visualmente únicas (ex: 1 de cada cor),
-     * removendo duplicatas de tamanho (38, 39, 40 usam a mesma foto).
+     * Agrupa variantes por atributo visual (Cor) ou imagem.
+     * * Objetivo: Evitar duplicidade de fotos em tamanhos diferentes (ex: P, M, G).
+     * * Retorna apenas uma instância de cada "cor" para seleção na vitrine.
+     * * @return \Illuminate\Support\Collection
      */
     public function getVisualVariantsAttribute()
     {
         return $this->variants
-            ->whereNotNull('image') // Garante que tem imagem
+            ->whereNotNull('image') 
             ->unique(function ($variant) {
-                // 1. Tenta encontrar a opção de "Cor" para agrupar
                 $options = $variant->options ?? [];
                 
-                // [REFATORAÇÃO]: Usa a constante definida no topo da classe
+                // Tenta normalizar o agrupamento usando as chaves de cor definidas na constante
                 foreach (self::COLOR_KEYS as $key) {
                     if (isset($options[$key])) {
-                        // Retorna o valor da cor (ex: "Azul") normalizado.
-                        // Assim, "Azul 38" e "Azul 39" serão considerados iguais.
                         return mb_strtolower(trim($options[$key]));
                     }
                 }
 
-                // 2. Se não tiver atributo de cor, usa o caminho da imagem como fallback
-                // Isso garante que se a imagem for idêntica, não repete.
+                // Fallback: Agrupa pelo caminho da imagem caso não haja metadados de cor
                 return $variant->image;
             });
     }

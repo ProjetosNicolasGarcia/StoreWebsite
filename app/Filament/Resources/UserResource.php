@@ -13,6 +13,10 @@ use Filament\Tables\Table;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Section;
 
+/**
+ * Resource responsável pelo gerenciamento de Clientes (Usuários).
+ * Centraliza os dados cadastrais e fornece acesso rápido ao histórico de pedidos e endereços.
+ */
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
@@ -20,11 +24,15 @@ class UserResource extends Resource
     // Ícone de "Grupo de Usuários"
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
-    // Traduções
+    // Configurações de Labels
     protected static ?string $modelLabel = 'Cliente';
     protected static ?string $pluralModelLabel = 'Clientes';
     protected static ?string $navigationLabel = 'Clientes';
 
+    /**
+     * Define o formulário de cadastro e edição de clientes.
+     * Implementa travas de segurança para impedir a alteração de dados sensíveis (email/nome) pelo painel.
+     */
     public static function form(Form $form): Form
     {
         return $form
@@ -35,16 +43,15 @@ class UserResource extends Resource
                         Section::make('Dados Pessoais')
                             ->description('Informações de identificação do cliente.')
                             ->schema([
-                               Forms\Components\TextInput::make('name')
+                                Forms\Components\TextInput::make('name')
                                     ->label('Nome Completo')
                                     ->required()
                                     ->maxLength(255)
                                     ->prefixIcon('heroicon-m-user')
-                                    // BLOQUEIO DE EDIÇÃO:
+                                    // SEGURANÇA: Bloqueia edição para manter consistência com dados fiscais/pedidos
                                     ->disabled(fn (string $operation) => $operation === 'edit')
-                                    // Opcional: Adiciona um cadeado visual para indicar que está travado
                                     ->suffixIcon(fn (string $operation) => $operation === 'edit' ? 'heroicon-m-lock-closed' : null)
-                                    ->dehydrated(), // Garante que o dado seja enviado ao banco se for um create
+                                    ->dehydrated(), // Garante envio ao banco na criação
 
                                 Forms\Components\TextInput::make('email')
                                     ->label('E-mail')
@@ -53,12 +60,10 @@ class UserResource extends Resource
                                     ->maxLength(255)
                                     ->prefixIcon('heroicon-m-envelope')
                                     ->unique(ignoreRecord: true)
-                                    // ADIÇÃO DE SEGURANÇA:
-                                    // Só deixa editar se estiver criando um novo. 
-                                    // Se estiver editando um existente, bloqueia.
+                                    // SEGURANÇA: Bloqueia alteração de e-mail para evitar Account Takeover
                                     ->disabled(fn (string $operation) => $operation === 'edit')
-                                    ->helperText(fn (string $operation) => $operation === 'edit' 
-                                        ? 'Por segurança, o e-mail não pode ser alterado pelo painel. Peça ao cliente para alterar no perfil dele ou contate o suporte técnico (desenvolvedor).' 
+                                    ->helperText(fn (string $operation) => $operation === 'edit'
+                                        ? 'Por segurança, o e-mail não pode ser alterado pelo painel. Contate o suporte técnico se necessário.'
                                         : null),
                             ]),
                     ])
@@ -69,6 +74,7 @@ class UserResource extends Resource
                     ->schema([
                         Section::make('Acesso e Segurança')
                             ->schema([
+                                // Campo de senha visível APENAS na criação
                                 Forms\Components\TextInput::make('password')
                                     ->label('Senha Inicial')
                                     ->password()
@@ -76,9 +82,9 @@ class UserResource extends Resource
                                     ->required()
                                     ->maxLength(255)
                                     ->helperText('Defina uma senha apenas ao criar o usuário.')
-                                    ->hiddenOn('edit'), // Mantive sua lógica de segurança
-                                
-                                // Apenas informativo na edição
+                                    ->hiddenOn('edit'),
+
+                                // Placeholder informativo para a tela de edição
                                 Forms\Components\Placeholder::make('password_info')
                                     ->label('Senha')
                                     ->content('A senha está oculta por segurança.')
@@ -99,9 +105,12 @@ class UserResource extends Resource
                     ])
                     ->columnSpan(['lg' => 1]),
             ])
-            ->columns(3);
+            ->columns(3); // Layout mestre de 3 colunas
     }
 
+    /**
+     * Define a tabela de listagem de clientes.
+     */
     public static function table(Table $table): Table
     {
         return $table
@@ -115,7 +124,7 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('email')
                     ->label('E-mail')
                     ->icon('heroicon-m-envelope')
-                    ->copyable() // Facilita copiar para enviar email
+                    ->copyable() // Facilita o trabalho do suporte ao copiar e-mail
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('created_at')
@@ -123,9 +132,10 @@ class UserResource extends Resource
                     ->dateTime('d/m/Y')
                     ->sortable(),
             ])
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('created_at', 'desc') // Clientes novos primeiro
             ->actions([
                 Tables\Actions\EditAction::make(),
+                // DeleteAction mantida, mas use com cautela (pode quebrar integridade de pedidos antigos)
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -135,15 +145,16 @@ class UserResource extends Resource
             ]);
     }
 
+    /**
+     * Define as abas de relacionamento no rodapé da edição.
+     * Transforma a tela de usuário em um mini-CRM.
+     */
     public static function getRelations(): array
     {
         return [
-            // Mantém a aba de pedidos que você já configurou
-            RelationManagers\OrdersRelationManager::class,
-            RelationManagers\AddressesRelationManager::class,
+            RelationManagers\OrdersRelationManager::class,    // Histórico de Compras
+            RelationManagers\AddressesRelationManager::class, // Endereços de Entrega
         ];
-
-        
     }
 
     public static function getPages(): array
