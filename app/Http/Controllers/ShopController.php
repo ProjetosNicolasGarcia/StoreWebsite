@@ -10,6 +10,27 @@ use App\Services\ShippingService;
 
 class ShopController extends Controller
 {
+    /**
+     * Função auxiliar para definir os campos essenciais das variantes
+     * para exibição em vitrines (reduz consumo de memória).
+     */
+    private function variantFields($query)
+    {
+        $query->select([
+            'id', 
+            'product_id', 
+            'price', 
+            'sale_price', 
+            'sale_start_date', 
+            'sale_end_date', 
+            'image', 
+            'images', 
+            'options', 
+            'quantity', 
+            'is_default' // Importante para a lógica de 'showcase_variant'
+        ]);
+    }
+
     // Exibe produtos de uma Categoria
     public function category($slug)
     {
@@ -17,7 +38,8 @@ class ShopController extends Controller
         
         $products = $item->products()
             ->where('is_active', true)
-            ->with('variants') // Carrega variantes para o preço correto
+            // [OTIMIZAÇÃO] Carrega apenas colunas necessárias
+            ->with(['variants' => fn($q) => $this->variantFields($q)]) 
             ->get();
 
         return view('shop.listing', [
@@ -35,7 +57,8 @@ class ShopController extends Controller
         
         $products = $item->products()
             ->where('is_active', true)
-            ->with('variants')
+            // [OTIMIZAÇÃO]
+            ->with(['variants' => fn($q) => $this->variantFields($q)])
             ->get();
 
         return view('shop.listing', [
@@ -47,22 +70,19 @@ class ShopController extends Controller
     }
 
     // Exibe a página de um Produto Específico
- public function show($slug)
+    public function show($slug)
     {
         $product = Product::where('slug', $slug)
             ->where('is_active', true)
+            // Aqui mantemos o carregamento completo para a página de detalhes
             ->with(['category', 'collections', 'reviews.user', 'variants'])
             ->firstOrFail();
 
-        // --- CORREÇÃO AQUI ---
-        // Verifica se existe um ID de variante na URL (ex: ?variant=5)
+        // Verifica se existe um ID de variante na URL
         $preSelectedVariant = null;
         if (request()->has('variant')) {
-            // [CORREÇÃO]: Usamos where('id', ...) para garantir a busca pelo ID real do banco
-            // ao invés do índice da coleção em memória.
             $preSelectedVariant = $product->variants->where('id', request()->query('variant'))->first();
         }
-        // ---------------------
 
         $relatedProducts = Product::where('is_active', true)
             ->where('id', '!=', $product->id)
@@ -78,12 +98,12 @@ class ShopController extends Controller
                     });
                 }
             })
-            ->with('variants')
+            // [OTIMIZAÇÃO] Nos relacionados, carregamos leve
+            ->with(['variants' => fn($q) => $this->variantFields($q)])
             ->take(8)
             ->inRandomOrder()
             ->get();
 
-        // Passamos a variável $preSelectedVariant para a view
         return view('shop.product', compact('product', 'relatedProducts', 'preSelectedVariant'));
     }
     
@@ -111,7 +131,8 @@ class ShopController extends Controller
                     });
                 }
             })
-            ->with('variants')
+            // [OTIMIZAÇÃO]
+            ->with(['variants' => fn($q) => $this->variantFields($q)])
             ->get();
 
         return view('shop.listing', [
@@ -146,11 +167,11 @@ class ShopController extends Controller
                     });
                 }
             })
-            ->with('variants')
+            // [OTIMIZAÇÃO] Otimização crítica para autocomplete (resposta rápida)
+            ->with(['variants' => fn($q) => $this->variantFields($q)])
             ->take(5)
             ->get(['id', 'name', 'slug', 'image_url']);
 
-        // Mapeia para adicionar o preço calculado (Accessor)
         $results = $products->map(function($product) {
             return [
                 'id' => $product->id,
@@ -169,7 +190,8 @@ class ShopController extends Controller
     {
         $products = Product::where('is_active', true)
             ->onSaleQuery()
-            ->with('variants')
+            // [OTIMIZAÇÃO]
+            ->with(['variants' => fn($q) => $this->variantFields($q)])
             ->latest()
             ->get();
 

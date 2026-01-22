@@ -11,6 +11,12 @@ class Product extends Model
     use HasFactory;
 
     /**
+     * Lista de chaves usadas para identificar variações de cor.
+     * Centralizado aqui para facilitar a manutenção.
+     */
+    const COLOR_KEYS = ['Cor', 'Color', 'COR', 'cor', 'color', 'Tonalidade', 'Matiz'];
+
+    /**
      * O $fillable define quais campos podem ser salvos no banco.
      */
     protected $fillable = [
@@ -173,7 +179,7 @@ class Product extends Model
         });
     }
 
-    // --- NOVO MÉTODO PARA MINIATURAS ÚNICAS ---
+    // --- NOVO MÉTODO PARA MINIATURAS ÚNICAS (REFATORADO) ---
 
     /**
      * Retorna apenas as variantes visualmente únicas (ex: 1 de cada cor),
@@ -186,10 +192,9 @@ class Product extends Model
             ->unique(function ($variant) {
                 // 1. Tenta encontrar a opção de "Cor" para agrupar
                 $options = $variant->options ?? [];
-                // Lista de possíveis nomes para o atributo Cor
-                $keys = ['Cor', 'Color', 'COR', 'cor', 'color', 'Tonalidade', 'Matiz'];
                 
-                foreach ($keys as $key) {
+                // [REFATORAÇÃO]: Usa a constante definida no topo da classe
+                foreach (self::COLOR_KEYS as $key) {
                     if (isset($options[$key])) {
                         // Retorna o valor da cor (ex: "Azul") normalizado.
                         // Assim, "Azul 38" e "Azul 39" serão considerados iguais.

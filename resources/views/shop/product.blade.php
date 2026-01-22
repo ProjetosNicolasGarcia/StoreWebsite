@@ -1,5 +1,14 @@
 <x-layout>
     {{-- 
+        [SEO] Tag Canônica
+        Instrui o Google a ignorar parâmetros de URL (ex: ?variant=55) e considerar
+        apenas a URL limpa como a versão oficial da página. Evita conteúdo duplicado.
+    --}}
+    @push('head')
+        <link rel="canonical" href="{{ route('shop.product', $product->slug) }}" />
+    @endpush
+
+    {{-- 
         =================================================================
         BLOCO PHP: DADOS E LÓGICA
         =================================================================
@@ -156,7 +165,7 @@
             
             {{-- COLUNA 1: IMAGENS --}}
             <div class="space-y-4">
-                <div class="relative w-full ">
+                <div class="relative w-full group">
                     <div class="relative h-[500px] w-full flex items-center justify-center p-6">
                         <img :src="currentImage" class="w-full h-full object-contain transition-all duration-300" alt="{{ $product->name }}">
                     </div>
@@ -274,7 +283,7 @@
                     {{-- Frete --}}
                     <div x-data="{ zipCode: '', loading: false, result: null, error: null, async calculate() { const cleanCep = this.zipCode.replace(/\D/g, ''); if (cleanCep.length !== 8) { this.error = 'CEP Inválido'; return; } this.loading = true; this.error = null; this.result = null; try { const response = await axios.post('{{ route('shipping.calculate') }}', { zip_code: cleanCep, product_id: {{ $product->id }} }); this.result = response.data; } catch (e) { this.error = 'Erro ao calcular.'; } finally { this.loading = false; } } }">
                         <div class="flex gap-2 mb-2">
-                            <input type="text" x-model="zipCode" @keydown.enter.prevent="calculate()" @input="$el.value = $el.value.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2')" placeholder="CEP" class="w-full h-12 px-3 rounded-lg border border-gray-300 bg-white text-xs text-gray-900 focus:border-black focus:ring-black">
+                            <input type="text" x-model="zipCode" @keydown.enter.prevent="calculate()" @input="$el.value = $el.value.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2')" placeholder="Calcule o frete" class="w-full h-12 px-3 rounded-lg border border-gray-300 bg-white text-xs text-gray-900 focus:border-black focus:ring-black">
                             <button @click="calculate()" :disabled="loading" class="h-12 px-4 border border-black rounded-lg bg-black text-white text-[10px] font-bold uppercase hover:bg-gray-800 transition-all disabled:opacity-50">
                                 <span x-show="!loading">OK</span><span x-show="loading">...</span>
                             </button>
@@ -304,15 +313,93 @@
             <div x-data="{ open: false }" class="border-b border-gray-200"><button @click="open = !open" class="flex justify-between items-center w-full py-6 text-left focus:outline-none group"><span class="text-xl font-bold text-gray-900 uppercase tracking-wide group-hover:text-gray-600 transition">Avaliações</span><span x-text="open ? '-' : '+'" class="text-3xl font-light text-gray-400 group-hover:text-black transition"></span></button><div x-show="open" x-transition class="pb-8 text-gray-600">@if($product->reviews && $product->reviews->count() > 0)@foreach($product->reviews as $review) <div class="mb-6 border-b border-gray-100 pb-4 last:border-0"><div class="flex items-center justify-between mb-2"><p class="font-bold text-gray-900">{{ $review->user->name ?? 'Cliente' }}</p><span class="text-xs text-gray-400">{{ $review->created_at->format('d/m/Y') }}</span></div><div class="flex text-yellow-500 mb-2">@for($i=0; $i<$review->rating; $i++) ★ @endfor</div><p class="text-sm leading-relaxed">{{ $review->content }}</p></div> @endforeach @else <p class="italic text-gray-500">Ainda não há avaliações.</p> @endif</div></div>
         </div>
 
-        <div class="mt-24">
+       
+            <div class="mt-24 pb-24">
             <h2 class="text-2xl font-black uppercase tracking-widest mb-10 text-center">Você também pode gostar</h2>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
                 @foreach($relatedProducts as $related)
-                    <div class="block group relative" x-data="{ currentImage: '{{ Storage::url($related->image_url) }}', originalImage: '{{ Storage::url($related->image_url) }}', hovering: false }" @mouseenter="hovering = true" @mouseleave="hovering = false">
-                        <a href="{{ route('shop.product', $related->slug) }}" class="block cursor-pointer"><div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-white flex items-center justify-center">@if($related->created_at->diffInDays(now()) < 30)<div class="absolute top-3 left-3 bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest z-10 shadow-sm">Novo</div>@endif<img :src="currentImage" class="object-contain w-full h-full transition duration-500 p-2" :class="hovering ? 'scale-105' : ''">@if($related->variants->whereNotNull('image')->count() > 0)<div x-show="hovering" x-transition class="absolute bottom-3 left-0 right-0 flex justify-center gap-2 px-2 z-20 flex-wrap">@foreach($related->variants->whereNotNull('image')->unique('image')->take(4) as $variant)<div @mouseenter="currentImage = '{{ Storage::url($variant->image) }}'" @mouseleave="currentImage = originalImage" class="w-10 h-10 rounded-md border border-gray-200 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all transform hover:scale-110 flex items-center justify-center"><img src="{{ Storage::url($variant->image) }}" class="w-full h-full object-contain p-0.5"></div>@endforeach</div>@endif</div><div class="text-center space-y-1"><h3 class="font-bold text-gray-900 group-hover:text-gray-600 transition">{{ $related->name }}</h3><div class="mt-1">@if($related->isOnSale())<div class="flex flex-col items-center justify-center gap-0.5"><span class="font-bold text-red-600 text-lg leading-tight">R$ {{ number_format($related->sale_price, 2, ',', '.') }}</span><div class="flex items-center gap-2"><span class="text-xs text-gray-400 line-through">R$ {{ number_format($related->base_price, 2, ',', '.') }}</span><span class="bg-red-100 text-red-800 text-[10px] font-bold px-1.5 py-0.5 rounded">-{{ $related->discount_percentage }}%</span></div></div>@else<p class="text-gray-500">R$ {{ number_format($related->base_price, 2, ',', '.') }}</p>@endif</div></div></a><div class="pt-2 h-10 flex items-center justify-center"><form action="{{ route('cart.add', $related->id) }}" method="POST">@csrf <button type="submit" class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300">Adicionar ao Carrinho</button></form></div>
+                    <div class="block group relative" 
+                         x-data="{ 
+                             currentImage: '{{ Storage::url($related->image_url) }}', 
+                             originalImage: '{{ Storage::url($related->image_url) }}', 
+                             hovering: false 
+                         }" 
+                         @mouseenter="hovering = true" 
+                         @mouseleave="hovering = false; currentImage = originalImage">
+                        
+                        <a href="{{ route('shop.product', $related->slug) }}" class="block cursor-pointer">
+                            <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-white flex items-center justify-center">
+                                
+                                @if($related->created_at->diffInDays(now()) < 30)
+                                    <div class="absolute top-3 left-3 bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest z-10 shadow-sm">Novo</div>
+                                @endif
+
+                                <img :src="currentImage" 
+                                     class="object-contain w-full h-full transition duration-500 p-2" 
+                                     :class="hovering ? 'scale-105' : ''">
+
+                                {{-- 
+                                    CORREÇÃO AQUI: Usando visual_variants para não repetir cores 
+                                --}}
+                                @if($related->visual_variants->isNotEmpty())
+                                    <div x-show="hovering" 
+                                         x-transition:enter="transition ease-out duration-200"
+                                         x-transition:enter-start="opacity-0 translate-y-2"
+                                         x-transition:enter-end="opacity-100 translate-y-0"
+                                         class="absolute bottom-3 left-0 right-0 flex justify-center gap-2 px-2 z-20 flex-wrap">
+                                        
+                                        @foreach($related->visual_variants as $variant)
+                                            <div @mouseenter="currentImage = '{{ Storage::url($variant->image) }}'" 
+                                                 {{-- Link direto para a variante com correção de clique --}}
+                                                 @click.stop.prevent="window.location.href = '{{ route('shop.product', $related->slug) }}?variant={{ $variant->id }}'"
+                                                 class="w-10 h-10 rounded-md border border-gray-200 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all transform hover:scale-110 flex items-center justify-center">
+                                                <img src="{{ Storage::url($variant->image) }}" class="w-full h-full object-contain p-0.5">
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                            
+                            <div class="text-center space-y-1">
+                                <h3 class="font-bold text-gray-900 group-hover:text-gray-600 transition">{{ $related->name }}</h3>
+                                <div class="mt-1">
+                                    @if($related->isOnSale())
+                                        <div class="flex flex-col items-center justify-center gap-0.5">
+                                            <span class="font-bold text-red-600 text-lg leading-tight">R$ {{ number_format($related->sale_price, 2, ',', '.') }}</span>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs text-gray-400 line-through">R$ {{ number_format($related->base_price, 2, ',', '.') }}</span>
+                                                <span class="bg-red-100 text-red-800 text-[10px] font-bold px-1.5 py-0.5 rounded">-{{ $related->discount_percentage }}%</span>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <p class="text-gray-500">R$ {{ number_format($related->base_price, 2, ',', '.') }}</p>
+                                    @endif
+                                </div>
+                            </div>
+                        </a>
+
+                        {{-- Botão de Ação --}}
+                        <div class="pt-2 h-10 flex items-center justify-center">
+                            @php $variantCount = $related->variants->count(); @endphp
+                            
+                            @if($variantCount > 1)
+                                <a href="{{ route('shop.product', $related->slug) }}" class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300">
+                                    Escolher Opções
+                                </a>
+                            @elseif($variantCount === 1)
+                                <form action="{{ route('cart.add', $related->id) }}" method="POST">
+                                    @csrf 
+                                    <input type="hidden" name="variant_id" value="{{ $related->variants->first()->id }}">
+                                    <button type="submit" class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300">
+                                        Adicionar ao Carrinho
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
                     </div>
                 @endforeach
             </div>
+        </div>
         </div>
     </div>
 
@@ -362,6 +449,11 @@
                     }
 
                     this.updateTimerFromDisplay();
+
+                    if (this.displayVariant && window.location.search.includes('variant=')) {
+                        // Rola a tela suavemente até a área de compra (útil em mobile)
+                        this.$el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 },
 
                 async toggleWishlist() {
@@ -407,6 +499,8 @@
                         this.displayVariant = candidates[0];
                         this.updateTimerFromDisplay();
                     }
+
+
                 },
 
                 checkCartReadiness() {
@@ -459,4 +553,4 @@
             }));
         });
     </script>
-</x-layout>
+</x-layout>""""

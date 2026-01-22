@@ -55,8 +55,22 @@ class CartController extends Controller
         $quantity = $request->input('quantity', 1);
         $variantId = $request->input('variant_id');
 
+        // [ROBUSTEZ 1] Verifica se o produto existe e está ativo
+        // Impede a compra de itens desativados pelo painel admin
+        $product = Product::findOrFail($productId);
+        if (!$product->is_active) {
+             return redirect()->back()->with('error', 'Este produto não está mais disponível.');
+        }
+
         // 2. Verifica estoque da VARIANTE específica
         $variant = ProductVariant::findOrFail($variantId);
+
+        // [ROBUSTEZ 2] Segurança: Garante que a variante pertence ao produto da URL
+        // Evita manipulação de formulário (ex: comprar variante barata em produto caro)
+        if ($variant->product_id !== $product->id) {
+            abort(400, 'Variante inválida para este produto.');
+        }
+
         if ($variant->quantity < $quantity) {
             return redirect()->back()->with('error', 'Estoque insuficiente para esta opção.');
         }
@@ -64,7 +78,7 @@ class CartController extends Controller
         // 3. Prepara dados de busca (agora buscamos pela VARIANTE)
         $conditions = [
             'product_id' => $productId,
-            'product_variant_id' => $variantId // <--- O PULO DO GATO
+            'product_variant_id' => $variantId 
         ];
 
         if (Auth::check()) {
