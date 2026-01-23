@@ -6,7 +6,6 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Minha Loja - @yield('title', 'Home')</title>
 
-    {{-- [ADICIONADO] Stack para injetar tags específicas de cada página (como Canonical) --}}
     @stack('head')
     
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -30,7 +29,7 @@
 </head>
 
 <body class="bg-white text-gray-900 font-sans antialiased" 
-      x-data="{ cartOpen: {{ session('open_cart') ? 'true' : 'false' }} }">
+      x-data="{ cartOpen: {{ session('open_cart') ? 'true' : 'false' }}, categoryMenuOpen: false }">
 
     @php
         $isHome = request()->routeIs('home');
@@ -60,32 +59,21 @@
             <div class="grid grid-cols-3 items-center">
                 
                 {{-- ESQUERDA --}}
-                <div class="flex items-center justify-start">
+                <div class="flex items-center justify-start gap-4">
                     <button @click="mobileMenuOpen = !mobileMenuOpen" type="button" class="lg:hidden p-2 -ml-2 mr-1 focus:outline-none z-20">
                         <svg class="h-6 w-6 transition-colors" :class="scrolled ? 'text-gray-900' : 'text-white'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                     </button>
 
-                    <nav class="hidden lg:flex space-x-8 items-center">
-                        <div class="group inline-block py-2 relative">
-                            <a href="#" class="font-medium tracking-wide transition-colors flex items-center" :class="scrolled ? 'hover:text-gray-600' : 'hover:text-gray-300'">PRODUTOS <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1 mt-0.5 transition-transform group-hover:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></a>
-                            <div class="absolute left-0 top-full w-[200%] min-w-[300px] bg-white shadow-xl invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-300 z-50 border-t border-gray-100 rounded-b-lg mt-2">
-                                <div class="p-6">
-                                    <h4 class="font-bold mb-4 uppercase text-sm tracking-wider !text-black border-b border-gray-100 pb-2">Categorias</h4>
-                                    <div class="grid grid-cols-2 gap-x-8 gap-y-2">
-                                        @if(isset($globalCategories) && $globalCategories->count() > 0)
-                                            @foreach($globalCategories as $category)
-                                                <a href="{{ route('shop.category', $category->slug) }}" class="block !text-gray-600 hover:!text-black font-medium text-sm transition-colors py-1">{{ $category->name }}</a>
-                                            @endforeach
-                                        @else
-                                            <p class="!text-gray-400 text-sm col-span-2 italic">Nenhuma categoria encontrada.</p>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <a href="{{ route('shop.offers') }}" class="font-medium tracking-wide transition-colors" :class="scrolled ? 'hover:text-gray-600' : 'hover:text-gray-300'">OFERTAS</a>
-                        <a href="#" class="font-medium tracking-wide transition-colors" :class="scrolled ? 'hover:text-gray-600' : 'hover:text-gray-300'">SOBRE NÓS</a>
-                    </nav>
+                    <div class="hidden lg:flex items-center gap-6">
+                        <button @click="categoryMenuOpen = true" type="button" class="flex items-center gap-2 font-bold tracking-wide transition-colors group focus:outline-none" :class="scrolled ? 'text-gray-900 hover:text-gray-600' : 'text-white hover:text-gray-200'">
+                            <span>PRODUTOS</span>
+                        </button>
+
+                        <nav class="flex space-x-6 items-center">
+                            <a href="{{ route('shop.offers') }}" class="font-medium tracking-wide transition-colors" :class="scrolled ? 'hover:text-gray-600' : 'hover:text-gray-300'">OFERTAS</a>
+                            <a href="#" class="font-medium tracking-wide transition-colors" :class="scrolled ? 'hover:text-gray-600' : 'hover:text-gray-300'">SOBRE NÓS</a>
+                        </nav>
+                    </div>
                 </div>
 
                 {{-- CENTRO --}}
@@ -135,9 +123,25 @@
                                         <div class="h-12 w-12 flex-shrink-0 bg-gray-100 rounded overflow-hidden mr-4 border border-gray-200">
                                             <img :src="'/storage/' + product.image_url" class="h-full w-full object-cover">
                                         </div>
-                                        <div>
+                                        <div class="flex flex-col">
                                             <p class="text-base font-bold text-gray-900 group-hover:text-black" x-text="product.name"></p>
-                                            <p class="text-sm text-gray-500">R$ <span x-text="new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(product.base_price)"></span></p>
+                                            
+                                            <template x-if="product.on_sale">
+                                                <div class="flex items-center gap-2 mt-0.5">
+                                                    <p class="text-xs text-gray-400 line-through">
+                                                        R$ <span x-text="new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(product.original_price)"></span>
+                                                    </p>
+                                                    <p class="text-sm font-bold text-red-600">
+                                                        R$ <span x-text="new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(product.price)"></span>
+                                                    </p>
+                                                </div>
+                                            </template>
+
+                                            <template x-if="!product.on_sale">
+                                                <p class="text-sm text-gray-500 mt-0.5">
+                                                    R$ <span x-text="new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(product.price)"></span>
+                                                </p>
+                                            </template>
                                         </div>
                                     </a>
                                 </li>
@@ -158,16 +162,10 @@
                         <button @click="mobileMenuOpen = false" class="focus:outline-none"><svg class="h-6 w-6 text-gray-900 hover:text-red-500 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
                     </div>
                     <nav class="flex flex-col space-y-6">
-                        <div x-data="{ expanded: false }">
-                            <button @click="expanded = !expanded" class="flex justify-between items-center w-full font-bold uppercase tracking-wide text-lg !text-black border-b border-gray-100 pb-2">Produtos <svg class="h-5 w-5 transition-transform text-gray-900" :class="expanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button>
-                            <div x-show="expanded" class="mt-4 pl-4 flex flex-col space-y-3 text-base">
-                                @if(isset($globalCategories) && $globalCategories->count() > 0)
-                                    @foreach($globalCategories as $category)
-                                        <a href="{{ route('shop.category', $category->slug) }}" class="block !text-black font-medium hover:!text-red-600">{{ $category->name }}</a>
-                                    @endforeach
-                                @endif
-                            </div>
-                        </div>
+                        <button @click="mobileMenuOpen = false; categoryMenuOpen = true" class="w-full text-left font-bold uppercase tracking-wide text-lg !text-black border-b border-gray-100 pb-2 flex justify-between items-center">
+                            PRODUTOS
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </button>
                         <a href="{{ route('shop.offers') }}" class="font-bold uppercase tracking-wide text-lg !text-black border-b border-gray-100 pb-2">Ofertas</a>
                         <a href="#" class="font-bold uppercase tracking-wide text-lg !text-black border-b border-gray-100 pb-2">Sobre Nós</a>
                     </nav>
@@ -180,7 +178,49 @@
         {{ $slot }}
     </main>
 
-    {{-- MENU LATERAL DO CARRINHO (DRAWER) --}}
+    {{-- MENU LATERAL DE CATEGORIAS --}}
+    <div x-show="categoryMenuOpen" 
+         x-transition.opacity 
+         class="fixed inset-0 bg-black/50 z-[60] backdrop-blur-sm" 
+         @click="categoryMenuOpen = false" 
+         style="display: none;"></div>
+
+    <div x-show="categoryMenuOpen" 
+         x-transition:enter="transition ease-out duration-300 transform" 
+         x-transition:enter-start="-translate-x-full" 
+         x-transition:enter-end="translate-x-0" 
+         x-transition:leave="transition ease-in duration-300 transform" 
+         x-transition:leave-start="translate-x-0" 
+         x-transition:leave-end="-translate-x-full" 
+         class="fixed inset-y-0 left-0 w-3/4 max-w-xs sm:w-[350px] sm:max-w-none bg-white z-[70] shadow-2xl flex flex-col h-full overflow-hidden"
+         style="display: none;">
+
+        <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white text-black">
+            <div class="flex items-center gap-2">
+                <h2 class="text-lg font-bold uppercase tracking-widest">PRODUTOS</h2>
+            </div>
+            <button @click="categoryMenuOpen = false" class="text-black hover:text-gray-600 transition focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto">
+            @if(isset($globalCategories) && $globalCategories->count() > 0)
+                <ul class="flex flex-col">
+                    @foreach($globalCategories as $category)
+                        {{-- Chamada do componente recursivo --}}
+                        <x-category-item :category="$category" />
+                    @endforeach
+                </ul>
+            @else
+                <div class="p-8 text-center text-gray-500 italic">
+                    Nenhuma categoria encontrada.
+                </div>
+            @endif
+        </div>
+    </div>
+
+    {{-- MENU LATERAL DO CARRINHO --}}
     <div x-show="cartOpen" x-transition.opacity class="fixed inset-0 bg-black/50 z-[60] backdrop-blur-sm" @click="cartOpen = false" style="display: none;"></div>
 
     <div x-show="cartOpen" x-transition:enter="transition ease-in-out duration-300 transform" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in-out duration-300 transform" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full" class="fixed inset-y-0 right-0 w-full md:w-[450px] bg-white z-[70] shadow-2xl flex flex-col h-full" style="display: none;">
@@ -193,32 +233,20 @@
         <div class="flex-1 overflow-y-auto p-6 space-y-6">
             @if(isset($globalCartItems) && $globalCartItems->count() > 0)
                 @foreach($globalCartItems as $item)
-                    {{-- Pula item se dados estiverem corrompidos --}}
                     @if(!$item->variant && !$item->product) @continue @endif
 
                     <div class="flex gap-4">
-                        {{-- 
-                            =========================================================
-                            [NOVO BLOCO DE IMAGEM INTELIGENTE]
-                            Procura imagem na variante, ou na variante irmã da mesma cor.
-                            =========================================================
-                        --}}
                         @php
-                            $img = $item->product->image_url; // Padrão: Pai
-
+                            $img = $item->product->image_url; 
                             if ($item->variant) {
-                                // 1. Tenta imagem direta da variante
                                 if ($item->variant->image) {
                                     $img = $item->variant->image;
                                 } elseif (!empty($item->variant->images) && isset($item->variant->images[0])) {
                                     $img = $item->variant->images[0];
                                 } 
-                                // 2. Se falhou, tenta buscar por COR (Lógica de Fallback)
                                 else {
                                     $colorOptions = ['Cor', 'Color', 'COR', 'cor', 'color'];
                                     $variantColor = null;
-                                    
-                                    // Descobre a cor desta variante no carrinho
                                     if (is_array($item->variant->options)) {
                                         foreach ($colorOptions as $key) {
                                             if (isset($item->variant->options[$key])) {
@@ -227,14 +255,9 @@
                                             }
                                         }
                                     }
-
-                                    // Se achou a cor, procura nos irmãos do mesmo produto
                                     if ($variantColor && $item->product->variants) {
                                         foreach ($item->product->variants as $sibling) {
-                                            // Pula a própria variante
                                             if ($sibling->id === $item->variant->id) continue;
-
-                                            // Descobre a cor do irmão
                                             $siblingColor = null;
                                             if ($sibling->options) {
                                                 foreach ($colorOptions as $key) {
@@ -244,8 +267,6 @@
                                                     }
                                                 }
                                             }
-
-                                            // Se tem a mesma cor E tem imagem, usa ela e para
                                             if ($siblingColor === $variantColor) {
                                                 if ($sibling->image) {
                                                     $img = $sibling->image;
@@ -277,10 +298,11 @@
                                     </form>
                                 </div>
 
-                                {{-- ATRIBUTOS E CATEGORIA --}}
                                 <div class="mt-1">
-                                    @if($item->product->category)
-                                        <span class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">{{ $item->product->category->name }}</span>
+                                    @if($item->product->categories && $item->product->categories->isNotEmpty())
+                                        <span class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">
+                                            {{ $item->product->categories->first()->name }}
+                                        </span>
                                     @endif
 
                                     @if($item->variant && is_array($item->variant->options))
@@ -296,7 +318,6 @@
                             </div>
 
                             <div class="flex items-end justify-between mt-2">
-                                {{-- QUANTIDADE --}}
                                 <div class="flex items-center border border-gray-200 rounded h-8">
                                     <form action="{{ route('cart.update', $item->id) }}" method="POST">
                                         @csrf @method('PUT') <input type="hidden" name="action" value="decrease">
@@ -309,7 +330,6 @@
                                     </form>
                                 </div>
 
-                                {{-- PREÇO --}}
                                 <div class="text-right">
                                     @php
                                         $unitPrice = $item->variant ? $item->variant->final_price : ($item->product->isOnSale() ? $item->product->sale_price : $item->product->base_price);
@@ -338,7 +358,7 @@
         </div>
 
         @if(isset($globalCartItems) && $globalCartItems->count() > 0)
-            <div class="p-6  border-t border-gray-100">
+            <div class="p-6 border-t border-gray-100">
                 <div class="flex justify-between items-center mb-4">
                     <span class="text-gray-500 uppercase text-xs tracking-widest">Subtotal</span>
                     <span class="font-black text-xl">R$ {{ number_format($globalCartTotal ?? 0, 2, ',', '.') }}</span>
@@ -348,7 +368,6 @@
         @endif
     </div>
 
-    {{-- Footer --}}
     <footer class="bg-[#080808] text-gray-300 py-16 mt-20 text-sm border-t border-[#080808]">
         <div class="container mx-auto px-8 grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div>
@@ -394,7 +413,7 @@
                 </ul>
             </div>
         </div>
-        <div class="container mx-auto px-8 pt-8  flex flex-col md:flex-row justify-between items-center text-xs text-gray-300">
+        <div class="container mx-auto px-8 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-300">
             <p>&copy; {{ date('Y') }} Minha Loja. Todos os direitos reservados.</p>
         </div>
     </footer>
@@ -414,4 +433,4 @@
         @endif
     </script>
 </body>
-</html> 
+</html>

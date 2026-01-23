@@ -189,7 +189,15 @@
                 
                 {{-- Cabeçalho --}}
                 <div>
-                    @if($product->category) <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{{ $product->category->name }}</p> @endif
+
+                {{-- Exibe a primeira categoria encontrada --}}
+
+         {{--   @if($product->categories->isNotEmpty()) 
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
+                        {{ $product->categories->first()->name }}
+                    </p> 
+                @endif --}}
+
                     <h1 class="text-4xl font-black text-black uppercase tracking-tight leading-none mb-2">{{ $product->name }}</h1>
                     
                     <div class="flex items-center space-x-2">

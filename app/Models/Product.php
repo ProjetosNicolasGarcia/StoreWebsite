@@ -4,36 +4,26 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
 
 /**
  * Class Product
- * * Representa a entidade central do catálogo de produtos.
- * * Arquitetura: Atua como um agregador para múltiplas variantes (SKUs).
- * * Lógica de Negócio: Centraliza a decisão de precificação e exibição dinâmica 
- * através do conceito de "Showcase Variant" (Variante de Vitrine).
- *
- * @package App\Models
+ * Representa a entidade pai (recipiente) do catálogo.
+ * O preço e o estoque reais vivem nas Variantes (ProductVariant).
  */
 class Product extends Model
 {
     use HasFactory;
 
     /**
-     * Lista de chaves usadas para identificar variações de cor em diferentes idiomas/formatos.
-     * Centralizado aqui para facilitar a normalização em métodos de agrupamento visual.
-     * @see getVisualVariantsAttribute
+     * Chaves usadas para agrupar visualmente as variantes no frontend (ex: bolinhas de cor).
      */
     const COLOR_KEYS = ['Cor', 'Color', 'COR', 'cor', 'color', 'Tonalidade', 'Matiz'];
 
-    /**
-     * Atributos atribuíveis em massa.
-     * * 'image_url': Capa principal do produto usada como fallback.
-     * * 'characteristics': Armazena especificações técnicas em formato JSON.
-     * * 'gallery': Armazena caminhos de imagens adicionais do produto pai.
-     */
     protected $fillable = [
-        'category_id',
+        'category_id', // Mantido para compatibilidade, mas o real é a tabela pivô
         'name',
         'slug',
         'description',
@@ -47,10 +37,6 @@ class Product extends Model
         'length',
     ];
 
-    /**
-     * Conversão de tipos (Casting).
-     * Garante que campos decimais mantenham a precisão necessária para logística (frete).
-     */
     protected $casts = [
         'is_active' => 'boolean',
         'characteristics' => 'array',
@@ -62,28 +48,20 @@ class Product extends Model
     ];
 
     // =========================================================================
-    // RELACIONAMENTOS (Eloquent Relations)
+    // RELACIONAMENTOS
     // =========================================================================
 
-    public function category()
+    /**
+     * Relacionamento Muitos-para-Muitos com Categorias.
+     */
+    public function categories(): BelongsToMany
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsToMany(Category::class);
     }
 
-    /**
-     * Relacionamento com as variações específicas do produto (SKUs).
-     */
-    public function variants()
+    public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);
-    }
-
-    /**
-     * Helper para identificar a variante definida como principal pelo administrador.
-     */
-    public function defaultVariant()
-    {
-        return $this->hasOne(ProductVariant::class)->where('is_default', true);
     }
 
     public function collections()
@@ -97,77 +75,79 @@ class Product extends Model
     }
 
     // =========================================================================
-    // LÓGICA DE VITRINE INTELIGENTE
+    // LÓGICA DE VITRINE (Showcase Logic)
     // =========================================================================
 
     /**
-     * Accessor: Define qual variante representa o produto nas listagens (Home/Shop).
-     * * Algoritmo de Prioridade:
-     * 1. Promoção: Prioriza variantes em oferta para maximizar conversão.
-     * 2. Padrão: Usa a variante marcada como 'is_default'.
-     * 3. Preço: Fallback para a variante de menor custo ("A partir de").
-     * * @return ProductVariant|null
+     * Define qual variante será exibida no card do produto (Home/Listagem).
+     * Lógica:
+     * 1. Menor preço que esteja em PROMOÇÃO VÁLIDA.
+     * 2. Variante marcada como "Principal" (is_default).
+     * 3. Menor preço base.
      */
-   public function getShowcaseVariantAttribute()
+    public function getShowcaseVariantAttribute()
     {
-        $variants = $this->variants;
+        // Carrega variantes se ainda não foram carregadas
+        $variants = $this->relationLoaded('variants') ? $this->variants : $this->variants()->get();
 
         if ($variants->isEmpty()) {
             return null;
         }
 
-        // 1. PRIORIDADE MÁXIMA: Menor preço promocional ativo.
+        // 1. Prioridade: Ofertas Válidas (Menor Preço)
         $cheapestPromo = $variants->filter(function ($v) {
-            return $v->isOnSale();
+            return $this->variantIsOnSale($v); // Usa a função auxiliar de verificação de data
         })->sortBy('sale_price')->first();
 
         if ($cheapestPromo) {
             return $cheapestPromo;
         }
 
-        // 2. PRIORIDADE MÉDIA: Curadoria do Admin.
+        // 2. Prioridade: Padrão do Admin
         $default = $variants->firstWhere('is_default', true);
         if ($default) {
             return $default;
         }
 
-        // 3. FALLBACK: Menor preço base geral.
+        // 3. Fallback: Menor Preço Base
         return $variants->sortBy('price')->first();
     }
 
     // =========================================================================
-    // ACCESSORS DE COMPATIBILIDADE (Interface para Views)
+    // ACESSORES PARA O BLADE (Frontend)
     // =========================================================================
 
     /**
-     * Retorna o preço de venda da variante de vitrine.
-     * Previne inconsistências visuais em produtos com múltiplas faixas de preço.
+     * Retorna o preço da variante de vitrine.
      */
+    public function getPriceAttribute()
+    {
+        return $this->showcase_variant?->price;
+    }
+
+    public function getBasePriceAttribute()
+    {
+        return $this->showcase_variant?->price;
+    }
+
     public function getSalePriceAttribute()
     {
         return $this->showcase_variant?->sale_price;
     }
 
     /**
-     * Retorna o preço base original da variante de vitrine.
+     * Verifica se o produto está visualmente em oferta.
+     * Baseia-se na variante escolhida para a vitrine.
      */
-    public function getBasePriceAttribute()
+    public function isOnSale(): bool
     {
-        return $this->showcase_variant?->price;
+        $variant = $this->showcase_variant;
+        
+        if (!$variant) return false;
+
+        return $this->variantIsOnSale($variant);
     }
 
-    /**
-     * Verifica se o produto (via sua variante de vitrine) possui oferta ativa.
-     */
-    public function isOnSale()
-    {
-        return $this->showcase_variant?->isOnSale() ?? false;
-    }
-
-    /**
-     * Calcula a porcentagem de desconto para badges de vitrine.
-     * @return float|int
-     */
     public function getDiscountPercentageAttribute()
     {
         $variant = $this->showcase_variant;
@@ -181,38 +161,40 @@ class Product extends Model
         return round((($variant->price - $variant->sale_price) / $variant->price) * 100);
     }
 
-    /**
-     * Alias de compatibilidade para chamadas diretas ao preço base.
-     */
-    public function getPriceAttribute()
-    {
-        return $this->base_price;
-    }
-
     // =========================================================================
     // SCOPES (Filtros de Banco de Dados)
     // =========================================================================
 
     /**
-     * Filtra produtos que possuam ao menos uma variante com preço promocional válido.
+     * [CORREÇÃO CRÍTICA]
+     * Filtra produtos que tenham PELO MENOS UMA variante com oferta válida.
+     * Verifica Preço < Original E Datas de Validade.
      */
     public function scopeOnSaleQuery($query)
     {
-        return $query->whereHas('variants', function ($q) {
-            $q->whereNotNull('sale_price')
-              ->whereColumn('sale_price', '<', 'price');
-        });
+        return $query->where('is_active', true)
+            ->whereHas('variants', function ($q) {
+                $q->whereNotNull('sale_price')
+                  ->whereColumn('sale_price', '<', 'price')
+                  // Verifica validade da Data de Início
+                  ->where(function ($d) {
+                      $d->whereNull('sale_start_date')
+                        ->orWhere('sale_start_date', '<=', now());
+                  })
+                  // Verifica validade da Data de Fim
+                  ->where(function ($d) {
+                      $d->whereNull('sale_end_date')
+                        ->orWhere('sale_end_date', '>=', now());
+                  });
+            });
     }
 
     // =========================================================================
-    // MÉTODOS DE AGRUPAMENTO VISUAL
+    // HELPERS & AGRUPAMENTO VISUAL
     // =========================================================================
 
     /**
-     * Agrupa variantes por atributo visual (Cor) ou imagem.
-     * * Objetivo: Evitar duplicidade de fotos em tamanhos diferentes (ex: P, M, G).
-     * * Retorna apenas uma instância de cada "cor" para seleção na vitrine.
-     * * @return \Illuminate\Support\Collection
+     * Agrupa variantes por cor/imagem para mostrar bolinhas na listagem.
      */
     public function getVisualVariantsAttribute()
     {
@@ -221,15 +203,40 @@ class Product extends Model
             ->unique(function ($variant) {
                 $options = $variant->options ?? [];
                 
-                // Tenta normalizar o agrupamento usando as chaves de cor definidas na constante
                 foreach (self::COLOR_KEYS as $key) {
                     if (isset($options[$key])) {
                         return mb_strtolower(trim($options[$key]));
                     }
                 }
 
-                // Fallback: Agrupa pelo caminho da imagem caso não haja metadados de cor
                 return $variant->image;
             });
+    }
+
+    /**
+     * Validação centralizada de regra de negócio para oferta.
+     * @param $variant
+     * @return bool
+     */
+    protected function variantIsOnSale($variant): bool
+    {
+        // 1. Regra de Preço
+        if (!$variant->sale_price || $variant->sale_price >= $variant->price) {
+            return false;
+        }
+
+        $now = now();
+
+        // 2. Regra de Data de Início
+        if ($variant->sale_start_date && $now->lt($variant->sale_start_date)) {
+            return false;
+        }
+
+        // 3. Regra de Data de Fim (Expiração)
+        if ($variant->sale_end_date && $now->gt($variant->sale_end_date)) {
+            return false;
+        }
+
+        return true;
     }
 }

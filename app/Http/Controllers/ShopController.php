@@ -52,6 +52,8 @@ class ShopController extends Controller
             ->where('is_active', true)
             // [PERFORMANCE] Eager Loading otimizado: carrega variantes filtrando colunas
             ->with(['variants' => fn($q) => $this->variantFields($q)])
+            // [UX] Carrega a primeira categoria para exibir no card do produto na listagem
+            ->with(['categories' => fn($q) => $q->take(1)])
             ->get();
 
         return view('shop.listing', [
@@ -77,6 +79,7 @@ class ShopController extends Controller
             ->where('is_active', true)
             // [PERFORMANCE] Reutiliza a lógica de otimização de variantes
             ->with(['variants' => fn($q) => $this->variantFields($q)])
+            ->with(['categories' => fn($q) => $q->take(1)])
             ->get();
 
         return view('shop.listing', [
@@ -96,8 +99,8 @@ class ShopController extends Controller
         // Busca produto ativo pelo slug
         $product = Product::where('slug', $slug)
             ->where('is_active', true)
-            // Carrega todos os relacionamentos necessários para a página completa
-            ->with(['category', 'collections', 'reviews.user', 'variants'])
+            // [CORREÇÃO] Carrega 'categories' em vez de 'category' (que não existe mais)
+            ->with(['categories', 'collections', 'reviews.user', 'variants'])
             ->firstOrFail();
 
         // [DEEP LINKING] Lógica para pré-selecionar uma variante via URL (ex: ?variant=123)
@@ -109,14 +112,18 @@ class ShopController extends Controller
                 ->first();
         }
 
-        // [ALGORITMO DE RECOMENDAÇÃO] Busca produtos Relacionados
-        // Critério: Mesma Categoria OU Mesma Coleção, excluindo o produto atual.
+        // [ALGORITMO DE RECOMENDAÇÃO ATUALIZADO] Busca produtos Relacionados
+        // Critério: Mesma(s) Categoria(s) OU Mesma Coleção, excluindo o produto atual.
         $relatedProducts = Product::where('is_active', true)
             ->where('id', '!=', $product->id)
             ->where(function ($query) use ($product) {
-                // 1. Tenta combinar por categoria
-                if ($product->category_id) {
-                    $query->orWhere('category_id', $product->category_id);
+                
+                // 1. Tenta combinar por QUALQUER categoria que o produto tenha
+                if ($product->categories->isNotEmpty()) {
+                    $categoryIds = $product->categories->pluck('id');
+                    $query->orWhereHas('categories', function ($q) use ($categoryIds) {
+                        $q->whereIn('categories.id', $categoryIds);
+                    });
                 }
 
                 // 2. Tenta combinar por coleções compartilhadas
@@ -129,6 +136,8 @@ class ShopController extends Controller
             })
             // Otimização: Carrega variants leve para o card de produto relacionado
             ->with(['variants' => fn($q) => $this->variantFields($q)])
+            // [UX] Carrega a primeira categoria para o card de relacionado
+            ->with(['categories' => fn($q) => $q->take(1)])
             ->take(8) // Limita a 8 recomendações
             ->inRandomOrder() // Randomiza para dar frescor à página
             ->get();
@@ -166,6 +175,7 @@ class ShopController extends Controller
                 }
             })
             ->with(['variants' => fn($q) => $this->variantFields($q)])
+            ->with(['categories' => fn($q) => $q->take(1)])
             ->get();
 
         return view('shop.listing', [
@@ -215,7 +225,11 @@ class ShopController extends Controller
                 'name' => $product->name,
                 'slug' => $product->slug,
                 'image_url' => $product->image_url,
-                'base_price' => $product->base_price,
+                
+                // [LÓGICA ATUALIZADA] Preços para Frontend com UX melhorada
+                'price' => $product->isOnSale() ? $product->sale_price : $product->base_price,
+                'original_price' => $product->base_price, // Novo: Usado para o efeito de "riscado"
+                'on_sale' => $product->isOnSale(),        // Novo: Flag para o Alpine.js decidir qual template mostrar
             ];
         });
 
@@ -231,6 +245,7 @@ class ShopController extends Controller
         $products = Product::where('is_active', true)
             ->onSaleQuery() // Scope definido no Model Product (provavelmente filtra datas e preços)
             ->with(['variants' => fn($q) => $this->variantFields($q)])
+            ->with(['categories' => fn($q) => $q->take(1)])
             ->latest()
             ->get();
 

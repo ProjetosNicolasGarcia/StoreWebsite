@@ -23,19 +23,12 @@ use Filament\Forms\Components\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Forms\Get;
 
-/**
- * Resource responsável pelo Catálogo de Produtos.
- * Gerencia produtos simples e produtos com variações (ex: Tamanho/Cor),
- * incluindo controle de estoque, preços promocionais e galeria de imagens.
- */
 class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
 
-    // Ícone de "Caixa/Estoque"
     protected static ?string $navigationIcon = 'heroicon-o-archive-box';
 
-    // Configurações de Labels e Menu
     protected static ?string $modelLabel = 'Produto';
     protected static ?string $pluralModelLabel = 'Produtos';
     protected static ?string $navigationLabel = 'Produtos';
@@ -54,7 +47,7 @@ class ProductResource extends Resource
                                     ->label('Nome do Produto')
                                     ->placeholder('Ex: Camiseta Básica Algodão')
                                     ->live(onBlur: true)
-                                    // Gera o Slug automaticamente apenas na criação
+                                    // Só gera slug automático na criação
                                     ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) =>
                                         $operation === 'create' ? $set('slug', Str::slug($state)) : null),
 
@@ -62,15 +55,15 @@ class ProductResource extends Resource
                                     ->required()
                                     ->label('Slug (URL)')
                                     ->unique(ignoreRecord: true)
-                                    ->disabled() // Desabilitado para evitar quebra de links externos
-                                    ->dehydrated(), // Garante o envio do dado mesmo desabilitado
+                                    // [CORREÇÃO]: Removido disabled() para permitir edição manual se necessário
+                                    ->dehydrated()
+                                    ->helperText('URL amigável. Altere manualmente se necessário.'),
 
                                 Textarea::make('description')
                                     ->label('Descrição Detalhada')
                                     ->rows(3)
                                     ->columnSpanFull(),
 
-                                // KeyValue salva um JSON no banco (ex: {"Material": "Algodão", "Garantia": "3 Meses"})
                                 KeyValue::make('characteristics')
                                     ->label('Ficha Técnica')
                                     ->helperText('Adicione detalhes técnicos para especificação.')
@@ -84,26 +77,21 @@ class ProductResource extends Resource
                         Section::make('Variações e Estoque')
                             ->description('Gerencie tamanhos, cores, preços e estoques específicos.')
                             ->headerActions([
-                                // --- AÇÃO AVANÇADA: APLICAR PROMOÇÃO EM MASSA ---
-                                // Permite atualizar várias variantes de uma vez (ex: colocar todas as "Azul" em promoção)
                                 Action::make('apply_promotion')
                                     ->label('Aplicar Promoção em Massa')
                                     ->icon('heroicon-m-tag')
                                     ->color('warning')
                                     ->form([
-                                        // 1. Filtro Global
                                         Toggle::make('apply_to_all')
                                             ->label('Aplicar a TODAS as variantes?')
                                             ->helperText('Ignora filtros e aplica a todas as variantes cadastradas.')
                                             ->default(false)
                                             ->live(),
 
-                                        // 2. Filtro por Atributo (ex: Cor)
                                         Select::make('target_attribute')
                                             ->label('Atributo Alvo')
                                             ->placeholder('Selecione... (Ex: Cor)')
                                             ->options(function (\Livewire\Component $livewire) {
-                                                // Busca as chaves (Keys) do KeyValue 'options' dentro do repeater de variantes
                                                 $variants = $livewire->data['variants'] ?? [];
                                                 $attributes = [];
                                                 foreach ($variants as $variant) {
@@ -120,7 +108,6 @@ class ProductResource extends Resource
                                             ->required(fn (Get $get) => !$get('apply_to_all'))
                                             ->hidden(fn (Get $get) => $get('apply_to_all')),
 
-                                        // 3. Filtro por Valor (ex: Azul)
                                         Select::make('target_value')
                                             ->label('Valor do Atributo')
                                             ->placeholder('Selecione... (Ex: Azul)')
@@ -128,7 +115,6 @@ class ProductResource extends Resource
                                                 $attribute = $get('target_attribute');
                                                 if (!$attribute) return [];
                                                 
-                                                // Busca os valores correspondentes ao atributo selecionado
                                                 $variants = $livewire->data['variants'] ?? [];
                                                 $values = [];
                                                 foreach ($variants as $variant) {
@@ -143,7 +129,6 @@ class ProductResource extends Resource
                                             ->required(fn (Get $get) => !$get('apply_to_all'))
                                             ->hidden(fn (Get $get) => $get('apply_to_all')),
 
-                                        // 4. Definição dos Novos Valores
                                         Group::make([
                                             TextInput::make('bulk_sale_price')
                                                 ->label('Novo Preço Promocional')
@@ -163,7 +148,6 @@ class ProductResource extends Resource
                                                 ->seconds(false),
                                         ])->columns(2),
                                     ])
-                                    // Lógica de Execução da Ação
                                     ->action(function (array $data, \Livewire\Component $livewire, Forms\Set $set) {
                                         $variants = $livewire->data['variants'] ?? [];
                                         
@@ -177,7 +161,6 @@ class ProductResource extends Resource
                                         $targetAttribute = $data['target_attribute'] ?? null;
                                         $targetValue = $data['target_value'] ?? null;
 
-                                        // Itera sobre o estado do formulário e aplica as alterações onde corresponder
                                         foreach ($variants as $key => $variant) {
                                             $shouldUpdate = false;
                                             
@@ -185,14 +168,12 @@ class ProductResource extends Resource
                                                 $shouldUpdate = true;
                                             } else {
                                                 $options = $variant['options'] ?? [];
-                                                // Verifica se a variante possui o atributo e valor alvo
                                                 if (isset($options[$targetAttribute]) && $options[$targetAttribute] == $targetValue) {
                                                     $shouldUpdate = true;
                                                 }
                                             }
 
                                             if ($shouldUpdate) {
-                                                // Usa o $set do Filament para atualizar o campo específico no Repeater
                                                 $set("variants.{$key}.sale_price", $data['bulk_sale_price']);
                                                 $set("variants.{$key}.sale_start_date", $data['bulk_start_date']);
                                                 $set("variants.{$key}.sale_end_date", $data['bulk_end_date']);
@@ -208,7 +189,6 @@ class ProductResource extends Resource
                                     }),
                             ])
                             ->schema([
-                                // REPEATER: Gerencia a relação 1:N com ProductVariant
                                 Repeater::make('variants')
                                     ->relationship()
                                     ->label('Lista de Variantes')
@@ -242,7 +222,7 @@ class ProductResource extends Resource
                                                 ->numeric()
                                                 ->prefix('R$')
                                                 ->label('Preço Oferta')
-                                                ->lt('price'), // Validação: Deve ser menor que o preço original
+                                                ->lt('price'),
 
                                             TextInput::make('quantity')
                                                 ->numeric()
@@ -271,8 +251,8 @@ class ProductResource extends Resource
                                             ->directory('products/variants')
                                             ->columnSpanFull(),
                                     ])
-                                    ->collapsed() // Inicia fechado para economizar espaço visual
-                                    ->cloneable() // Permite duplicar uma variante para agilizar cadastro
+                                    ->collapsed()
+                                    ->cloneable()
                                     ->itemLabel(fn (array $state): ?string => 
                                         (isset($state['sku']) ? $state['sku'] : 'Nova Variante') . 
                                         (isset($state['price']) ? ' - R$ ' . $state['price'] : '')
@@ -291,19 +271,41 @@ class ProductResource extends Resource
                                     ->label('Produto Ativo')
                                     ->onColor('success'),
 
-                                Select::make('category_id')
-                                    ->relationship('category', 'name')
-                                    ->required()
-                                    ->label('Categoria')
-                                    ->searchable()
+                                // [CORREÇÃO AQUI]: Configuração Otimizada de Categorias
+                                Select::make('categories')
+                                    ->label('Categorias')
+                                    ->multiple()
+                                    ->relationship('categories', 'name')
                                     ->preload()
-                                    // Recurso UX: Permite criar uma categoria nova sem sair desta tela
+                                    // Permite buscar por nome E slug
+                                    ->searchable(['name', 'slug'])
+                                    // [UX] Mostra "Categoria (Pai)" na lista para evitar confusão de nomes iguais
+                                    ->getOptionLabelFromRecordUsing(fn ($record) => 
+                                        $record->parent 
+                                            ? "{$record->name} ({$record->parent->name})" 
+                                            : $record->name
+                                    )
                                     ->createOptionForm([
                                         TextInput::make('name')
+                                            ->label('Nome da Categoria')
                                             ->required()
                                             ->live(onBlur: true)
-                                            ->afterStateUpdated(fn (Forms\Set $set, $state) => $set('slug', Str::slug($state))),
-                                        TextInput::make('slug')->required(),
+                                            // Slug automático só na criação
+                                            ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) =>
+                                                $operation === 'create' ? $set('slug', Str::slug($state)) : null),
+                                        
+                                        TextInput::make('slug')
+                                            ->label('Slug (URL)')
+                                            ->required()
+                                            // [CORREÇÃO] Removido disabled para permitir ajuste manual
+                                            ->dehydrated()
+                                            ->unique('categories', 'slug', ignoreRecord: true),
+                                            
+                                        Select::make('parent_id')
+                                            ->label('Categoria Pai')
+                                            ->relationship('parent', 'name')
+                                            ->searchable()
+                                            ->preload(),
                                     ]),
                             ]),
 
@@ -365,15 +367,16 @@ class ProductResource extends Resource
                     ->limit(30)
                     ->tooltip(fn (Tables\Columns\TextColumn $column): ?string => $column->getState()),
 
-                Tables\Columns\TextColumn::make('category.name')
-                    ->label('Categoria')
-                    ->sortable()
-                    ->badge(),
+                Tables\Columns\TextColumn::make('categories.name')
+                    ->label('Categorias')
+                    ->badge()
+                    ->listWithLineBreaks()
+                    ->searchable(),
 
                 Tables\Columns\TextColumn::make('price')
                     ->label('A partir de')
                     ->money('BRL')
-                    ->sortable(false), // Preço pode variar por SKU, sorting aqui é complexo
+                    ->sortable(false),
 
                 Tables\Columns\ToggleColumn::make('is_active')
                     ->label('Ativo')
@@ -387,9 +390,11 @@ class ProductResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('category')
-                    ->relationship('category', 'name')
-                    ->label('Categoria'),
+                Tables\Filters\SelectFilter::make('categories')
+                    ->relationship('categories', 'name')
+                    ->label('Categorias')
+                    ->searchable()
+                    ->preload(),
                 
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Status')
