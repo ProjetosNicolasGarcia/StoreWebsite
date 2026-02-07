@@ -118,6 +118,10 @@ class StoreAuthController extends Controller
             'password.mixed' => 'A senha deve conter letras maiúsculas e minúsculas.',
             'password.numbers' => 'A senha deve conter pelo menos um número.',
             'password.symbols' => 'A senha deve conter pelo menos um símbolo (ex: @, #, $).',
+            
+            // NOVAS MENSAGENS PARA DATA DE NASCIMENTO
+            'birth_date.required' => 'A data de nascimento é obrigatória.',
+            'birth_date.before_or_equal' => 'Você precisa ter pelo menos 18 anos para criar uma conta.',
         ];
 
         $validated = $request->validate([
@@ -126,7 +130,9 @@ class StoreAuthController extends Controller
             'password' => ['required', 'confirmed', $passwordRules],
             'cpf' => 'nullable|string|max:14|unique:users',
             'phone' => ['nullable', 'string', 'max:20', 'unique:users', 'regex:'.$phoneRegex],
-            'birth_date' => 'nullable|date',
+            
+            // NOVA REGRA DE VALIDAÇÃO
+            'birth_date' => 'required|date|before_or_equal:-18 years',
         ], $messages);
 
         $code = rand(100000, 999999);
@@ -137,7 +143,7 @@ class StoreAuthController extends Controller
             'password' => Hash::make($validated['password']),
             'cpf' => $validated['cpf'] ?? null,
             'phone' => $validated['phone'] ?? null,
-            'birth_date' => $validated['birth_date'] ?? null,
+            'birth_date' => $validated['birth_date'],
             'code' => $code
         ];
 

@@ -14,11 +14,16 @@
               originalEmail: '{{ $user->email }}',
               originalPhone: '{{ $user->phone }}',
               originalCPF: '{{ $user->cpf }}',
+              // [NOVO] Estado inicial da data (Formatada Y-m-d para comparar com input date)
+              originalBirthDate: '{{ $user->birth_date ? $user->birth_date->format('Y-m-d') : '' }}',
               
               // --- ESTADO ATUAL (Reativo via x-model) ---
               currentEmail: '{{ old('email', $user->email) }}',
               currentPhone: '{{ old('phone', $user->phone) }}',
               currentCPF: '{{ old('cpf', $user->cpf) }}',
+              // [NOVO] Estado atual da data
+              currentBirthDate: '{{ old('birth_date', $user->birth_date ? $user->birth_date->format('Y-m-d') : '') }}',
+              
               newPassword: '',
               
               // --- LÓGICA DE DETECÇÃO DE ALTERAÇÕES ---
@@ -27,6 +32,7 @@
                   return (this.currentEmail !== this.originalEmail) || 
                          (this.currentPhone !== this.originalPhone) || 
                          (this.currentCPF !== this.originalCPF) || 
+                         (this.currentBirthDate !== this.originalBirthDate) || // [NOVO]
                          (this.newPassword.length > 0);
               },
 
@@ -80,6 +86,17 @@
                        maxlength="15" placeholder="(00) 00000-0000"
                        class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
             </div>
+
+            {{-- [NOVO] Campo: Data de Nascimento --}}
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Data de Nascimento</label>
+                <input type="date" name="birth_date" x-model="currentBirthDate"
+                       max="{{ date('Y-m-d', strtotime('-18 years')) }}"
+                       class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                @error('birth_date')
+                    <p class="text-red-500 text-xs mt-1 font-bold">{{ $message }}</p>
+                @enderror
+            </div>
         </div>
 
         {{-- Seção: Alteração de Senha --}}
@@ -113,7 +130,7 @@
                 <div class="flex-1">
                     <h4 class="text-sm font-bold text-yellow-800 uppercase tracking-wide mb-2">Confirmação de Segurança</h4>
                     <p class="text-sm text-yellow-700 mb-4">
-                        Para alterar dados sensíveis (E-mail, CPF, Telefone ou Senha), precisamos confirmar que é você.
+                        Para alterar dados sensíveis (E-mail, CPF, Telefone, Data de Nascimento ou Senha), precisamos confirmar que é você.
                     </p>
                     
                     <label class="block text-sm font-bold text-gray-700 mb-1">Digite sua Senha Atual</label>

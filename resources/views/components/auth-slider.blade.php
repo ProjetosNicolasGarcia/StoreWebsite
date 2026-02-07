@@ -249,7 +249,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Data de Nascimento</label>
-                        <input type="date" x-model="birth_date" class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                        <input type="date" x-model="birth_date" max="{{ date('Y-m-d', strtotime('-18 years')) }}" class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                         <p x-show="errors.birth_date" class="text-red-500 text-xs mt-1" x-text="errors.birth_date"></p>
                     </div>
                     <div>

@@ -26,7 +26,7 @@ class ProfileController extends Controller
     /**
      * Atualiza os dados pessoais e credenciais.
      */
- public function update(Request $request)
+    public function update(Request $request)
     {
         $user = Auth::user();
 
@@ -36,6 +36,10 @@ class ProfileController extends Controller
             'phone' => 'nullable|string|max:20',
             'cpf' => ['nullable', 'string', 'max:14', Rule::unique('users')->ignore($user->id)],
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+            
+            // [NOVA REGRA] Validação de Idade
+            'birth_date' => 'required|date|before_or_equal:-18 years',
+
             // [ATUALIZAÇÃO DE SEGURANÇA]
             // Adicionadas regras de Regex para forçar a complexidade
             'password' => [
@@ -48,14 +52,11 @@ class ProfileController extends Controller
                 'regex:/[\W_]/',     // Pelo menos um símbolo (caractere especial)
                 
                 function ($attribute, $value, $fail) use ($user) {
-                                    if (Hash::check($value, $user->password)) {
-                                        $fail('A nova senha não pode ser igual à sua senha atual.');
-                                    }
-                                },
-                
+                    if (Hash::check($value, $user->password)) {
+                        $fail('A nova senha não pode ser igual à sua senha atual.');
+                    }
+                },
             ],
-
-            
         ];
 
         // 2. Detecção de Alterações Sensíveis
@@ -64,16 +65,26 @@ class ProfileController extends Controller
         $phoneChanged = $request->phone !== $user->phone;
         $cpfChanged = $request->cpf !== $user->cpf;
 
+        // Verifica mudança na data de nascimento (comparando strings Y-m-d)
+        $inputDate = $request->birth_date;
+        $userDate = $user->birth_date ? $user->birth_date->format('Y-m-d') : null;
+        $birthDateChanged = $inputDate !== $userDate;
+
         // 3. Aplicação da Regra de Segurança
-        if ($emailChanged || $passwordChanged || $phoneChanged || $cpfChanged) {
+        // Se qualquer dado sensível (incluindo nascimento) mudar, pede senha atual
+        if ($emailChanged || $passwordChanged || $phoneChanged || $cpfChanged || $birthDateChanged) {
             $rules['current_password'] = ['required', 'current_password'];
         }
 
         // 4. Execução da Validação com MENSAGEM EDUCATIVA
         $validated = $request->validate($rules, [
             // Mensagens de Segurança
-            'current_password.required' => 'Por segurança, confirme sua senha atual para salvar as alterações.',
+            'current_password.required' => 'Por segurança, confirme sua senha atual para salvar alterações em dados sensíveis.',
             'current_password.current_password' => 'A senha atual digitada está incorreta.',
+
+            // Mensagens de Data de Nascimento
+            'birth_date.required' => 'A data de nascimento é obrigatória.',
+            'birth_date.before_or_equal' => 'É necessário ser maior de 18 anos para manter a conta.',
 
             // [MENSAGEM MELHORADA]
             // Se falhar no tamanho (min:8)
@@ -83,7 +94,6 @@ class ProfileController extends Controller
             'password.confirmed' => 'A confirmação da senha não confere.',
 
             // Se falhar em QUALQUER regra de complexidade (regex)
-            // Essa mensagem ensina ao usuário o padrão correto imediatamente
             'password.regex' => 'A senha deve conter: letra maiúscula, letra minúscula, número e símbolo especial (ex: @, #, !).',
             
             // Outras mensagens
@@ -96,6 +106,7 @@ class ProfileController extends Controller
         $user->phone = $validated['phone'];
         $user->cpf = $validated['cpf'];
         $user->email = $validated['email'];
+        $user->birth_date = $validated['birth_date']; // [NOVO] Salvando a data
 
         if (!empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
@@ -105,6 +116,7 @@ class ProfileController extends Controller
 
         return back()->with('success', 'Dados atualizados com sucesso!');
     }
+
     /**
      * Lista o histórico de pedidos do cliente.
      * [OTIMIZAÇÃO DE PERFORMANCE E ESCALABILIDADE]
@@ -116,8 +128,6 @@ class ProfileController extends Controller
         // Alteração Vital:
         // 1. paginate(10): Evita carregar 1000 pedidos na memória se o cliente for antigo.
         // 2. with('items.product'): Previne o problema N+1.
-        //    Carrega os Itens do pedido E os Produtos desses itens em apenas 2 queries adicionais.
-        //    (Assumindo que na view você mostra "Camiseta Azul (x2)")
         $orders = $user->orders()
             ->with(['items.product' => function($query) {
                 // Seleciona apenas campos essenciais do produto para economizar memória
