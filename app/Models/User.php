@@ -2,22 +2,23 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail; // Descomentar se usar verificação de email padrão
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes; // Mantivemos o SoftDeletes (Essencial para sua feature)
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
-use Laravel\Sanctum\HasApiTokens;
+// use Laravel\Sanctum\HasApiTokens; // <--- REMOVIDO: Causa do erro
 
 /**
  * Class User
- * * Entidade central de identidade do sistema.
- * Unifica perfis de clientes e administradores.
+ * Entidade central de identidade do sistema.
  */
 class User extends Authenticatable implements FilamentUser
 {
-    use HasFactory, Notifiable;
+    // <--- REMOVIDO: HasApiTokens
+    use HasFactory, Notifiable, SoftDeletes; 
 
     /**
      * Campos preenchíveis em massa.
@@ -41,11 +42,11 @@ class User extends Authenticatable implements FilamentUser
     protected $hidden = [
         'password',
         'remember_token',
-        'two_factor_code', // Segurança: nunca expor o código
+        'two_factor_code',
     ];
 
     /**
-     * Casting de atributos (Sintaxe Laravel 10).
+     * Casting de atributos.
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
@@ -60,8 +61,6 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        // Regra simples: Apenas este email ou domínios específicos
-        // Idealmente, evoluir para: return $this->hasRole('admin');
         return in_array($this->email, [
             'tester@gmail.com',
             // 'admin@sualoja.com',
@@ -74,7 +73,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function generateTwoFactorCode()
     {
-        $this->timestamps = false; // Não altera 'updated_at'
+        $this->timestamps = false;
         $this->two_factor_code = rand(100000, 999999);
         $this->two_factor_expires_at = now()->addMinutes(10);
         $this->save();
@@ -88,9 +87,6 @@ class User extends Authenticatable implements FilamentUser
         $this->save();
     }
 
-    /**
-     * Verifica se o código fornecido é válido e não expirou.
-     */
     public function hasValidTwoFactorCode($code)
     {
         return $this->two_factor_code == $code && 
@@ -122,7 +118,6 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(Review::class);
     }
     
-    // Se existir carrinho persistente na BD (opcional, dependendo da sua lógica de Cart)
     public function cartItems()
     {
         return $this->hasMany(CartItem::class);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Redirect; // <--- Importação necessária para redirecionamentos específicos
 use Illuminate\Validation\Rule;
 use App\Models\Address;
 
@@ -178,5 +179,34 @@ class ProfileController extends Controller
         Auth::user()->addresses()->findOrFail($id)->delete();
 
         return back()->with('success', 'Endereço removido.');
+    }
+
+    /**
+     * Exclui (Desativa) a conta do usuário atual.
+     * Utiliza Soft Deletes para preservar histórico de pedidos.
+     */
+    public function destroy(Request $request)
+    {
+        // 1. Validação com mensagem personalizada
+        $request->validateWithBag('userDeletion', [
+            'password' => ['required', 'current_password'],
+        ], [
+            // [CORREÇÃO] Define a mensagem explícita para a regra current_password
+            'password.current_password' => 'A senha digitada está incorreta.',
+            'password.required' => 'Por favor, digite sua senha para confirmar.',
+        ]);
+
+        $user = $request->user();
+
+        Auth::logout();
+
+        if ($user->delete()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return Redirect::to('/')->with('success', 'Sua conta foi desativada com sucesso.');
+        }
+
+        return Redirect::back()->with('error', 'Houve um erro ao tentar desativar sua conta.');
     }
 }

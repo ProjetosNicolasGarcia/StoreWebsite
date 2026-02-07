@@ -14,15 +14,15 @@
               originalEmail: '{{ $user->email }}',
               originalPhone: '{{ $user->phone }}',
               originalCPF: '{{ $user->cpf }}',
-              // [NOVO] Estado inicial da data (Formatada Y-m-d para comparar com input date)
-              originalBirthDate: '{{ $user->birth_date ? $user->birth_date->format('Y-m-d') : '' }}',
+              // [CORREÇÃO] Simplificado com null-safe operator para evitar erro de sintaxe
+              originalBirthDate: '{{ $user->birth_date?->format("Y-m-d") }}',
               
               // --- ESTADO ATUAL (Reativo via x-model) ---
               currentEmail: '{{ old('email', $user->email) }}',
               currentPhone: '{{ old('phone', $user->phone) }}',
               currentCPF: '{{ old('cpf', $user->cpf) }}',
-              // [NOVO] Estado atual da data
-              currentBirthDate: '{{ old('birth_date', $user->birth_date ? $user->birth_date->format('Y-m-d') : '') }}',
+              // [CORREÇÃO] Simplificado com null-safe operator e aspas duplas no formato
+              currentBirthDate: '{{ old('birth_date', $user->birth_date?->format("Y-m-d")) }}',
               
               newPassword: '',
               
@@ -32,7 +32,7 @@
                   return (this.currentEmail !== this.originalEmail) || 
                          (this.currentPhone !== this.originalPhone) || 
                          (this.currentCPF !== this.originalCPF) || 
-                         (this.currentBirthDate !== this.originalBirthDate) || // [NOVO]
+                         (this.currentBirthDate !== this.originalBirthDate) ||
                          (this.newPassword.length > 0);
               },
 
@@ -87,7 +87,7 @@
                        class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
             </div>
 
-            {{-- [NOVO] Campo: Data de Nascimento --}}
+            {{-- Campo: Data de Nascimento --}}
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Data de Nascimento</label>
                 <input type="date" name="birth_date" x-model="currentBirthDate"
@@ -147,9 +147,101 @@
         {{-- Botão de Submissão --}}
         <div class="mt-10 flex justify-end">
             <button type="submit" 
-                    class="h-12 px-8 border border-black rounded-xl text-base font-bold text-white bg-black hover:bg-white hover:text-black transition-all duration-200 cursor-pointer shadow-lg">
-                SALVAR ALTERAÇÕES
+                    class="h-12 px-8 border border-black rounded-xl text-base font-bold text-white bg-black hover:bg-white hover:text-black transition-all duration-200 cursor-pointer shadow-lg uppercase">
+                Salvar Alterações
             </button>
         </div>
     </form>
+
+    {{-- 
+        =================================================================
+        ZONA DE PERIGO / EXCLUSÃO DE CONTA
+        =================================================================
+    --}}
+    <div class="mt-16 pt-10 border-t border-gray-200">
+        <h3 class="text-lg font-bold text-red-600 uppercase tracking-wide">Excluir Conta</h3>
+        <p class="mt-2 text-sm text-gray-600 max-w-2xl">
+            Uma vez que sua conta for excluída, você perderá acesso ao histórico de pedidos e seus dados de login. 
+            Esta ação desativa seu acesso imediatamente.
+        </p>
+
+        {{-- Lógica Alpine para o Modal de Exclusão --}}
+        <div class="mt-10 flex justify-end" x-data="{ open: {{ $errors->userDeletion->isNotEmpty() ? 'true' : 'false' }} }">
+            
+            <button @click="open = true" type="button" 
+                    class="h-12 px-8 border border-red-600 rounded-xl text-base font-bold text-white bg-red-600 hover:bg-white hover:text-red-600 uppercase transition-all duration-200 cursor-pointer shadow-lg">
+                Excluir minha conta
+            </button>
+
+            {{-- Modal Wrapper --}}
+            <div x-show="open" style="display: none;" 
+                 class="fixed inset-0 z-50 overflow-y-auto" 
+                 aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                
+                {{-- Backdrop com desfoque (Blur) e fundo escuro transparente --}}
+                <div x-show="open" 
+                     x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                     x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                     class="fixed inset-0 bg-black/30 backdrop-blur-sm transition-opacity"></div>
+
+                {{-- Centralização Mobile (items-center) --}}
+                <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                    
+                    <div x-show="open" 
+                         x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                         x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                         x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                         @click.away="open = false"
+                         class="relative transform overflow-hidden rounded-xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                        
+                        <form method="post" action="{{ route('profile.destroy') }}" class="p-6">
+                            @csrf
+                            @method('delete')
+
+                            <div class="sm:flex sm:items-start">
+                                <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                    <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                    </svg>
+                                </div>
+                                <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                                    <h3 class="text-base font-semibold leading-6 text-gray-900" id="modal-title">Confirmar Exclusão de Conta</h3>
+                                    <div class="mt-2">
+                                        <p class="text-sm text-gray-500">
+                                            Tem certeza que deseja excluir sua conta? Todos os seus dados de acesso serão removidos permanentemente. 
+                                            Para confirmar, digite sua senha abaixo.
+                                        </p>
+                                    </div>
+                                    
+                                    <div class="mt-4">
+                                        <input type="password" name="password" placeholder="Sua senha atual"
+                                               class="block w-full h-11 px-4 rounded-lg border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                        
+                                        @if($errors->userDeletion->has('password'))
+                                            <p class="mt-2 text-sm text-red-600 font-bold">
+                                                {{ $errors->userDeletion->first('password') }}
+                                            </p>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 flex flex-row-reverse gap-2">
+                                {{-- Botão Confirmar --}}
+                                <button type="submit" class="inline-flex w-full justify-center rounded-xl border border-red-600 bg-red-600 px-3 py-2 text-sm font-bold text-white shadow-sm hover:bg-white hover:text-red-600 transition-all duration-200 sm:w-auto uppercase tracking-wide">
+                                    Confirmar Exclusão
+                                </button>
+                                
+                                {{-- Botão Cancelar --}}
+                                <button type="button" @click="open = false" class="mt-3 inline-flex w-full justify-center rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-900 shadow-sm hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-all duration-200 sm:mt-0 sm:w-auto uppercase tracking-wide">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </x-profile.layout>

@@ -203,6 +203,8 @@ Route::middleware(['auth'])->group(function () {
     // Rotas para completar perfil (Middleware EnsureProfileIsComplete vai permitir estas)
     Route::get('/completar-perfil', [StoreAuthController::class, 'showCompleteProfile'])->name('auth.complete-profile');
     Route::post('/completar-perfil', [StoreAuthController::class, 'updateProfile'])->name('auth.update-profile');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // ... suas outras rotas de perfil ...
+
+   
 });
