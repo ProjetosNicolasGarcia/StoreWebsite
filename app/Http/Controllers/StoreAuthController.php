@@ -99,18 +99,31 @@ class StoreAuthController extends Controller
             ->numbers()
             ->symbols();
 
+        // Regex Estrita para Telefone (XX) 9XXXX-XXXX
         $phoneRegex = '/^\(?[1-9]{2}\)?\s?(?:9)[0-9]{4}\-?[0-9]{4}$/';
+        
+        // Regex Estrita para CPF 000.000.000-00
+        $cpfRegex = '/^\d{3}\.\d{3}\.\d{3}\-\d{2}$/';
+
+        // [NOVO] Regex Estrita para E-mail (Exige algo@dominio.extensao)
+        $emailRegex = '/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/';
 
         $messages = [
             'required' => 'Este campo é obrigatório.',
             'name.required' => 'Precisamos do seu nome para criar a conta.',
+            
             'email.required' => 'O campo e-mail é obrigatório.',
             'email.email' => 'Por favor, insira um endereço de e-mail válido.',
             'email.unique' => 'Este e-mail já está sendo usado por outra conta.',
+            // [NOVO] Mensagem específica para formato de e-mail incorreto
+            'email.regex' => 'O formato do e-mail é inválido. Certifique-se de usar "nome@dominio.com".',
+            
             'cpf.unique' => 'Este CPF já possui uma conta cadastrada.',
-            'cpf.max' => 'O formato do CPF parece inválido.',
+            'cpf.regex' => 'O CPF deve estar no formato 000.000.000-00 e conter 11 dígitos.',
+            
             'phone.regex' => 'O telefone deve incluir DDD e começar com 9. Ex: (11) 99999-9999.',
             'phone.unique' => 'Este número de telefone já está cadastrado.',
+            
             'password.required' => 'Crie uma senha para sua segurança.',
             'password.confirmed' => 'A confirmação de senha não confere.',
             'password.min' => 'A senha deve ter pelo menos 8 caracteres.',
@@ -119,19 +132,19 @@ class StoreAuthController extends Controller
             'password.numbers' => 'A senha deve conter pelo menos um número.',
             'password.symbols' => 'A senha deve conter pelo menos um símbolo (ex: @, #, $).',
             
-            // NOVAS MENSAGENS PARA DATA DE NASCIMENTO
             'birth_date.required' => 'A data de nascimento é obrigatória.',
             'birth_date.before_or_equal' => 'Você precisa ter pelo menos 18 anos para criar uma conta.',
         ];
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => ['required', 'confirmed', $passwordRules],
-            'cpf' => 'nullable|string|max:14|unique:users',
-            'phone' => ['nullable', 'string', 'max:20', 'unique:users', 'regex:'.$phoneRegex],
             
-            // NOVA REGRA DE VALIDAÇÃO
+            // [ALTERAÇÃO] Adicionada regex ao e-mail
+            'email' => ['required', 'string', 'email:rfc,dns', 'max:255', 'unique:users', 'regex:'.$emailRegex],
+            
+            'password' => ['required', 'confirmed', $passwordRules],
+            'cpf' => ['nullable', 'string', 'regex:' . $cpfRegex, 'unique:users'],
+            'phone' => ['nullable', 'string', 'max:20', 'unique:users', 'regex:' . $phoneRegex],
             'birth_date' => 'required|date|before_or_equal:-18 years',
         ], $messages);
 
@@ -388,16 +401,18 @@ class StoreAuthController extends Controller
     public function updateProfile(Request $request)
     {
         $phoneRegex = '/^\(?[1-9]{2}\)?\s?(?:9)[0-9]{4}\-?[0-9]{4}$/';
+        $cpfRegex = '/^\d{3}\.\d{3}\.\d{3}\-\d{2}$/';
 
         $messages = [
             'cpf.required' => 'O CPF é obrigatório para emissão de nota fiscal.',
             'cpf.unique' => 'Este CPF já está em uso.',
+            'cpf.regex' => 'O CPF deve estar no formato 000.000.000-00.',
             'phone.required' => 'O telefone é obrigatório para contato de entrega.',
-            'phone.regex' => 'Formato de telefone inválido.',
+            'phone.regex' => 'Formato de telefone inválido. Use (DD) 90000-0000.',
         ];
 
         $request->validate([
-            'cpf' => 'required|string|max:14|unique:users,cpf,' . Auth::id(),
+            'cpf' => ['required', 'string', 'regex:' . $cpfRegex, 'unique:users,cpf,' . Auth::id()],
             'phone' => ['required', 'string', 'max:20', 'regex:'.$phoneRegex],
         ], $messages);
 

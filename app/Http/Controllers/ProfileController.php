@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Redirect; // <--- Importação necessária para redirecionamentos específicos
+use Illuminate\Support\Facades\Redirect; 
 use Illuminate\Validation\Rule;
 use App\Models\Address;
 
@@ -31,27 +31,32 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
+        // Regex Definições
+        $phoneRegex = '/^\(?[1-9]{2}\)?\s?(?:9)[0-9]{4}\-?[0-9]{4}$/';
+        $cpfRegex = '/^\d{3}\.\d{3}\.\d{3}\-\d{2}$/';
+        
+        // [NOVO] Regex para E-mail (padrão comum web: nome@dominio.com)
+        $emailRegex = '/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/';
+
         // 1. Definição das regras base
         $rules = [
             'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'cpf' => ['nullable', 'string', 'max:14', Rule::unique('users')->ignore($user->id)],
-            'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+            'phone' => ['nullable', 'string', 'max:20', 'regex:'.$phoneRegex],
+            'cpf' => ['nullable', 'string', 'regex:'.$cpfRegex, Rule::unique('users')->ignore($user->id)],
             
-            // [NOVA REGRA] Validação de Idade
+            // [ALTERAÇÃO] Aplicação de Regex para E-mail
+          'email' => ['required', 'email:rfc,dns', Rule::unique('users')->ignore($user->id), 'regex:'.$emailRegex],
+            
             'birth_date' => 'required|date|before_or_equal:-18 years',
 
-            // [ATUALIZAÇÃO DE SEGURANÇA]
-            // Adicionadas regras de Regex para forçar a complexidade
             'password' => [
                 'nullable',
                 'confirmed',
-                'min:8',             // Mínimo 8 caracteres
-                'regex:/[a-z]/',     // Pelo menos uma letra minúscula
-                'regex:/[A-Z]/',     // Pelo menos uma letra maiúscula
-                'regex:/[0-9]/',     // Pelo menos um número
-                'regex:/[\W_]/',     // Pelo menos um símbolo (caractere especial)
-                
+                'min:8',             
+                'regex:/[a-z]/',     
+                'regex:/[A-Z]/',     
+                'regex:/[0-9]/',     
+                'regex:/[\W_]/',     
                 function ($attribute, $value, $fail) use ($user) {
                     if (Hash::check($value, $user->password)) {
                         $fail('A nova senha não pode ser igual à sua senha atual.');
@@ -65,41 +70,36 @@ class ProfileController extends Controller
         $passwordChanged = $request->filled('password');
         $phoneChanged = $request->phone !== $user->phone;
         $cpfChanged = $request->cpf !== $user->cpf;
-
-        // Verifica mudança na data de nascimento (comparando strings Y-m-d)
+        
         $inputDate = $request->birth_date;
         $userDate = $user->birth_date ? $user->birth_date->format('Y-m-d') : null;
         $birthDateChanged = $inputDate !== $userDate;
 
         // 3. Aplicação da Regra de Segurança
-        // Se qualquer dado sensível (incluindo nascimento) mudar, pede senha atual
         if ($emailChanged || $passwordChanged || $phoneChanged || $cpfChanged || $birthDateChanged) {
             $rules['current_password'] = ['required', 'current_password'];
         }
 
         // 4. Execução da Validação com MENSAGEM EDUCATIVA
         $validated = $request->validate($rules, [
-            // Mensagens de Segurança
+            // [NOVO] Mensagens de E-mail
+            'email.regex' => 'O formato do e-mail é inválido. Certifique-se de usar "nome@dominio.com".',
+            'email.email' => 'Por favor, insira um endereço de e-mail válido.',
+            'email.unique' => 'Este endereço de e-mail já está sendo usado por outro cliente.',
+
+            // Mensagens de Formato
+            'cpf.regex' => 'O CPF informado está incompleto ou inválido. Use o formato: 000.000.000-00.',
+            'phone.regex' => 'O formato do telefone está incorreto. Use: (DD) 90000-0000.',
+            
+            // Segurança e Outros
             'current_password.required' => 'Por segurança, confirme sua senha atual para salvar alterações em dados sensíveis.',
             'current_password.current_password' => 'A senha atual digitada está incorreta.',
-
-            // Mensagens de Data de Nascimento
             'birth_date.required' => 'A data de nascimento é obrigatória.',
             'birth_date.before_or_equal' => 'É necessário ser maior de 18 anos para manter a conta.',
-
-            // [MENSAGEM MELHORADA]
-            // Se falhar no tamanho (min:8)
-            'password.min' => 'A senha é muito curta. Ela deve ter no mínimo 8 caracteres.',
-            
-            // Se falhar na confirmação
-            'password.confirmed' => 'A confirmação da senha não confere.',
-
-            // Se falhar em QUALQUER regra de complexidade (regex)
-            'password.regex' => 'A senha deve conter: letra maiúscula, letra minúscula, número e símbolo especial (ex: @, #, !).',
-            
-            // Outras mensagens
-            'email.unique' => 'Este endereço de e-mail já está sendo usado por outro cliente.',
             'cpf.unique' => 'Este CPF já está vinculado a outra conta.',
+            'password.min' => 'A senha é muito curta. Ela deve ter no mínimo 8 caracteres.',
+            'password.confirmed' => 'A confirmação da senha não confere.',
+            'password.regex' => 'A senha deve conter: letra maiúscula, letra minúscula, número e símbolo especial (ex: @, #, !).',
         ]);
 
         // 5. Persistência dos Dados
@@ -107,7 +107,7 @@ class ProfileController extends Controller
         $user->phone = $validated['phone'];
         $user->cpf = $validated['cpf'];
         $user->email = $validated['email'];
-        $user->birth_date = $validated['birth_date']; // [NOVO] Salvando a data
+        $user->birth_date = $validated['birth_date'];
 
         if (!empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
@@ -120,22 +120,17 @@ class ProfileController extends Controller
 
     /**
      * Lista o histórico de pedidos do cliente.
-     * [OTIMIZAÇÃO DE PERFORMANCE E ESCALABILIDADE]
      */
     public function orders()
     {
         $user = Auth::user();
 
-        // Alteração Vital:
-        // 1. paginate(10): Evita carregar 1000 pedidos na memória se o cliente for antigo.
-        // 2. with('items.product'): Previne o problema N+1.
         $orders = $user->orders()
             ->with(['items.product' => function($query) {
-                // Seleciona apenas campos essenciais do produto para economizar memória
                 $query->select('id', 'name', 'slug', 'image_url');
             }])
-            ->latest() // Atalho para orderBy('created_at', 'desc')
-            ->paginate(10); // Paginação é obrigatória para escalabilidade
+            ->latest()
+            ->paginate(10);
 
         return view('profile.orders', compact('orders'));
     }
@@ -145,7 +140,6 @@ class ProfileController extends Controller
      */
     public function addresses()
     {
-        // Carregamento simples, mas explícito
         $addresses = Auth::user()->addresses()->get();
         return view('profile.addresses', compact('addresses'));
     }
@@ -175,7 +169,6 @@ class ProfileController extends Controller
      */
     public function destroyAddress($id)
     {
-        // Proteção IDOR mantida: Só deleta se pertencer ao usuário logado
         Auth::user()->addresses()->findOrFail($id)->delete();
 
         return back()->with('success', 'Endereço removido.');
@@ -183,15 +176,12 @@ class ProfileController extends Controller
 
     /**
      * Exclui (Desativa) a conta do usuário atual.
-     * Utiliza Soft Deletes para preservar histórico de pedidos.
      */
     public function destroy(Request $request)
     {
-        // 1. Validação com mensagem personalizada
         $request->validateWithBag('userDeletion', [
             'password' => ['required', 'current_password'],
         ], [
-            // [CORREÇÃO] Define a mensagem explícita para a regra current_password
             'password.current_password' => 'A senha digitada está incorreta.',
             'password.required' => 'Por favor, digite sua senha para confirmar.',
         ]);
