@@ -7,20 +7,13 @@ use App\Models\Collection;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use App\Services\ShippingService;
+use Illuminate\Database\Eloquent\Builder;
 
-/**
- * Controller responsável pela experiência de navegação do cliente na loja (Frontend).
- * Gerencia listagens (Categorias/Coleções), página de produto, busca e serviços auxiliares (Frete).
- */
 class ShopController extends Controller
 {
     /**
-     * Helper privado para otimização de consultas SQL.
-     * Seleciona apenas as colunas essenciais das variantes para exibição em listas (Vitrine).
-     * Isso reduz drasticamente o consumo de memória ao carregar centenas de produtos.
-     *
-     * @param  \Illuminate\Database\Eloquent\Relations\Relation  $query
-     * @return void
+     * OTIMIZAÇÃO: Define colunas essenciais para performance.
+     * As datas são obrigatórias para validar se a promoção está ativa.
      */
     private function variantFields($query)
     {
@@ -31,80 +24,66 @@ class ShopController extends Controller
             'sale_price',
             'sale_start_date',
             'sale_end_date',
-            'image',     // Apenas a capa da variante
-            'images',    // Galeria da variante (caso precise de hover)
-            'options',   // JSON com atributos (Cor, Tamanho)
-            'quantity',  // Para verificar estoque visualmente (esgotado)
-            'is_default' // Essencial para definir qual variante mostrar primeiro
+            'image',     
+            'images',    
+            'options',   
+            'quantity',  
+            'is_default' 
         ]);
     }
 
-    /**
-     * Exibe a página de listagem de uma Categoria.
-     * Ex: /categoria/eletronicos
-     */
     public function category($slug)
     {
-        // Busca a categoria ou retorna 404 se não existir
-        $item = Category::where('slug', $slug)->firstOrFail();
+        $category = Category::where('slug', $slug)->firstOrFail();
 
-        $products = $item->products()
+        $products = $category->products()
             ->where('is_active', true)
-            // [PERFORMANCE] Eager Loading otimizado: carrega variantes filtrando colunas
             ->with(['variants' => fn($q) => $this->variantFields($q)])
-            // [UX] Carrega a primeira categoria para exibir no card do produto na listagem
-            ->with(['categories' => fn($q) => $q->take(1)])
-            ->get();
+            ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)])
+            ->latest()
+            ->paginate(12);
 
         return view('shop.listing', [
-            'title' => $item->name,
-            'description' => null, // Categorias geralmente não têm descrição longa na listagem
-            'image_url' => $item->image_url, // Capa da categoria (se houver)
+            'title' => $category->name,
+            'description' => null,
+            'image_url' => $category->image_url,
             'products' => $products
         ]);
     }
 
-    /**
-     * Exibe a página de listagem de uma Coleção.
-     * Coleções podem ter produtos de várias categorias (Ex: "Dia dos Pais").
-     */
     public function collection($slug)
     {
-        // Garante que a coleção exista e esteja ativa
-        $item = Collection::where('slug', $slug)
+        $collection = Collection::where('slug', $slug)
             ->where('is_active', true)
             ->firstOrFail();
 
-        $products = $item->products()
+        $products = $collection->products()
             ->where('is_active', true)
-            // [PERFORMANCE] Reutiliza a lógica de otimização de variantes
             ->with(['variants' => fn($q) => $this->variantFields($q)])
-            ->with(['categories' => fn($q) => $q->take(1)])
-            ->get();
+            ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)])
+            ->latest()
+            ->paginate(12);
 
         return view('shop.listing', [
-            'title' => $item->title,
-            'description' => $item->description,
-            'image_url' => $item->image_url,
+            'title' => $collection->title,
+            'description' => $collection->description,
+            'image_url' => $collection->image_url,
             'products' => $products
         ]);
     }
 
-    /**
-     * Página de Detalhes do Produto (PDP).
-     * Lógica complexa que inclui: carregamento completo, deep linking de variante e recomendação de relacionados.
-     */
     public function show($slug)
     {
-        // Busca produto ativo pelo slug
         $product = Product::where('slug', $slug)
             ->where('is_active', true)
-            // [CORREÇÃO] Carrega 'categories' em vez de 'category' (que não existe mais)
-            ->with(['categories', 'collections', 'reviews.user', 'variants'])
+            ->with([
+                'categories', 
+                'collections', 
+                'variants', // Carrega variantes completas na PDP para garantir todos os dados
+                'reviews.user' 
+            ])
             ->firstOrFail();
 
-        // [DEEP LINKING] Lógica para pré-selecionar uma variante via URL (ex: ?variant=123)
-        // Útil quando o cliente clica em um anúncio de uma cor específica no Google/Facebook.
         $preSelectedVariant = null;
         if (request()->has('variant')) {
             $preSelectedVariant = $product->variants
@@ -112,71 +91,54 @@ class ShopController extends Controller
                 ->first();
         }
 
-        // [ALGORITMO DE RECOMENDAÇÃO ATUALIZADO] Busca produtos Relacionados
-        // Critério: Mesma(s) Categoria(s) OU Mesma Coleção, excluindo o produto atual.
         $relatedProducts = Product::where('is_active', true)
             ->where('id', '!=', $product->id)
-            ->where(function ($query) use ($product) {
-                
-                // 1. Tenta combinar por QUALQUER categoria que o produto tenha
-                if ($product->categories->isNotEmpty()) {
-                    $categoryIds = $product->categories->pluck('id');
+            ->where(function (Builder $query) use ($product) {
+                $categoryIds = $product->categories->pluck('id');
+                if ($categoryIds->isNotEmpty()) {
                     $query->orWhereHas('categories', function ($q) use ($categoryIds) {
-                        $q->whereIn('categories.id', $categoryIds);
+                        $q->whereIn('categories.id', $categoryIds); 
                     });
                 }
-
-                // 2. Tenta combinar por coleções compartilhadas
-                if ($product->collections->isNotEmpty()) {
-                    $collectionIds = $product->collections->pluck('id');
+                $collectionIds = $product->collections->pluck('id');
+                if ($collectionIds->isNotEmpty()) {
                     $query->orWhereHas('collections', function ($q) use ($collectionIds) {
                         $q->whereIn('collections.id', $collectionIds);
                     });
                 }
             })
-            // Otimização: Carrega variants leve para o card de produto relacionado
             ->with(['variants' => fn($q) => $this->variantFields($q)])
-            // [UX] Carrega a primeira categoria para o card de relacionado
-            ->with(['categories' => fn($q) => $q->take(1)])
-            ->take(8) // Limita a 8 recomendações
-            ->inRandomOrder() // Randomiza para dar frescor à página
+            ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)])
+            ->take(4)
+            ->inRandomOrder()
             ->get();
 
         return view('shop.product', compact('product', 'relatedProducts', 'preSelectedVariant'));
     }
 
-    /**
-     * Processa a Busca Full-text.
-     * Implementa lógica "E" (AND) entre termos: "Camiseta Azul" busca produtos que tenham "Camiseta" E "Azul".
-     */
     public function search(Request $request)
     {
         $query = $request->input('q');
 
-        if (!$query) {
-            return redirect()->route('home');
-        }
+        if (!$query) return redirect()->route('home');
 
-        // Explode a busca em termos para refinar os resultados
         $terms = explode(' ', $query);
 
         $products = Product::where('is_active', true)
             ->where(function ($q) use ($terms) {
                 foreach ($terms as $term) {
-                    // Para cada termo digitado, ele deve existir em ALGUM dos campos (Nome, Descrição ou Variante/SKU)
                     $q->where(function ($subQ) use ($term) {
-                        $subQ->where('name', 'like', "%{$term}%")
-                            ->orWhere('description', 'like', "%{$term}%")
-                            ->orWhereHas('variants', function ($variantQ) use ($term) {
-                                $variantQ->where('name', 'like', "%{$term}%")
-                                         ->orWhere('sku', 'like', "%{$term}%");
-                            });
+                        $subQ->where('products.name', 'like', "%{$term}%")
+                             ->orWhere('products.description', 'like', "%{$term}%")
+                             ->orWhereHas('variants', function ($variantQ) use ($term) {
+                                 $variantQ->where('sku', 'like', "%{$term}%"); 
+                             });
                     });
                 }
             })
             ->with(['variants' => fn($q) => $this->variantFields($q)])
-            ->with(['categories' => fn($q) => $q->take(1)])
-            ->get();
+            ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)])
+            ->paginate(20);
 
         return view('shop.listing', [
             'title' => "Resultados para: \"{$query}\"",
@@ -187,93 +149,78 @@ class ShopController extends Controller
     }
 
     /**
-     * API Endpoint: Autocomplete / Sugestões de Busca.
-     * Retorna JSON para ser consumido via AJAX/Alpine.js no frontend.
+     * CORREÇÃO: Sugestões agora usam a lógica inteligente de vitrine.
      */
     public function suggestions(Request $request)
     {
         $query = $request->input('q');
 
-        if (!$query) {
-            return response()->json([]);
-        }
-
-        $terms = explode(' ', $query);
+        if (!$query || strlen($query) < 2) return response()->json([]);
 
         $products = Product::where('is_active', true)
-            ->where(function ($q) use ($terms) {
-                // Reaproveita a mesma lógica robusta da busca principal
-                foreach ($terms as $term) {
-                    $q->where(function ($subQ) use ($term) {
-                        $subQ->where('name', 'like', "%{$term}%")
-                            ->orWhere('description', 'like', "%{$term}%")
-                            ->orWhereHas('variants', function ($variantQ) use ($term) {
-                                $variantQ->where('name', 'like', "%{$term}%")
-                                         ->orWhere('sku', 'like', "%{$term}%");
-                            });
-                    });
-                }
-            })
-            ->with(['variants' => fn($q) => $this->variantFields($q)])
-            ->take(5) // Limita a 5 sugestões para não poluir a UI
-            ->get(['id', 'name', 'slug', 'image_url']); // Select otimizado, traz apenas o necessário para o dropdown
+            ->where('name', 'like', "%{$query}%")
+            ->take(5)
+            // Carregamos TODAS as colunas necessárias para calcular a promoção corretamente
+            ->with(['variants' => fn($q) => $this->variantFields($q)]) 
+            ->get(['products.id', 'products.name', 'products.slug', 'products.image_url']); 
 
-        // Formata o retorno para o padrão esperado pelo frontend
         $results = $products->map(function ($product) {
+            // [CORREÇÃO] Em vez de pegar a primeira, pega a MELHOR variante (com promoção)
+            // O atributo showcase_variant no Model Product já faz essa escolha inteligente.
+            $variant = $product->showcase_variant;
+            
+            // Fallback se não tiver nenhuma variante
+            if (!$variant) return null;
+
+            $price = $variant->price;
+            $salePrice = $variant->sale_price;
+            $isOnSale = $product->isOnSale(); // Usa a lógica robusta de data do Model
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
                 'slug' => $product->slug,
-                'image_url' => $product->image_url,
-                
-                // [LÓGICA ATUALIZADA] Preços para Frontend com UX melhorada
-                'price' => $product->isOnSale() ? $product->sale_price : $product->base_price,
-                'original_price' => $product->base_price, // Novo: Usado para o efeito de "riscado"
-                'on_sale' => $product->isOnSale(),        // Novo: Flag para o Alpine.js decidir qual template mostrar
+                'image_url' => $product->image_url ?? 'images/placeholder.jpg',
+                'price' => $isOnSale ? $salePrice : $price,
+                'original_price' => $isOnSale ? $price : null,
+                'on_sale' => $isOnSale
             ];
-        });
+        })->filter(); // Remove nulos
 
-        return response()->json($results);
+        return response()->json($results->values());
     }
 
-    /**
-     * Página de Ofertas.
-     * Utiliza um Scope do Model (onSaleQuery) para filtrar produtos em promoção.
-     */
     public function offers()
     {
-        $products = Product::where('is_active', true)
-            ->onSaleQuery() // Scope definido no Model Product (provavelmente filtra datas e preços)
+        $products = Product::onSaleQuery()
             ->with(['variants' => fn($q) => $this->variantFields($q)])
-            ->with(['categories' => fn($q) => $q->take(1)])
+            ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)])
             ->latest()
-            ->get();
+            ->paginate(12);
 
         return view('shop.listing', [
             'products' => $products,
-            'title' => 'Ofertas '
+            'title' => 'Ofertas Especiais',
+            'description' => 'Aproveite nossos descontos por tempo limitado.',
+            'image_url' => null
         ]);
     }
 
-    /**
-     * API Endpoint: Simulação de Frete na Página do Produto.
-     * Recebe um CEP e ID do produto, retorna as opções de envio (SEDEX, PAC, etc).
-     */
     public function simulateShipping(Request $request, ShippingService $shippingService)
     {
-        $request->validate(['zip_code' => 'required|size:8']);
+        $request->validate([
+            'zip_code' => 'required|string|min:8|max:9',
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'nullable|integer|min:1'
+        ]);
 
-        if ($request->has('product_id')) {
+        try {
             $product = Product::findOrFail($request->product_id);
-            // Cria uma coleção para o serviço de frete (que geralmente espera múltiplos itens)
             $items = collect([$product]);
-        } else {
-            return response()->json(['error' => 'Nenhum produto selecionado'], 400);
+            $options = $shippingService->calculate($request->zip_code, $items);
+            return response()->json($options);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Erro ao calcular frete: ' . $e->getMessage()], 400);
         }
-
-        // Delega o cálculo complexo para o Service dedicado
-        $options = $shippingService->calculate($request->zip_code, $items);
-
-        return response()->json($options);
     }
 }

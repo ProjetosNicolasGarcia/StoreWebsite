@@ -27,11 +27,14 @@
         $optionsMap = [];
         $normalizedVariants = [];
         $colorImagesFallback = []; 
-        $onSaleOptions = []; 
+        
+        // Variáveis para lógica inteligente de texto promocional
+        $totalVariantsCount = 0;
+        $onSaleVariantsCount = 0;
         
         // Variáveis de controle de seleção
-        $bestInitialVariant = null; // A "Melhor opção" calculada automaticamente (menor preço)
-        $userSelectedVariant = null; // A opção exata que o usuário clicou na vitrine
+        $bestInitialVariant = null; 
+        $userSelectedVariant = null; 
 
         if ($product->variants) {
             foreach ($product->variants as $variant) {
@@ -49,6 +52,12 @@
                 $vArray = $variant->toArray();
                 $vArray['options'] = $cleanOptions;
                 $vArray['is_on_sale'] = $variant->isOnSale();
+                
+                // Contagem para estatística de promoção
+                $totalVariantsCount++;
+                if ($vArray['is_on_sale']) {
+                    $onSaleVariantsCount++;
+                }
                 
                 // B. Estoque
                 $vArray['stock'] = (int)($variant->quantity ?? 0);
@@ -77,16 +86,11 @@
                     }
                 }
 
-                if ($vArray['is_on_sale'] && $cKey) $onSaleOptions[] = $cKey;
-
-                // --- LÓGICA DE SELEÇÃO ATUALIZADA ---
-                
-                // 1. Verifica se essa é a variante que veio da URL
+                // --- LÓGICA DE SELEÇÃO ---
                 if (isset($preSelectedVariant) && $variant->id == $preSelectedVariant->id) {
                     $userSelectedVariant = $vArray;
                 }
 
-                // 2. Lógica padrão (Melhor Preço Inicial) - Mantida como fallback
                 if (!$bestInitialVariant) {
                     $bestInitialVariant = $vArray;
                 } else {
@@ -106,13 +110,10 @@
 
         foreach ($optionsMap as $key => $values) $optionsMap[$key] = array_values(array_unique($values));
 
-        // --- DEFINIÇÃO FINAL DA VARIANTE INICIAL ---
-        // Se o usuário clicou numa variante específica, ela tem prioridade total sobre a "mais barata"
         if ($userSelectedVariant) {
             $bestInitialVariant = $userSelectedVariant;
         }
 
-        // Fallback final se nada existir
         if (!$bestInitialVariant) {
             $bestInitialVariant = [
                 'id' => null,
@@ -129,16 +130,53 @@
             ];
         }
 
-        // Texto Promocional
+// [LÓGICA CORRIGIDA] Texto Promocional Inteligente
         $initialPromoText = "";
-        if (!empty($onSaleOptions)) {
-            $uniqueSaleOptions = array_unique($onSaleOptions);
-            $totalOpts = count($optionsMap[array_key_first($optionsMap)] ?? []);
-            if (count($uniqueSaleOptions) > 0 && count($uniqueSaleOptions) == $totalOpts) {
-                 $initialPromoText = "Oferta válida para todas as opções";
-            } elseif (count($uniqueSaleOptions) > 0) {
-                $listed = array_slice($uniqueSaleOptions, 0, 3);
-                $initialPromoText = "Oferta válida para: " . implode(', ', $listed) . (count($uniqueSaleOptions) > 3 ? "..." : "");
+        
+        if ($onSaleVariantsCount > 0) {
+            // Caso 1: Todas as variantes estão em oferta
+            if ($onSaleVariantsCount === $totalVariantsCount) {
+                
+                // [ALTERAÇÃO AQUI] Só exibe a mensagem se houver MAIS DE UMA variante/opção.
+                // Se o produto tiver apenas 1 variante (ex: Tamanho Único ou produto simples),
+                // o texto continua vazio "" para não ser redundante.
+                if ($totalVariantsCount > 1) {
+                    $initialPromoText = "Oferta válida para todas as opções";
+                }
+
+            } else {
+                // Caso 2: Promoção parcial. Tenta identificar o padrão (Ex: "Tamanho 38")
+                $foundPattern = false;
+
+                foreach ($optionsMap as $attrName => $possibleValues) {
+                    $promotedValues = []; // Reseta para cada atributo
+                    
+                    foreach ($possibleValues as $val) {
+                        // Filtra variantes que possuem este valor específico (ex: Tamanho = 38)
+                        // Usa array_filter para garantir que não pegue índices vazios
+                        $variantsWithThisVal = array_filter($normalizedVariants, fn($v) => ($v['options'][$attrName] ?? '') === $val);
+                        
+                        $countTotal = count($variantsWithThisVal);
+                        $countSale = count(array_filter($variantsWithThisVal, fn($v) => $v['is_on_sale']));
+
+                        // Se TODAS as variantes com esse valor estão em oferta, é uma regra válida
+                        if ($countTotal > 0 && $countTotal === $countSale) {
+                            $promotedValues[] = $val;
+                        }
+                    }
+
+                    if (!empty($promotedValues)) {
+                        // Melhora a formatação da lista (ex: P, M, G)
+                        $initialPromoText = "Oferta para: " . implode(', ', $promotedValues);
+                        $foundPattern = true;
+                        break; // Usa o primeiro atributo que fizer sentido
+                    }
+                }
+
+                // Caso 3: Promoção misturada sem padrão claro
+                if (!$foundPattern) {
+                    $initialPromoText = "Oferta em opções selecionadas";
+                }
             }
         }
 
@@ -147,7 +185,7 @@
             'optionsMap' => $optionsMap,
             'baseImages' => $parentImages,
             'colorImages' => $colorImagesFallback,
-            'initialVariant' => $bestInitialVariant, // Agora carrega a variante correta (da URL ou a mais barata)
+            'initialVariant' => $bestInitialVariant,
             'initialPromoText' => $initialPromoText,
             'isInWishlist' => false 
         ];
@@ -253,6 +291,7 @@
                 </div>
 
                 {{-- SELETORES --}}
+        {{-- SELETORES DE VARIANTE COM INDICADOR VISUAL DE OFERTA --}}
                 <div class="space-y-4 max-w-md">
                     @foreach($optionsMap as $optionName => $optionValues)
                         <div>
@@ -260,9 +299,22 @@
                             <div class="flex flex-wrap gap-2">
                                 @foreach($optionValues as $value) 
                                     <button @click="selectOption('{{ $optionName }}', '{{ $value }}')" 
-                                            class="px-4 py-2 border rounded-lg transition-all text-xs font-bold uppercase tracking-wide min-w-[3rem]" 
+                                            class="px-4 py-2 border rounded-lg transition-all text-xs font-bold uppercase tracking-wide min-w-[3rem] relative group" 
                                             :class="selectedOptions['{{ $optionName }}'] === '{{ $value }}' ? 'border-black bg-black text-white' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'">
+                                        
                                         {{ $value }}
+
+                                        {{-- 
+                                            [CORREÇÃO VISUAL]
+                                            Adiciona uma bolinha vermelha pulsante nas opções que ativam uma promoção.
+                                            Isso guia o usuário: "Clique aqui para ver o desconto!"
+                                        --}}
+                                        <template x-if="variants.some(v => v.options['{{ $optionName }}'] === '{{ $value }}' && v.is_on_sale)">
+                                            <span class="absolute -top-1.5 -right-1.5 flex h-3 w-3 z-10">
+                                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                <span class="relative inline-flex rounded-full h-3 w-3 bg-red-600 border-2 border-white"></span>
+                                            </span>
+                                        </template>
                                     </button> 
                                 @endforeach
                             </div>
@@ -411,7 +463,7 @@
         </div>
     </div>
 
-    {{-- SCRIPT ALPINE JS --}}
+ {{-- SCRIPT ALPINE JS --}}
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('productSelector', (config) => ({
@@ -441,11 +493,10 @@
                         }
                         
                         // 2. Pré-seleciona as opções (Cor, Tamanho)
-                        // Isso faz os botões já aparecerem "clicados" visualmente
                         if (this.displayVariant.options) {
                             this.selectedOptions = { ...this.displayVariant.options };
                             
-                            // Valida se já pode adicionar ao carrinho (sim, pois já temos variante completa)
+                            // Valida se já pode adicionar ao carrinho
                             this.checkCartReadiness();
                         }
                     }
@@ -458,10 +509,8 @@
 
                     this.updateTimerFromDisplay();
 
-                    if (this.displayVariant && window.location.search.includes('variant=')) {
-                        // Rola a tela suavemente até a área de compra (útil em mobile)
-                        this.$el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
+                    // [REMOVIDO] O bloco que forçava a rolagem da página para baixo foi deletado aqui.
+                    // Agora a página carregará sempre no topo.
                 },
 
                 async toggleWishlist() {
@@ -507,8 +556,6 @@
                         this.displayVariant = candidates[0];
                         this.updateTimerFromDisplay();
                     }
-
-
                 },
 
                 checkCartReadiness() {
@@ -561,4 +608,4 @@
             }));
         });
     </script>
-</x-layout>""""
+</x-layout>

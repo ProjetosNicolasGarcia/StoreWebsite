@@ -10,7 +10,7 @@ use App\Models\Address;
 
 /**
  * Controller responsável pela Área do Cliente (Minha Conta).
- * Gerencia dados pessoais, segurança (senha), histórico de pedidos e catálogo de endereços.
+ * OTIMIZADO: Implementa paginação e Eager Loading para suportar histórico extenso.
  */
 class ProfileController extends Controller
 {
@@ -25,12 +25,8 @@ class ProfileController extends Controller
 
     /**
      * Atualiza os dados pessoais e credenciais.
-     * * Lógica de Segurança:
-     * Implementa uma validação condicional ("Re-authentication").
-     * Se o usuário tentar alterar dados sensíveis (Email, CPF, Senha),
-     * o sistema exige a confirmação da senha atual.
      */
-    public function update(Request $request)
+ public function update(Request $request)
     {
         $user = Auth::user();
 
@@ -38,29 +34,61 @@ class ProfileController extends Controller
         $rules = [
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
-            // Valida CPF único, ignorando o próprio usuário (para não dar erro ao salvar o mesmo CPF)
             'cpf' => ['nullable', 'string', 'max:14', Rule::unique('users')->ignore($user->id)],
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
-            'password' => 'nullable|min:8|confirmed',
+            // [ATUALIZAÇÃO DE SEGURANÇA]
+            // Adicionadas regras de Regex para forçar a complexidade
+            'password' => [
+                'nullable',
+                'confirmed',
+                'min:8',             // Mínimo 8 caracteres
+                'regex:/[a-z]/',     // Pelo menos uma letra minúscula
+                'regex:/[A-Z]/',     // Pelo menos uma letra maiúscula
+                'regex:/[0-9]/',     // Pelo menos um número
+                'regex:/[\W_]/',     // Pelo menos um símbolo (caractere especial)
+                
+                function ($attribute, $value, $fail) use ($user) {
+                                    if (Hash::check($value, $user->password)) {
+                                        $fail('A nova senha não pode ser igual à sua senha atual.');
+                                    }
+                                },
+                
+            ],
+
+            
         ];
 
         // 2. Detecção de Alterações Sensíveis
-        // Compara o input do formulário com o banco de dados
         $emailChanged = $request->email !== $user->email;
-        $passwordChanged = $request->filled('password'); // Se o campo senha foi preenchido
+        $passwordChanged = $request->filled('password');
         $phoneChanged = $request->phone !== $user->phone;
         $cpfChanged = $request->cpf !== $user->cpf;
 
         // 3. Aplicação da Regra de Segurança
-        // Se mudou algo crítico, injeta a obrigatoriedade da 'current_password'
         if ($emailChanged || $passwordChanged || $phoneChanged || $cpfChanged) {
             $rules['current_password'] = ['required', 'current_password'];
         }
 
-        // 4. Execução da Validação
+        // 4. Execução da Validação com MENSAGEM EDUCATIVA
         $validated = $request->validate($rules, [
-            'current_password.required' => 'Para alterar dados sensíveis (E-mail, CPF, Telefone ou Senha), confirme sua senha atual.',
+            // Mensagens de Segurança
+            'current_password.required' => 'Por segurança, confirme sua senha atual para salvar as alterações.',
             'current_password.current_password' => 'A senha atual digitada está incorreta.',
+
+            // [MENSAGEM MELHORADA]
+            // Se falhar no tamanho (min:8)
+            'password.min' => 'A senha é muito curta. Ela deve ter no mínimo 8 caracteres.',
+            
+            // Se falhar na confirmação
+            'password.confirmed' => 'A confirmação da senha não confere.',
+
+            // Se falhar em QUALQUER regra de complexidade (regex)
+            // Essa mensagem ensina ao usuário o padrão correto imediatamente
+            'password.regex' => 'A senha deve conter: letra maiúscula, letra minúscula, número e símbolo especial (ex: @, #, !).',
+            
+            // Outras mensagens
+            'email.unique' => 'Este endereço de e-mail já está sendo usado por outro cliente.',
+            'cpf.unique' => 'Este CPF já está vinculado a outra conta.',
         ]);
 
         // 5. Persistência dos Dados
@@ -69,7 +97,6 @@ class ProfileController extends Controller
         $user->cpf = $validated['cpf'];
         $user->email = $validated['email'];
 
-        // Só altera a senha (e faz o hash) se o usuário digitou uma nova
         if (!empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
         }
@@ -78,14 +105,27 @@ class ProfileController extends Controller
 
         return back()->with('success', 'Dados atualizados com sucesso!');
     }
-
     /**
      * Lista o histórico de pedidos do cliente.
+     * [OTIMIZAÇÃO DE PERFORMANCE E ESCALABILIDADE]
      */
     public function orders()
     {
-        // Ordena por 'created_at desc' para mostrar os pedidos mais recentes primeiro
-        $orders = Auth::user()->orders()->orderBy('created_at', 'desc')->get();
+        $user = Auth::user();
+
+        // Alteração Vital:
+        // 1. paginate(10): Evita carregar 1000 pedidos na memória se o cliente for antigo.
+        // 2. with('items.product'): Previne o problema N+1.
+        //    Carrega os Itens do pedido E os Produtos desses itens em apenas 2 queries adicionais.
+        //    (Assumindo que na view você mostra "Camiseta Azul (x2)")
+        $orders = $user->orders()
+            ->with(['items.product' => function($query) {
+                // Seleciona apenas campos essenciais do produto para economizar memória
+                $query->select('id', 'name', 'slug', 'image_url');
+            }])
+            ->latest() // Atalho para orderBy('created_at', 'desc')
+            ->paginate(10); // Paginação é obrigatória para escalabilidade
+
         return view('profile.orders', compact('orders'));
     }
 
@@ -94,7 +134,8 @@ class ProfileController extends Controller
      */
     public function addresses()
     {
-        $addresses = Auth::user()->addresses;
+        // Carregamento simples, mas explícito
+        $addresses = Auth::user()->addresses()->get();
         return view('profile.addresses', compact('addresses'));
     }
 
@@ -113,7 +154,6 @@ class ProfileController extends Controller
             'state' => 'required|string|max:2',
         ]);
 
-        // Cria o endereço através do relacionamento para garantir o vínculo automático com o User ID
         $request->user()->addresses()->create($validated);
 
         return back()->with('success', 'Endereço adicionado com sucesso!');
@@ -124,9 +164,7 @@ class ProfileController extends Controller
      */
     public function destroyAddress($id)
     {
-        // SEGURANÇA (IDOR Protection):
-        // Busca o endereço SOMENTE dentro da coleção do usuário logado ($request->user()->addresses()).
-        // Se o ID existir no banco mas for de outro usuário, o findOrFail lança 404, impedindo a exclusão.
+        // Proteção IDOR mantida: Só deleta se pertencer ao usuário logado
         Auth::user()->addresses()->findOrFail($id)->delete();
 
         return back()->with('success', 'Endereço removido.');

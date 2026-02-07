@@ -7,30 +7,23 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Class ProductVariant
- * * Representa a unidade mínima de venda (SKU) do e-commerce.
- * * Arquitetura: Enquanto o 'Product' contém as informações macro, a 'Variant' detém
- * os dados granulares de estoque, preço e atributos específicos (Cor, Tamanho, Voltagem).
- *
- * @package App\Models
+ * Representa o SKU (unidade de estoque).
+ * Otimizado para integração com Cache e validação robusta de ofertas.
  */
 class ProductVariant extends Model
 {
     use HasFactory;
 
-    /**
-     * Configuração de Mass Assignment.
-     * * Utiliza $guarded vazio para permitir flexibilidade na criação de variações complexas.
-     * * Nota: A integridade dos campos críticos (preço/estoque) deve ser validada 
-     * nas FormRequests ou Services de inventário.
-     */
     protected $guarded = [];
 
     /**
-     * Conversão de tipos (Casting).
-     * * 'options': Essencial para converter o JSON de atributos (ex: {"Tamanho": "G"}) em array PHP.
-     * * 'sale_start_date/end_date': Garante que as datas de promoção sejam instâncias de Carbon,
-     * permitindo comparações temporais precisas.
+     * [ESCALABILIDADE] Cache Invalidation
+     * Sempre que uma variante for criada, atualizada ou deletada,
+     * atualiza o timestamp 'updated_at' do produto pai.
+     * Isso garante que caches de vitrine sejam limpos automaticamente.
      */
+    protected $touches = ['product'];
+
     protected $casts = [
         'options' => 'array', 
         'images' => 'array',
@@ -39,31 +32,17 @@ class ProductVariant extends Model
         'sale_price' => 'decimal:2',
         'sale_start_date' => 'datetime',
         'sale_end_date' => 'datetime',
+        'quantity' => 'integer',
     ];
 
-    // =========================================================================
-    // RELACIONAMENTOS (Eloquent Relations)
-    // =========================================================================
-
-    /**
-     * Relacionamento com o Produto Pai.
-     * Vincula a variante ao catálogo principal para herança de nome e categoria.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
     public function product()
     {
         return $this->belongsTo(Product::class);
     }
 
-    // =========================================================================
-    // LÓGICA DE PRECIFICAÇÃO E PROMOÇÃO
-    // =========================================================================
-
     /**
-     * Accessor: Preço Final.
-     * * Retorna o valor real que será cobrado do cliente, considerando
-     * automaticamente se há uma promoção ativa ou não.
+     * Preço final para o consumidor (Calculado).
+     * Centraliza a regra de qual preço cobrar.
      */
     public function getFinalPriceAttribute()
     {
@@ -71,28 +50,25 @@ class ProductVariant extends Model
     }
 
     /**
-     * Validador de Promoção Ativa.
-     * * Regras para ativação do preço promocional:
-     * 1. O sale_price deve existir e ser menor que o preço base.
-     * 2. Se houver data de início, o momento atual deve ser posterior a ela.
-     * 3. Se houver data de término, o momento atual deve ser anterior a ela.
-     *
-     * @return bool
+     * Validação Robusta de Oferta.
+     * Verifica Preço, Data de Início e Data de Fim.
      */
     public function isOnSale(): bool
     {
-        // Validação de valor: Promoção não pode ser gratuita ou mais cara que o original
-        if (!$this->sale_price || $this->sale_price >= $this->price) {
+        // 1. Validação de Preço (Segurança)
+        // Garante que o preço promocional existe e é menor que o original.
+        if (!$this->sale_price || $this->sale_price <= 0 || $this->sale_price >= $this->price) {
             return false;
         }
 
         $now = now();
 
-        // Validação temporal: Verifica se está dentro da janela de oportunidade
+        // 2. Validação de Data de Início
         if ($this->sale_start_date && $now->lt($this->sale_start_date)) {
             return false;
         }
 
+        // 3. Validação de Data de Fim
         if ($this->sale_end_date && $now->gt($this->sale_end_date)) {
             return false;
         }

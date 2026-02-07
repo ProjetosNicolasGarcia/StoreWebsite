@@ -4,10 +4,13 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
-use App\Models\Category;
-use App\Models\CartItem;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache; // Importante para performance
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Model; // Importante para Strict Mode
+use App\Models\Category;
+use App\Models\CartItem;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -18,41 +21,63 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-       View::composer('*', function ($view) {
-        try {
-            // Verifica se a tabela existe antes de consultar (evita erro em migrations frescas)
-            if (\Illuminate\Support\Facades\Schema::hasTable('categories')) {
-               $categories = Category::root()
-                    ->where('is_active', true)
-                    // [ALTERAÇÃO] Carrega até 4 níveis de profundidade (Pai > Filho > Neto > Bisneto)
-                    ->with([
-                        'children' => fn($q) => $q->where('is_active', true)->orderBy('name')->with([
-                            'children' => fn($q) => $q->where('is_active', true)->orderBy('name')->with([
-                                'children' => fn($q) => $q->where('is_active', true)->orderBy('name')
-                            ])
-                        ])
-                    ])
-                    ->orderBy('name')
-                    ->get();
-                
-                $view->with('globalCategories', $categories);
-            } else {
-                $view->with('globalCategories', collect());
-            }
-        } catch (\Exception $e) {
-            // Em caso de erro, envia lista vazia para não quebrar a página de erro do Laravel
-            // Isso permite que você veja a mensagem real do erro (ex: "Method scopeRoot does not exist")
-            $view->with('globalCategories', collect());
-        }
-    });
+        // 1. MODO ESTRITO (Strict Mode)
+        // Previne erros de performance (N+1) e acessos a atributos inexistentes durante o desenvolvimento.
+        Model::shouldBeStrict(!app()->isProduction());
 
-        // [MANTIDO] Compartilha dados do carrinho com o componente de Layout
+        // 2. MENU DE CATEGORIAS (Com Cache)
+        View::composer('*', function ($view) {
+            // Cache por 60 minutos para evitar query pesada em toda página
+            $categories = Cache::remember('global_categories_menu', 60, function () {
+                try {
+                    if (Schema::hasTable('categories')) {
+                        return Category::whereNull('parent_id') // Equivalente ao scopeRoot()
+                            ->where('is_active', true)
+                            // Otimização: Seleciona apenas colunas necessárias e carrega hierarquia
+                            ->with([
+                                'children' => fn($q) => $q->where('is_active', true)
+                                    ->select('id', 'parent_id', 'name', 'slug') // Select Otimizado
+                                    ->orderBy('name')
+                                    ->with([
+                                        'children' => fn($q) => $q->where('is_active', true)
+                                            ->select('id', 'parent_id', 'name', 'slug')
+                                            ->orderBy('name')
+                                            ->with([
+                                                'children' => fn($q) => $q->where('is_active', true)
+                                                    ->select('id', 'parent_id', 'name', 'slug')
+                                                    ->orderBy('name')
+                                            ])
+                                    ])
+                            ])
+                            ->orderBy('name')
+                            ->get(['id', 'name', 'slug']); // Select na raiz
+                    }
+                    return collect();
+                } catch (\Exception $e) {
+                    return collect();
+                }
+            });
+
+            $view->with('globalCategories', $categories);
+        });
+
+// 3. CARRINHO NO LAYOUT (Otimizado)
         View::composer('components.layout', function ($view) {
             $sessionId = Session::getId();
             $userId = Auth::id();
 
-            // Carregamos 'variant' para exibir fotos e preços corretos no menu lateral
-            $cartItems = CartItem::with(['product', 'variant'])
+            $cartItems = CartItem::with([
+                    // 1. Produto Pai e dependências
+                    'product' => fn($q) => $q->select('id', 'name', 'slug', 'image_url')
+                        ->with([
+                            'categories' => fn($c) => $c->select('categories.id', 'categories.name', 'categories.slug'),
+                            // [ATUALIZADO] Adicionado 'options' e 'image' para evitar erros visuais
+                            'variants' => fn($v) => $v->select('id', 'product_id', 'price', 'sale_price', 'sale_start_date', 'sale_end_date', 'is_default', 'options', 'image')
+                        ]),
+
+                    // 2. Variante Comprada
+                    'variant' => fn($q) => $q->select('id', 'product_id', 'price', 'sale_price', 'sale_start_date', 'sale_end_date', 'image', 'options')
+                ])
                 ->where(function ($query) use ($userId, $sessionId) {
                     if ($userId) {
                         $query->where('user_id', $userId);
@@ -61,16 +86,11 @@ class AppServiceProvider extends ServiceProvider
                     }
                 })->get();
 
-            // Cálculo do total alinhado com o CartController (prioriza variante)
             $cartTotal = $cartItems->sum(function ($item) {
-                // Se tiver variante, usa o preço final dela (que já considera promoção se houver)
                 if ($item->variant) {
                     return $item->quantity * $item->variant->final_price;
                 }
-                
-                // Fallback para produtos simples (sem variante)
-                $price = $item->product->isOnSale() ? $item->product->sale_price : $item->product->base_price;
-                return $item->quantity * $price;
+                return 0;
             });
 
             $view->with('globalCartItems', $cartItems)

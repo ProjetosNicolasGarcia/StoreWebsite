@@ -47,7 +47,6 @@ class ProductResource extends Resource
                                     ->label('Nome do Produto')
                                     ->placeholder('Ex: Camiseta Básica Algodão')
                                     ->live(onBlur: true)
-                                    // Só gera slug automático na criação
                                     ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) =>
                                         $operation === 'create' ? $set('slug', Str::slug($state)) : null),
 
@@ -55,7 +54,6 @@ class ProductResource extends Resource
                                     ->required()
                                     ->label('Slug (URL)')
                                     ->unique(ignoreRecord: true)
-                                    // [CORREÇÃO]: Removido disabled() para permitir edição manual se necessário
                                     ->dehydrated()
                                     ->helperText('URL amigável. Altere manualmente se necessário.'),
 
@@ -190,7 +188,7 @@ class ProductResource extends Resource
                             ])
                             ->schema([
                                 Repeater::make('variants')
-                                    ->relationship()
+                                    ->relationship(modifyQueryUsing: fn ($query) => $query->with('product'))
                                     ->label('Lista de Variantes')
                                     ->schema([
                                         Group::make([
@@ -271,15 +269,18 @@ class ProductResource extends Resource
                                     ->label('Produto Ativo')
                                     ->onColor('success'),
 
-                                // [CORREÇÃO AQUI]: Configuração Otimizada de Categorias
+                                // [CORREÇÃO APLICADA AQUI]
                                 Select::make('categories')
                                     ->label('Categorias')
                                     ->multiple()
-                                    ->relationship('categories', 'name')
+                                    // Use 'modifyQueryUsing' para carregar 'parent' e evitar erro de Lazy Loading
+                                    ->relationship(
+                                        name: 'categories',
+                                        titleAttribute: 'name',
+                                        modifyQueryUsing: fn ($query) => $query->with('parent')
+                                    )
                                     ->preload()
-                                    // Permite buscar por nome E slug
                                     ->searchable(['name', 'slug'])
-                                    // [UX] Mostra "Categoria (Pai)" na lista para evitar confusão de nomes iguais
                                     ->getOptionLabelFromRecordUsing(fn ($record) => 
                                         $record->parent 
                                             ? "{$record->name} ({$record->parent->name})" 
@@ -290,17 +291,15 @@ class ProductResource extends Resource
                                             ->label('Nome da Categoria')
                                             ->required()
                                             ->live(onBlur: true)
-                                            // Slug automático só na criação
                                             ->afterStateUpdated(fn (string $operation, $state, Forms\Set $set) =>
                                                 $operation === 'create' ? $set('slug', Str::slug($state)) : null),
                                         
                                         TextInput::make('slug')
                                             ->label('Slug (URL)')
                                             ->required()
-                                            // [CORREÇÃO] Removido disabled para permitir ajuste manual
                                             ->dehydrated()
                                             ->unique('categories', 'slug', ignoreRecord: true),
-                                            
+                                        
                                         Select::make('parent_id')
                                             ->label('Categoria Pai')
                                             ->relationship('parent', 'name')

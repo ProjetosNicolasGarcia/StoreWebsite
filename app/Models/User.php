@@ -63,7 +63,7 @@ class User extends Authenticatable implements FilamentUser
         // Regra simples: Apenas este email ou domínios específicos
         // Idealmente, evoluir para: return $this->hasRole('admin');
         return in_array($this->email, [
-            'teste@gmail.com',
+            'tester@gmail.com',
             // 'admin@sualoja.com',
         ]);
     }

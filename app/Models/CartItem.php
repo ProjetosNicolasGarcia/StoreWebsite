@@ -4,72 +4,87 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Prunable; // [ESCALABILIDADE]
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Class CartItem
- * * Representa um item individual no carrinho de compras persistido em banco.
- * * Arquitetura: Atua como o elo entre o Cliente e o Estoque (Variante).
- * * Diferencial: O item está vinculado estritamente a um SKU (Variante), 
- * não apenas ao produto genérico, garantindo integridade de preço e estoque.
- *
- * @package App\Models
+ * Representa um item individual no carrinho de compras.
+ * Otimizado com limpeza automática (Pruning) para não inflar o banco de dados.
  */
 class CartItem extends Model
 {
+    use Prunable; // Habilita a limpeza automática de registros obsoletos
+
     /**
      * Configuração de Mass Assignment.
-     * * Define que todos os campos podem ser preenchidos em massa.
-     * * Segurança: Como não há $fillable explícito, a validação dos dados de entrada
-     * (preço, quantidade) DEVE ser garantida rigorosamente no Controller/Service
-     * antes de chamar o método create/update.
      */
     protected $guarded = [];
+
+    /**
+     * Conversão de tipos (Casting).
+     * [OTIMIZAÇÃO] Garante tipos nativos para cálculos matemáticos mais rápidos.
+     */
+    protected $casts = [
+        'quantity' => 'integer',
+    ];
 
     // =========================================================================
     // RELACIONAMENTOS (Eloquent Relations)
     // =========================================================================
 
-    /**
-     * Relacionamento com o Produto Pai.
-     * * * Finalidade: Camada de Apresentação.
-     * Embora a venda seja técnica (SKU), precisamos do Pai para mostrar ao usuário:
-     * 1. O Nome comercial do produto.
-     * 2. O Slug para links de navegação.
-     * 3. A Imagem de capa (caso a variante não tenha foto específica).
-     *
-     * @return BelongsTo
-     */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    /**
-     * Relacionamento com a Variante Específica (SKU).
-     * * * Finalidade: Regra de Negócio e Transação.
-     * Este é o relacionamento "Financeiro/Logístico". É usado para:
-     * 1. Recuperar o Preço Real no momento do checkout (evita fraude de preço no front).
-     * 2. Verificar e Baixar o Estoque específico (ex: Tênis 40, não o genérico).
-     * 3. Validar se a variação ainda está ativa/disponível.
-     *
-     * @return BelongsTo
-     */
     public function variant(): BelongsTo
     {
-        // Define a FK explícita 'product_variant_id' caso não siga a convenção padrão
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 
-    /**
-     * Relacionamento com o Proprietário do Carrinho.
-     * * Útil para:
-     * - Retomada de carrinho abandonado (via e-mail).
-     * - Sincronização entre dispositivos (Login merge).
-     *
-     * @return BelongsTo
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    // =========================================================================
+    // ACESSORES (Helpers Calculados)
+    // =========================================================================
+
+    /**
+     * Retorna o subtotal deste item (Preço Atual x Quantidade).
+     * Inteligente: Detecta se deve usar o preço da variante ou do produto.
+     * Uso no Blade: $item->total
+     */
+    public function getTotalAttribute()
+    {
+        // 1. Tenta pegar o preço da variante (prioridade)
+        if ($this->relationLoaded('variant') && $this->variant) {
+            return $this->variant->final_price * $this->quantity;
+        }
+
+        // 2. Fallback para o produto pai (se carregado)
+        if ($this->relationLoaded('product') && $this->product) {
+            $price = $this->product->isOnSale() ? $this->product->sale_price : $this->product->base_price;
+            return $price * $this->quantity;
+        }
+
+        return 0;
+    }
+
+    // =========================================================================
+    // ESCALABILIDADE (Limpeza Automática)
+    // =========================================================================
+
+    /**
+     * Define a query para excluir carrinhos abandonados antigos.
+     * Executado via comando: php artisan model:prune
+     */
+    public function prunable(): Builder
+    {
+        // Regra: Apagar itens de carrinho não modificados há mais de 30 dias.
+        // Isso impede que a tabela cresça infinitamente com sessões de visitantes (bots/crawlers).
+        return static::where('updated_at', '<=', now()->subDays(30));
     }
 }

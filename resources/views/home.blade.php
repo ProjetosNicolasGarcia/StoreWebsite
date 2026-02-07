@@ -70,13 +70,13 @@
         
         <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
             @foreach($newArrivals as $product)
-                {{-- CARD PRODUTO COM INTERATIVIDADE ALPINE --}}
+                {{-- CARD PRODUTO --}}
                 <div class="block group relative"
                      x-data="{ 
-                         currentImage: '{{ Storage::url($product->image_url) }}', 
-                         originalImage: '{{ Storage::url($product->image_url) }}',
-                         hovering: false 
-                     }"
+                          currentImage: '{{ Storage::url($product->image_url) }}', 
+                          originalImage: '{{ Storage::url($product->image_url) }}',
+                          hovering: false 
+                      }"
                      @mouseenter="hovering = true"
                      @mouseleave="hovering = false">
                     
@@ -87,12 +87,10 @@
                                 Novo
                             </div>
 
-                            {{-- Imagem Principal Reativa --}}
                             <img :src="currentImage" 
                                  class="object-contain w-full h-full transition duration-500 p-2"
                                  :class="hovering ? 'scale-105' : ''">
 
-                            {{-- Miniaturas das Variantes (Aparecem no Hover) --}}
                             @if($product->variants->whereNotNull('image')->count() > 0)
                                 <div x-show="hovering"
                                      x-transition:enter="transition ease-out duration-200"
@@ -101,27 +99,23 @@
                                      class="absolute bottom-3 left-0 right-0 flex justify-center gap-2 px-2 z-20 flex-wrap">
                                     
                                     @foreach($product->visual_variants as $variant)
- {{-- Em listing.blade.php e home.blade.php --}}
-<div 
-    @mouseenter="currentImage = '{{ Storage::url($variant->image) }}'"
-    @mouseleave="currentImage = originalImage"
-    
-    {{-- ALTERAÇÃO AQUI: Adicionado .prevent ao lado de .stop --}}
-    @click.stop.prevent="window.location.href = '{{ route('shop.product', $product->slug) }}?variant={{ $variant->id }}'"
-    
-    class="w-10 h-10 rounded-md border border-gray-200 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all transform hover:scale-110 flex items-center justify-center">
-    
-    <img src="{{ Storage::url($variant->image) }}" class="w-full h-full object-contain p-0.5">
-</div>
+                                        <div @mouseenter="currentImage = '{{ Storage::url($variant->image) }}'"
+                                             @mouseleave="currentImage = originalImage"
+                                             @click.stop.prevent="window.location.href = '{{ route('shop.product', $product->slug) }}?variant={{ $variant->id }}'"
+                                             class="w-10 h-10 rounded-md border border-gray-200 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all transform hover:scale-110 flex items-center justify-center">
+                                            <img src="{{ Storage::url($variant->image) }}" class="w-full h-full object-contain p-0.5">
+                                        </div>
                                     @endforeach
                                 </div>
                             @endif
                         </div>
                         
                         <div class="text-center space-y-1">
-                            @if($product->category)
-                                <p class="text-xs text-gray-500 uppercase tracking-widest">{{ $product->category->name }}</p>
+                            {{-- CORREÇÃO AQUI: Usar categories->first() --}}
+                            @if($product->categories->first())
+                                <p class="text-xs text-gray-500 uppercase tracking-widest">{{ $product->categories->first()->name }}</p>
                             @endif
+                            
                             <h4 class="font-bold text-gray-900">{{ $product->name }}</h4>
 
                             <div class="mt-1">
@@ -147,32 +141,27 @@
                     </a>
 
                     <div class="pt-2 h-10 flex items-center justify-center">
-    @php $variantCount = $product->variants->count(); @endphp
+                        @php $variantCount = $product->variants->count(); @endphp
 
-    @if($variantCount > 1)
-        <a href="{{ route('shop.product', $product->slug) }}" 
-           class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
-                  opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
-                  hover:bg-white hover:text-black transition-all duration-300 flex items-center justify-center">
-            ADICIONAR AO CARRINHO
-        </a>
-    @elseif($variantCount === 1)
-        <form action="{{ route('cart.add', $product->id) }}" method="POST">
-            @csrf
-            <input type="hidden" name="variant_id" value="{{ $product->variants->first()->id }}">
-            <button type="submit" 
-                class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
-                    opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
-                    hover:bg-white hover:text-black transition-all duration-300">
-                Adicionar ao Carrinho
-            </button>
-        </form>
-    @else
-        <span class="text-xs text-gray-400 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-            Indisponível
-        </span>
-    @endif
-</div>
+                        @if($variantCount > 1)
+                            <a href="{{ route('shop.product', $product->slug) }}" 
+                               class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300 flex items-center justify-center">
+                                ADICIONAR AO CARRINHO
+                            </a>
+                        @elseif($variantCount === 1)
+                            <form action="{{ route('cart.add', $product->id) }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="variant_id" value="{{ $product->variants->first()->id }}">
+                                <button type="submit" class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300">
+                                    Adicionar ao Carrinho
+                                </button>
+                            </form>
+                        @else
+                            <span class="text-xs text-gray-400 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                                Indisponível
+                            </span>
+                        @endif
+                    </div>
                 </div>
             @endforeach
         </div>
@@ -205,25 +194,23 @@
             <div class="container mx-auto px-4">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
                     @foreach($collection->products as $product)
-                        {{-- CARD PRODUTO COM INTERATIVIDADE ALPINE --}}
+                        {{-- CARD PRODUTO (COLEÇÃO) --}}
                         <div class="block group relative"
                              x-data="{ 
-                                 currentImage: '{{ Storage::url($product->image_url) }}', 
-                                 originalImage: '{{ Storage::url($product->image_url) }}',
-                                 hovering: false 
-                             }"
+                                  currentImage: '{{ Storage::url($product->image_url) }}', 
+                                  originalImage: '{{ Storage::url($product->image_url) }}',
+                                  hovering: false 
+                              }"
                              @mouseenter="hovering = true"
                              @mouseleave="hovering = false">
                             
                             <a href="{{ route('shop.product', $product->slug) }}" class="block cursor-pointer">
                                 <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-white flex items-center justify-center">
                                     
-                                    {{-- Imagem Reativa --}}
                                     <img :src="currentImage" 
                                          class="object-contain w-full h-full transition duration-500 p-2"
                                          :class="hovering ? 'scale-105' : ''">
 
-                                    {{-- Miniaturas das Variantes --}}
                                     @if($product->variants->whereNotNull('image')->count() > 0)
                                         <div x-show="hovering"
                                              x-transition:enter="transition ease-out duration-200"
@@ -232,26 +219,23 @@
                                              class="absolute bottom-3 left-0 right-0 flex justify-center gap-2 px-2 z-20 flex-wrap">
                                             
                                             @foreach($product->visual_variants as $variant)
-                                               <div 
-    @mouseenter="currentImage = '{{ Storage::url($variant->image) }}'"
-    @mouseleave="currentImage = originalImage"
-    
-    {{-- ALTERAÇÃO AQUI: Adicionado .prevent ao lado de .stop --}}
-    @click.stop.prevent="window.location.href = '{{ route('shop.product', $product->slug) }}?variant={{ $variant->id }}'"
-    
-    class="w-10 h-10 rounded-md border border-gray-200 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all transform hover:scale-110 flex items-center justify-center">
-    
-    <img src="{{ Storage::url($variant->image) }}" class="w-full h-full object-contain p-0.5">
-</div>
+                                                <div @mouseenter="currentImage = '{{ Storage::url($variant->image) }}'"
+                                                     @mouseleave="currentImage = originalImage"
+                                                     @click.stop.prevent="window.location.href = '{{ route('shop.product', $product->slug) }}?variant={{ $variant->id }}'"
+                                                     class="w-10 h-10 rounded-md border border-gray-200 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all transform hover:scale-110 flex items-center justify-center">
+                                                    <img src="{{ Storage::url($variant->image) }}" class="w-full h-full object-contain p-0.5">
+                                                </div>
                                             @endforeach
                                         </div>
                                     @endif
                                 </div>
                                 
                                 <div class="text-center space-y-1">
-                                    @if($product->category)
-                                        <p class="text-xs text-gray-500 uppercase tracking-widest">{{ $product->category->name }}</p>
+                                    {{-- CORREÇÃO AQUI TAMBÉM: Usar categories->first() --}}
+                                    @if($product->categories->first())
+                                        <p class="text-xs text-gray-500 uppercase tracking-widest">{{ $product->categories->first()->name }}</p>
                                     @endif
+                                    
                                     <h4 class="font-bold text-gray-900">{{ $product->name }}</h4>
                                     
                                     <div class="mt-1">
@@ -277,32 +261,27 @@
                             </a>
 
                             <div class="pt-2 h-10 flex items-center justify-center">
-    @php $variantCount = $product->variants->count(); @endphp
+                                @php $variantCount = $product->variants->count(); @endphp
 
-    @if($variantCount > 1)
-        <a href="{{ route('shop.product', $product->slug) }}" 
-           class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
-                  opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
-                  hover:bg-white hover:text-black transition-all duration-300 flex items-center justify-center">
-            ADICIONAR AO CARRINHO
-        </a>
-    @elseif($variantCount === 1)
-        <form action="{{ route('cart.add', $product->id) }}" method="POST">
-            @csrf
-            <input type="hidden" name="variant_id" value="{{ $product->variants->first()->id }}">
-            <button type="submit" 
-                class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md 
-                    opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 
-                    hover:bg-white hover:text-black transition-all duration-300">
-                Adicionar ao Carrinho
-            </button>
-        </form>
-    @else
-        <span class="text-xs text-gray-400 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-            Indisponível
-        </span>
-    @endif
-</div>
+                                @if($variantCount > 1)
+                                    <a href="{{ route('shop.product', $product->slug) }}" 
+                                       class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300 flex items-center justify-center">
+                                        ADICIONAR AO CARRINHO
+                                    </a>
+                                @elseif($variantCount === 1)
+                                    <form action="{{ route('cart.add', $product->id) }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="variant_id" value="{{ $product->variants->first()->id }}">
+                                        <button type="submit" class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300">
+                                            Adicionar ao Carrinho
+                                        </button>
+                                    </form>
+                                @else
+                                    <span class="text-xs text-gray-400 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                                        Indisponível
+                                    </span>
+                                @endif
+                            </div>
                         </div>
                     @endforeach
                 </div>
