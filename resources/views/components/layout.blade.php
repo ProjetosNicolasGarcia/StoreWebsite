@@ -26,6 +26,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    @livewireStyles
 </head>
 
 <body class="bg-white text-gray-900 font-sans antialiased" 
@@ -382,7 +384,20 @@
                     <span class="text-gray-500 uppercase text-xs tracking-widest">Subtotal</span>
                     <span class="font-black text-xl">R$ {{ number_format($globalCartTotal ?? 0, 2, ',', '.') }}</span>
                 </div>
-                <button class="w-full bg-black text-white border border-black rounded-xl py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300">Finalizar Compra</button>
+   @auth
+    {{-- Lógica para Usuário Logado: Vai para o Checkout --}}
+    <a href="{{ route('checkout') }}"
+       class="block w-full text-center bg-black text-white border border-black rounded-xl py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300">
+        Finalizar Compra
+    </a>
+@else
+    {{-- Lógica para Visitante: Abre o Slider de Login --}}
+    <button type="button" 
+            @click="cartOpen = false; setTimeout(() => $dispatch('open-auth-slider'), 300)" 
+            class="w-full bg-black text-white border border-black rounded-xl py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300">
+        Finalizar Compra
+    </button>
+@endauth
             </div>
         @endif
     </div>
@@ -451,5 +466,6 @@
             });
         @endif
     </script>
+    @livewireScripts
 </body>
 </html>

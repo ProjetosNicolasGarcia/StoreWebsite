@@ -9,6 +9,7 @@ use App\Http\Controllers\ShopController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\StoreAuthController;
 use App\Http\Controllers\ProfileController;
+use App\Livewire\CheckoutPage;
 
 // =========================================================================
 // ROTAS PÚBLICAS (Home, Loja, Carrinho)
@@ -183,6 +184,9 @@ Route::middleware('guest')->group(function () {
 // =========================================================================
 
 Route::middleware('auth')->group(function () {
+    
+
+
     // Logout
     Route::post('/logout', [StoreAuthController::class, 'logout'])->name('logout');
 
@@ -195,16 +199,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/enderecos', [ProfileController::class, 'storeAddress'])->name('profile.address.store');
         Route::delete('/enderecos/{id}', [ProfileController::class, 'destroyAddress'])->name('profile.address.delete');
     });
-
-    
 });
 
+// Middleware extra para perfil incompleto
 Route::middleware(['auth'])->group(function () {
+
+    Route::get('/checkout', \App\Livewire\CheckoutPage::class)->name('checkout');
     // Rotas para completar perfil (Middleware EnsureProfileIsComplete vai permitir estas)
     Route::get('/completar-perfil', [StoreAuthController::class, 'showCompleteProfile'])->name('auth.complete-profile');
     Route::post('/completar-perfil', [StoreAuthController::class, 'updateProfile'])->name('auth.update-profile');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-
-   
 });
