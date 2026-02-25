@@ -130,7 +130,7 @@
             ];
         }
 
-// [LÓGICA CORRIGIDA] Texto Promocional Inteligente
+        // [LÓGICA CORRIGIDA] Texto Promocional Inteligente
         $initialPromoText = "";
         
         if ($onSaleVariantsCount > 0) {
@@ -340,19 +340,75 @@
 
                 {{-- FRETE E AÇÕES SECUNDÁRIAS --}}
                 <div class="pt-4  max-w-sm space-y-4">
-                    {{-- Frete --}}
-                    <div x-data="{ zipCode: '', loading: false, result: null, error: null, async calculate() { const cleanCep = this.zipCode.replace(/\D/g, ''); if (cleanCep.length !== 8) { this.error = 'CEP Inválido'; return; } this.loading = true; this.error = null; this.result = null; try { const response = await axios.post('{{ route('shipping.calculate') }}', { zip_code: cleanCep, product_id: {{ $product->id }} }); this.result = response.data; } catch (e) { this.error = 'Erro ao calcular.'; } finally { this.loading = false; } } }">
+                    
+                    {{-- Frete (Bloco Atualizado com Integração API Melhor Envio) --}}
+                    <div x-data="{ 
+                            zipCode: '', 
+                            loading: false, 
+                            result: null, 
+                            error: null, 
+                            async calculate() { 
+                                const cleanCep = this.zipCode.replace(/\D/g, ''); 
+                                if (cleanCep.length !== 8) { 
+                                    this.error = 'CEP Inválido (digite 8 números)'; 
+                                    return; 
+                                } 
+                                
+                                this.loading = true; 
+                                this.error = null; 
+                                this.result = null; 
+                                
+                                try { 
+                                    const response = await axios.post('{{ route('shipping.calculate') }}', { 
+                                        zip_code: cleanCep, 
+                                        product_id: {{ $product->id }},
+                                        // Garante envio do token CSRF do Laravel
+                                        _token: '{{ csrf_token() }}'
+                                    }); 
+                                    
+                                    this.result = response.data; 
+                                    
+                                } catch (e) { 
+                                    this.error = e.response?.data?.error || 'Erro ao calcular o frete. Tente novamente.'; 
+                                } finally { 
+                                    this.loading = false; 
+                                } 
+                            } 
+                        }">
+                        
                         <div class="flex gap-2 mb-2">
-                            <input type="text" x-model="zipCode" @keydown.enter.prevent="calculate()" @input="$el.value = $el.value.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2')" placeholder="Calcule o frete" class="w-full h-12 px-3 rounded-lg border border-gray-300 bg-white text-xs text-gray-900 focus:border-black focus:ring-black">
-                            <button @click="calculate()" :disabled="loading" class="h-12 px-4 border border-black rounded-lg bg-black text-white text-[10px] font-bold uppercase hover:bg-gray-800 transition-all disabled:opacity-50">
-                                <span x-show="!loading">OK</span><span x-show="loading">...</span>
+                            <input type="text" x-model="zipCode" @keydown.enter.prevent="calculate()" @input="$el.value = $el.value.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2')" maxlength="9" placeholder="00000-000" class="w-full h-12 px-3 rounded-xl border border-gray-300 bg-white text-sm text-gray-900 focus:border-black focus:ring-black">
+                            
+                            <button @click="calculate()" :disabled="loading" class="h-12 px-6 border border-black rounded-xl bg-black text-white text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all disabled:opacity-50 flex items-center justify-center min-w-[100px]">
+                                <span x-show="!loading">Calcular</span>
+                                <span x-show="loading" style="display: none;">
+                                    <svg class="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                </span>
                             </button>
                         </div>
-                        <div x-show="result" style="display: none;" class="mt-2 text-xs"><template x-for="option in result" :key="option.name"><div class="flex justify-between pb-1"><span><span class="font-bold" x-text="option.name"></span> (<span x-text="option.days"></span> dias)</span><span class="font-bold">R$ <span x-text="new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(option.price)"></span></span></div></template></div>
+                        
+                        {{-- Exibição de Erro --}}
+                        <div x-show="error" style="display: none;" class="text-xs font-bold text-red-600 mt-2 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <span x-text="error"></span>
+                        </div>
+                        
+                        {{-- Lista de Resultados --}}
+                        <div x-show="result" style="display: none;" class="mt-4 space-y-3">
+                            <template x-for="option in result" :key="option.name">
+                                <div class="flex justify-between items-center text-sm">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-gray-900" x-text="option.name"></span>
+                                        <span class="text-[10px] text-gray-500 uppercase tracking-wide">Entrega em até <span x-text="option.days"></span> dias úteis</span>
+                                    </div>
+                                    <span class="font-black text-gray-900">R$ <span x-text="new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(option.price)"></span></span>
+                                </div>
+                            </template>
+                        </div>
                     </div>
 
                     {{-- Ícones Secundários --}}
-                    <div class="flex gap-2 justify-start">
+                    <div class="flex gap-2 justify-start mt-4">
                         <button @click="toggleWishlist()" class="w-12 h-12 flex items-center justify-center border rounded-lg transition-all" :class="isInWishlist ? 'bg-red-50 border-red-200 text-red-600' : 'border-gray-200 text-gray-500 hover:border-black hover:text-black'">
                             <svg x-show="isInWishlist" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
                             <svg x-show="!isInWishlist" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>

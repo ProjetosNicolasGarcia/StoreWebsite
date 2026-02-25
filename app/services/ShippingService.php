@@ -4,63 +4,101 @@ namespace App\Services;
 
 use App\Models\Product;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ShippingService
 {
     protected string $originCep;
+    protected string $apiToken;
+    protected string $apiUrl;
 
     public function __construct()
     {
-        // Pega o CEP do .env, ou usa um padrão se não existir
-        $this->originCep = env('STORE_CEP_ORIGIN', '00000000');
+        $this->originCep = env('STORE_CEP_ORIGIN', '09425050');
+        $this->apiToken = env('MELHOR_ENVIO_API_TOKEN', '');
+        $this->apiUrl = env('MELHOR_ENVIO_URL', 'https://sandbox.melhorenvio.com.br/api/v2/me');
     }
 
-    /**
-     * Calcula o frete para uma lista de itens
-     * * @param string $destinationCep
-     * @param Collection $items (Pode ser os itens do carrinho)
-     * @return array
-     */
     public function calculate(string $destinationCep, Collection $items): array
     {
-        // 1. Calcular Peso Total e Dimensões Totais
-        $totalWeight = 0;
+        // Remove tudo que não for número (ex: traços)
+        $destinationCep = preg_replace('/\D/', '', $destinationCep);
+        
+        if (strlen($destinationCep) !== 8) {
+            return [];
+        }
+
+        $productsPayload = [];
         
         foreach ($items as $item) {
-            // Se o item for um Product direto ou um CartItem com relação product
             $product = $item instanceof Product ? $item : $item->product;
-            $qty = $item->quantity ?? 1;
-
-            // Peso padrão de 1kg se não estiver cadastrado
-            $weight = $product->weight > 0 ? $product->weight : 1.0; 
             
-            $totalWeight += ($weight * $qty);
+            $productsPayload[] = [
+                'id' => (string) $product->id,
+                'width' => $product->width ?? 11,
+                'height' => $product->height ?? 2,
+                'length' => $product->length ?? 16,
+                'weight' => $product->weight > 0 ? $product->weight : 0.3,
+                'insurance_value' => $product->price,
+                'quantity' => $item->quantity ?? 1,
+            ];
         }
 
-        // 2. Lógica de Cálculo (AQUI ENTRARIA A API DOS CORREIOS/MELHOR ENVIO)
-        // Por enquanto, faremos uma simulação baseada no peso para testar:
+        try {
+            // Chamada real para a API
+            $response = Http::withToken($this->apiToken)
+                ->acceptJson()
+                ->post($this->apiUrl . '/shipment/calculate', [
+                    'from' => ['postal_code' => $this->originCep],
+                    'to' => ['postal_code' => $destinationCep],
+                    'products' => $productsPayload,
+                ]);
+
+            if ($response->successful()) {
+                return $this->formatResponse($response->json());
+            }
+
+            Log::error('Erro API Melhor Envio', ['status' => $response->status(), 'response' => $response->json()]);
+            return [];
+
+        } catch (\Exception $e) {
+            Log::error('Exceção ao calcular frete: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function formatResponse(array $apiResponse): array
+    {
+        $options = [];
         
-        // Exemplo: R$ 20,00 base + R$ 5,00 por quilo adicional
-        $costSedex = 20.00 + ($totalWeight * 5.00); 
-        $costPac = 15.00 + ($totalWeight * 3.00);
+        foreach ($apiResponse as $service) {
+            // Ignora se a transportadora não atende a região ou o pacote for muito grande
+            if (isset($service['error'])) {
+                continue;
+            }
 
-        // Se o CEP for da mesma cidade (exemplo simplório pelos 3 primeiros dígitos)
-        if (substr($this->originCep, 0, 3) === substr($destinationCep, 0, 3)) {
-            $costSedex *= 0.5; // 50% de desconto para local
-            $costPac *= 0.5;
+            // Junta o nome da empresa e do serviço com um espaço simples (sem o travessão)
+            $originalName = $service['company']['name'] . ' ' . $service['name'];
+
+            // Limpa os nomes técnicos para o cliente final ler melhor
+            $friendlyName = str_replace(
+                ['Jadlog .Com', 'Jadlog .Package', 'Correios PAC', 'Correios SEDEX'], 
+                ['Jadlog Expresso', 'Jadlog Econômico', 'Correios PAC', 'Correios Sedex'], 
+                $originalName
+            );
+
+            $options[] = [
+                'id' => (string) $service['id'],
+                'name' => $friendlyName, // Utiliza o nome amigável configurado acima
+                'price' => (float) $service['price'],
+                'days' => (int) $service['delivery_time'],
+            ];
         }
 
-        return [
-            [
-                'name' => 'PAC',
-                'price' => max(10, $costPac), // Mínimo 10 reais
-                'days' => 7,
-            ],
-            [
-                'name' => 'SEDEX',
-                'price' => max(15, $costSedex), // Mínimo 15 reais
-                'days' => 2,
-            ]
-        ];
+        // Ordena do frete mais barato para o mais caro
+        usort($options, fn($a, $b) => $a['price'] <=> $b['price']);
+
+        return $options;
     }
 }

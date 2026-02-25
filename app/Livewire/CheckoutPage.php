@@ -7,35 +7,41 @@ use App\Models\CartItem;
 use App\Models\Address;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Services\ShippingService; 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class CheckoutPage extends Component
 {
-    // Totais
     public $cartItems = [];
     public $subtotal = 0;
     public $shippingPrice = 0;
     public $discount = 0;
     public $total = 0;
 
-    // Campos do Formulário
     public $selectedAddressId = null;
-    public $shippingMethod = 'pac';
+    public $shippingMethod = null; 
+    public $shippingOptions = [];  
     public $paymentMethod = 'credit_card';
     public $couponCode = '';
     
-    // Dados Pessoais (Herdados do User/Profile)
     public $cpf;
     public $phone;
     public $fullName;
 
-    // Novo Endereço
     public $useNewAddress = false;
     public $newAddress = [
         'zip_code' => '', 'street' => '', 'number' => '', 
         'complement' => '', 'neighborhood' => '', 'city' => '', 'state' => ''
     ];
+
+    protected ShippingService $shippingService;
+
+    public function boot(ShippingService $shippingService)
+    {
+        $this->shippingService = $shippingService;
+    }
 
     protected function rules()
     {
@@ -61,11 +67,29 @@ class CheckoutPage extends Component
         return $rules;
     }
 
+    // Tradução das mensagens de erro para o usuário
+    protected function messages()
+    {
+        return [
+            'fullName.required' => 'O nome completo é obrigatório.',
+            'cpf.required' => 'O CPF é obrigatório.',
+            'phone.required' => 'O telefone é obrigatório.',
+            'shippingMethod.required' => 'Selecione uma opção de frete.',
+            'newAddress.zip_code.required' => 'O CEP é obrigatório.',
+            'newAddress.zip_code.min' => 'O CEP deve ter 8 dígitos.',
+            'newAddress.street.required' => 'A rua é obrigatória.',
+            'newAddress.number.required' => 'O número do endereço é obrigatório.',
+            'newAddress.neighborhood.required' => 'O bairro é obrigatório.',
+            'newAddress.city.required' => 'A cidade é obrigatória.',
+            'newAddress.state.required' => 'O estado é obrigatório.',
+        ];
+    }
+
     public function mount()
     {
         $user = Auth::user();
         $this->fullName = $user->name;
-        $this->cpf = $user->cpf ?? ''; // Assumindo que o CPF pode estar na tabela users
+        $this->cpf = $user->cpf ?? ''; 
         $this->phone = $user->phone ?? '';
 
         if ($user->addresses->isNotEmpty()) {
@@ -75,6 +99,101 @@ class CheckoutPage extends Component
         }
 
         $this->loadCart();
+        $this->calculateTotals();
+
+        if ($this->selectedAddressId) {
+            $address = Address::find($this->selectedAddressId);
+            if ($address) {
+                $this->shippingOptions = $this->shippingService->calculate($address->zip_code, $this->cartItems);
+            }
+        }
+    }
+
+    public function updatedSelectedAddressId($value)
+    {
+        if ($value) {
+            $this->useNewAddress = false;
+            $address = Address::find($value);
+            if ($address) {
+                $this->shippingOptions = $this->shippingService->calculate($address->zip_code, $this->cartItems);
+            }
+            $this->resetShippingSelection();
+        }
+    }
+
+    public function updatedUseNewAddress($value)
+    {
+        if ($value) {
+            $this->selectedAddressId = null;
+            $this->shippingOptions = []; 
+            $cep = preg_replace('/\D/', '', $this->newAddress['zip_code'] ?? '');
+            if (strlen($cep) === 8) {
+                $this->shippingOptions = $this->shippingService->calculate($cep, $this->cartItems);
+            }
+            $this->resetShippingSelection();
+        }
+    }
+
+    public function updated($propertyName, $value)
+    {
+        if ($propertyName === 'newAddress.zip_code') {
+            $cep = preg_replace('/\D/', '', $value);
+            
+            if (strlen($cep) === 8) {
+                $this->fetchAddressFromCep($cep);
+                
+                // Só calcula o frete se o CEP for válido e existir
+                if (!$this->getErrorBag()->has('newAddress.zip_code')) {
+                    $this->shippingOptions = $this->shippingService->calculate($cep, $this->cartItems);
+                } else {
+                    $this->shippingOptions = [];
+                }
+            } else {
+                $this->shippingOptions = [];
+            }
+            $this->resetShippingSelection();
+        }
+    }
+
+    private function fetchAddressFromCep($cep)
+    {
+        try {
+            $response = Http::get("https://viacep.com.br/ws/{$cep}/json/");
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                // Se a API retornar erro (CEP formato certo, mas não existe)
+                if (isset($data['erro']) && $data['erro'] == true) {
+                    $this->addError('newAddress.zip_code', 'CEP inválido ou não encontrado.');
+                    $this->newAddress['street'] = '';
+                    $this->newAddress['neighborhood'] = '';
+                    $this->newAddress['city'] = '';
+                    $this->newAddress['state'] = '';
+                } else {
+                    $this->resetErrorBag('newAddress.zip_code');
+                    $this->newAddress['street'] = $data['logradouro'] ?? '';
+                    $this->newAddress['neighborhood'] = $data['bairro'] ?? '';
+                    $this->newAddress['city'] = $data['localidade'] ?? '';
+                    $this->newAddress['state'] = $data['uf'] ?? '';
+                }
+            }
+        } catch (\Exception $e) {
+            $this->addError('newAddress.zip_code', 'Erro ao buscar o CEP. Preencha manualmente.');
+        }
+    }
+
+    public function updatedShippingMethod($value)
+    {
+        $option = collect($this->shippingOptions)->firstWhere('id', $value);
+        $this->shippingPrice = $option ? (float) $option['price'] : 0;
+        $this->calculateTotals();
+    }
+
+    private function resetShippingSelection()
+    {
+        $this->shippingMethod = null;
+        $this->shippingPrice = 0;
         $this->calculateTotals();
     }
 
@@ -91,29 +210,21 @@ class CheckoutPage extends Component
 
     public function calculateTotals()
     {
-        $this->subtotal = $this->cartItems->sum('total');
-        
-        // Mock de simulação de frete baseado no método
-        $this->shippingPrice = $this->shippingMethod === 'sedex' ? 35.00 : 15.00;
-        
+        $this->cartItems = CartItem::with(['product', 'variant'])
+            ->where('user_id', Auth::id())
+            ->get();
+
+        $sub = 0;
+        foreach ($this->cartItems as $item) {
+            $sub += $item->total ?? ($item->quantity * ($item->variant ? $item->variant->price : $item->product->base_price));
+        }
+        $this->subtotal = $sub;
+
         $this->total = ($this->subtotal + $this->shippingPrice) - $this->discount;
-    }
-
-    // Gatilho executado sempre que o método de envio ou endereço mudar
-    public function updatedShippingMethod()
-    {
-        $this->calculateTotals();
-    }
-
-    public function updatedUseNewAddress($value)
-    {
-        if ($value) $this->selectedAddressId = null;
-        $this->calculateTotals();
     }
 
     public function applyCoupon()
     {
-        // Lógica simplificada de validação de cupom
         if (strtoupper($this->couponCode) === 'DESCONTO10') {
             $this->discount = $this->subtotal * 0.10;
             session()->flash('coupon_success', 'Cupom aplicado com sucesso!');
@@ -130,7 +241,6 @@ class CheckoutPage extends Component
 
         DB::beginTransaction();
         try {
-            // 1. Resolve o Endereço de Entrega
             $address = null;
             if ($this->useNewAddress || Auth::user()->addresses->isEmpty()) {
                 $address = Auth::user()->addresses()->create($this->newAddress);
@@ -138,7 +248,6 @@ class CheckoutPage extends Component
                 $address = Address::find($this->selectedAddressId);
             }
 
-            // 2. Cria o Pedido (Order)
             $order = Order::create([
                 'user_id' => Auth::id(),
                 'status' => Order::STATUS_PENDING,
@@ -146,10 +255,9 @@ class CheckoutPage extends Component
                 'shipping_price' => $this->shippingPrice,
                 'discount' => $this->discount,
                 'payment_method' => $this->paymentMethod,
-                'address_json' => $address->toArray(), // Snapshot do endereço no momento da compra
+                'address_json' => $address->toArray(), 
             ]);
 
-            // 3. Move os Itens do Carrinho para o Pedido
             foreach ($this->cartItems as $item) {
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -160,28 +268,19 @@ class CheckoutPage extends Component
                 ]);
             }
 
-            // 4. Limpa o Carrinho
             CartItem::where('user_id', Auth::id())->delete();
-
-            // 5. Integração com Gateway de Pagamento (Ponto de Extensão)
-            // Aqui você chamaria o seu PaymentService:
-            // $paymentUrl = app(PaymentService::class)->process($order);
-
             DB::commit();
 
-            // Redireciona para página de sucesso ou pro gateway
             return redirect()->route('profile.orders')->with('status', 'Pedido realizado com sucesso! Aguardando pagamento.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Ocorreu um erro ao processar seu pedido. Tente novamente.');
-            // Log::error($e->getMessage());
         }
     }
 
     public function render()
     {
-        // Usa o layout principal do seu site
         return view('livewire.checkout-page')->layout('components.layout', ['title' => 'Checkout Segura']);
     }
 }
