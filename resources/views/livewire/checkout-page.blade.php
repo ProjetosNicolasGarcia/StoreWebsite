@@ -204,13 +204,19 @@
                         Cupom de Desconto
                     </h2>
                     <div class="flex gap-2">
-                        <input type="text" wire:model.defer="couponCode" class="appearance-none rounded-xl block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm uppercase" placeholder="Digite seu cupom">
+                        <input type="text" wire:model="couponCode" class="appearance-none rounded-xl block w-full px-3 py-3 border {{ $errors->has('couponCode') ? 'border-red-500' : 'border-gray-300' }} placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm uppercase" placeholder="Digite seu cupom">
                         
                         <button type="button" wire:click="applyCoupon" class="bg-black text-white border border-black px-6 rounded-xl font-bold hover:bg-white hover:text-black transition duration-300 text-sm whitespace-nowrap cursor-pointer">
                             Aplicar
                         </button>
                     </div>
-                    @if (session()->has('coupon_success')) <p class="text-green-600 text-xs mt-2 font-bold">{{ session('coupon_success') }}</p> @endif
+                    {{-- Exibição de Erros e Sucesso do Cupom --}}
+                    @error('couponCode') 
+                        <p class="text-red-500 text-xs mt-2 font-bold">{{ $message }}</p> 
+                    @enderror
+                    @if (session()->has('coupon_success')) 
+                        <p class="text-green-600 text-xs mt-2 font-bold">{{ session('coupon_success') }}</p> 
+                    @endif
                 </section>
 
                 <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -314,7 +320,7 @@
                         </div>
                         @if($discount > 0)
                             <div class="flex justify-between text-sm text-green-600">
-                                <span>Desconto</span>
+                                <span>Desconto <span class="font-bold">{{ $couponDisplay }}</span></span>
                                 <span class="font-bold">- R$ {{ number_format($discount, 2, ',', '.') }}</span>
                             </div>
                         @endif
@@ -369,7 +375,7 @@
                         </div>
                         @if($discount > 0)
                             <div class="flex justify-between text-sm text-green-600">
-                                <span>Desconto</span>
+                                <span>Desconto <span class="font-bold">{{ $couponDisplay }}</span></span>
                                 <span class="font-bold">- R$ {{ number_format($discount, 2, ',', '.') }}</span>
                             </div>
                         @endif

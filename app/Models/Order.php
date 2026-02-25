@@ -127,4 +127,10 @@ class Order extends Model
             default => 'secondary',
         };
     }
+
+    // Adicione junto aos outros relacionamentos (user() e items())
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
+    }
 }

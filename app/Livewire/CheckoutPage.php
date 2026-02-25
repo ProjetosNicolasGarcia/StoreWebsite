@@ -7,6 +7,7 @@ use App\Models\CartItem;
 use App\Models\Address;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Coupon;
 use App\Services\ShippingService; 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,10 @@ class CheckoutPage extends Component
     public $shippingMethod = null; 
     public $shippingOptions = [];  
     public $paymentMethod = 'credit_card';
+    
     public $couponCode = '';
+    public $appliedCouponId = null; 
+    public $couponDisplay = ''; 
     
     public $cpf;
     public $phone;
@@ -67,7 +71,6 @@ class CheckoutPage extends Component
         return $rules;
     }
 
-    // Tradução das mensagens de erro para o usuário
     protected function messages()
     {
         return [
@@ -104,8 +107,24 @@ class CheckoutPage extends Component
         if ($this->selectedAddressId) {
             $address = Address::find($this->selectedAddressId);
             if ($address) {
+                // Para o mount() o cart já está hidratado
                 $this->shippingOptions = $this->shippingService->calculate($address->zip_code, $this->cartItems);
             }
+        }
+    }
+
+    /**
+     * Helper Central: Puxa o carrinho fresco do banco com todas as relações
+     * Essencial para evitar o LazyLoadingViolation após a desidratação do Livewire
+     */
+    public function loadCart()
+    {
+        $this->cartItems = CartItem::with(['product', 'variant'])
+            ->where('user_id', Auth::id())
+            ->get();
+
+        if ($this->cartItems->isEmpty()) {
+            return redirect()->route('cart.index')->with('status', 'Seu carrinho está vazio.');
         }
     }
 
@@ -115,6 +134,7 @@ class CheckoutPage extends Component
             $this->useNewAddress = false;
             $address = Address::find($value);
             if ($address) {
+                $this->loadCart(); // HIDRATA O CARRINHO ANTES DE ENVIAR PARA O SERVIÇO
                 $this->shippingOptions = $this->shippingService->calculate($address->zip_code, $this->cartItems);
             }
             $this->resetShippingSelection();
@@ -128,6 +148,7 @@ class CheckoutPage extends Component
             $this->shippingOptions = []; 
             $cep = preg_replace('/\D/', '', $this->newAddress['zip_code'] ?? '');
             if (strlen($cep) === 8) {
+                $this->loadCart(); // HIDRATA O CARRINHO
                 $this->shippingOptions = $this->shippingService->calculate($cep, $this->cartItems);
             }
             $this->resetShippingSelection();
@@ -142,8 +163,8 @@ class CheckoutPage extends Component
             if (strlen($cep) === 8) {
                 $this->fetchAddressFromCep($cep);
                 
-                // Só calcula o frete se o CEP for válido e existir
                 if (!$this->getErrorBag()->has('newAddress.zip_code')) {
+                    $this->loadCart(); // HIDRATA O CARRINHO
                     $this->shippingOptions = $this->shippingService->calculate($cep, $this->cartItems);
                 } else {
                     $this->shippingOptions = [];
@@ -163,7 +184,6 @@ class CheckoutPage extends Component
             if ($response->successful()) {
                 $data = $response->json();
                 
-                // Se a API retornar erro (CEP formato certo, mas não existe)
                 if (isset($data['erro']) && $data['erro'] == true) {
                     $this->addError('newAddress.zip_code', 'CEP inválido ou não encontrado.');
                     $this->newAddress['street'] = '';
@@ -197,22 +217,57 @@ class CheckoutPage extends Component
         $this->calculateTotals();
     }
 
-    public function loadCart()
+    public function applyCoupon()
     {
-        $this->cartItems = CartItem::with(['product', 'variant'])
-            ->where('user_id', Auth::id())
-            ->get();
+        $this->resetErrorBag('couponCode');
+        
+        $code = strtoupper(trim($this->couponCode));
 
-        if ($this->cartItems->isEmpty()) {
-            return redirect()->route('cart.index')->with('status', 'Seu carrinho está vazio.');
+        if (empty($code)) {
+            $this->addError('couponCode', 'Por favor, digite um código de cupom.');
+            $this->calculateTotals(); 
+            return;
         }
+
+        $coupon = Coupon::where('code', $code)->first();
+
+        if (!$coupon) {
+            $this->discount = 0;
+            $this->appliedCouponId = null;
+            $this->couponDisplay = '';
+            $this->addError('couponCode', 'Este cupom não existe. Verifique se digitou corretamente.');
+            $this->calculateTotals();
+            return;
+        }
+
+        // Reutiliza o loadCart para manter a Fonte Única da Verdade do carrinho
+        $this->loadCart();
+
+        $realSubtotal = 0;
+        foreach ($this->cartItems as $item) {
+            $realSubtotal += $item->total ?? ($item->quantity * ($item->variant ? $item->variant->price : $item->product->base_price));
+        }
+
+        $validation = $coupon->validateCoupon($realSubtotal);
+
+        if (!$validation['valid']) {
+            $this->discount = 0;
+            $this->appliedCouponId = null;
+            $this->couponDisplay = '';
+            $this->addError('couponCode', $validation['message']);
+        } else {
+            $this->appliedCouponId = $coupon->id;
+            $this->couponDisplay = $coupon->type === 'percentage' ? '(' . round($coupon->value) . '%)' : '';
+            session()->flash('coupon_success', 'Cupom aplicado com sucesso!');
+        }
+        
+        $this->calculateTotals();
     }
 
     public function calculateTotals()
     {
-        $this->cartItems = CartItem::with(['product', 'variant'])
-            ->where('user_id', Auth::id())
-            ->get();
+        // Ao chamar isso aqui, garantimos que qualquer mudança re-hidrate as relações para o Blade também
+        $this->loadCart(); 
 
         $sub = 0;
         foreach ($this->cartItems as $item) {
@@ -220,19 +275,25 @@ class CheckoutPage extends Component
         }
         $this->subtotal = $sub;
 
-        $this->total = ($this->subtotal + $this->shippingPrice) - $this->discount;
-    }
-
-    public function applyCoupon()
-    {
-        if (strtoupper($this->couponCode) === 'DESCONTO10') {
-            $this->discount = $this->subtotal * 0.10;
-            session()->flash('coupon_success', 'Cupom aplicado com sucesso!');
+        if ($this->appliedCouponId) {
+            $coupon = Coupon::find($this->appliedCouponId);
+            $validation = $coupon ? $coupon->validateCoupon($this->subtotal) : ['valid' => false];
+            
+            if ($coupon && $validation['valid']) {
+                $this->discount = $coupon->calculateDiscount($this->subtotal);
+                $this->couponDisplay = $coupon->type === 'percentage' ? '(' . round($coupon->value) . '%)' : '';
+            } else {
+                $this->appliedCouponId = null;
+                $this->discount = 0;
+                $this->couponDisplay = '';
+                $this->addError('couponCode', 'Cupom removido: ' . ($validation['message'] ?? 'Inválido para o carrinho atual.'));
+            }
         } else {
             $this->discount = 0;
-            $this->addError('couponCode', 'Cupom inválido ou expirado.');
+            $this->couponDisplay = '';
         }
-        $this->calculateTotals();
+
+        $this->total = ($this->subtotal + $this->shippingPrice) - $this->discount;
     }
 
     public function placeOrder()
@@ -241,20 +302,36 @@ class CheckoutPage extends Component
 
         DB::beginTransaction();
         try {
+            if ($this->appliedCouponId) {
+                $coupon = Coupon::where('id', $this->appliedCouponId)->lockForUpdate()->first();
+                $validation = $coupon ? $coupon->validateCoupon($this->subtotal) : ['valid' => false];
+                
+                if (!$coupon || !$validation['valid']) {
+                    DB::rollBack();
+                    $this->appliedCouponId = null;
+                    $this->calculateTotals();
+                    session()->flash('error', 'O cupom selecionado expirou ou esgotou seu limite enquanto você finalizava a compra. Revise o resumo e tente novamente.');
+                    return;
+                }
+                
+                $coupon->increment('used_count');
+            }
+
             $address = null;
             if ($this->useNewAddress || Auth::user()->addresses->isEmpty()) {
                 $address = Auth::user()->addresses()->create($this->newAddress);
             } else {
                 $address = Address::find($this->selectedAddressId);
             }
-
+            
             $order = Order::create([
                 'user_id' => Auth::id(),
-                'status' => Order::STATUS_PENDING,
-                'total_price' => $this->total,
-                'shipping_price' => $this->shippingPrice,
-                'discount' => $this->discount,
-                'payment_method' => $this->paymentMethod,
+                'coupon_id' => $this->appliedCouponId,
+                'status' => Order::STATUS_PENDING, 
+                'total_amount' => $this->total,
+                'shipping_cost' => $this->shippingPrice,
+                'discount' => $this->discount, 
+                'payment_method' => $this->paymentMethod, 
                 'address_json' => $address->toArray(), 
             ]);
 
@@ -281,6 +358,11 @@ class CheckoutPage extends Component
 
     public function render()
     {
+        // Proteção extra: Força a busca das relações no último milissegundo antes da tela ser desenhada
+        $this->cartItems = CartItem::with(['product', 'variant'])
+            ->where('user_id', Auth::id())
+            ->get();
+
         return view('livewire.checkout-page')->layout('components.layout', ['title' => 'Checkout Segura']);
     }
 }
