@@ -18,7 +18,7 @@ class CouponResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-ticket';
     
     // Agrupando no menu lateral (ajuste conforme o nome do seu grupo atual)
-    protected static ?string $navigationGroup = 'Loja';
+    //protected static ?string $navigationGroup = 'Loja';
     
     protected static ?string $modelLabel = 'Cupom';
     protected static ?string $pluralModelLabel = 'Cupons';

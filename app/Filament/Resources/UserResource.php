@@ -44,7 +44,7 @@ class UserResource extends Resource
                             ->description('Informações de identificação do cliente.')
                             ->schema([
                                 Forms\Components\TextInput::make('name')
-                                    ->label('Nome Completo')
+                                    ->label('Nome')
                                     ->required()
                                     ->maxLength(255)
                                     ->prefixIcon('heroicon-m-user')
@@ -52,6 +52,16 @@ class UserResource extends Resource
                                     ->disabled(fn (string $operation) => $operation === 'edit')
                                     ->suffixIcon(fn (string $operation) => $operation === 'edit' ? 'heroicon-m-lock-closed' : null)
                                     ->dehydrated(), // Garante envio ao banco na criação
+
+                                Forms\Components\TextInput::make('last_name')
+                                    ->label('Sobrenome')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->prefixIcon('heroicon-m-user')
+                                    // Mesma regra de bloqueio do nome
+                                    ->disabled(fn (string $operation) => $operation === 'edit')
+                                    ->suffixIcon(fn (string $operation) => $operation === 'edit' ? 'heroicon-m-lock-closed' : null)
+                                    ->dehydrated(),
 
                                 Forms\Components\TextInput::make('email')
                                     ->label('E-mail')
@@ -65,7 +75,7 @@ class UserResource extends Resource
                                     ->helperText(fn (string $operation) => $operation === 'edit'
                                         ? 'Por segurança, o e-mail não pode ser alterado pelo painel. Contate o suporte técnico se necessário.'
                                         : null),
-                            ]),
+                            ])->columns(2), // Organiza o Nome e Sobrenome lado a lado
                     ])
                     ->columnSpan(['lg' => 2]),
 
@@ -115,10 +125,11 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Nome')
-                    ->searchable()
-                    ->sortable()
+                Tables\Columns\TextColumn::make('full_name') // Nome virtual da coluna concatenada
+                    ->label('Nome Completo')
+                    ->state(fn ($record) => trim($record->name . ' ' . $record->last_name))
+                    ->searchable(['name', 'last_name']) // Permite pesquisar tanto pelo nome quanto pelo sobrenome
+                    ->sortable(['name', 'last_name'])   // Ordena de forma inteligente
                     ->weight('bold'),
 
                 Tables\Columns\TextColumn::make('email')
