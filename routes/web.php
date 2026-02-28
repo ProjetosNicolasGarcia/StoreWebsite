@@ -202,6 +202,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Rotas do Livewire (Checkout) usando namespace absoluto
     Route::get('/checkout', \App\Livewire\CheckoutPage::class)->name('checkout');
+
+    // Direcionar para a página de sucesso do pedido
+    Route::get('/pedido-confirmado/{order}', \App\Livewire\SuccessPage::class)->name('checkout.success');
    
 
     // Rotas para completar perfil

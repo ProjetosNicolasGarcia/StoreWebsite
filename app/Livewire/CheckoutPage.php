@@ -35,6 +35,8 @@ class CheckoutPage extends Component
     public $firstName;
     public $lastName;
 
+    public $offerSavings = 0;
+
     public $useNewAddress = false;
     public $newAddress = [
         'zip_code' => '', 'street' => '', 'number' => '', 
@@ -91,13 +93,10 @@ class CheckoutPage extends Component
         ];
     }
 
-public function mount()
+    public function mount()
     {
-        // 1. O método fresh() atualiza a instância da sessão com os dados mais recentes do banco,
-        // garantindo que a nova coluna 'last_name' seja reconhecida.
         $user = Auth::user()->fresh();
 
-        // 2. Refatorado de fullName para name e lastName com proteção contra nulos
         $this->firstName = $user->name;
         $this->lastName = $user->last_name ?? '';
         $this->cpf = $user->cpf ?? ''; 
@@ -115,16 +114,11 @@ public function mount()
         if ($this->selectedAddressId) {
             $address = Address::find($this->selectedAddressId);
             if ($address) {
-                // Para o mount() o cart já está hidratado
                 $this->shippingOptions = $this->shippingService->calculate($address->zip_code, $this->cartItems);
             }
         }
     }
 
-    /**
-     * Helper Central: Puxa o carrinho fresco do banco com todas as relações
-     * Essencial para evitar o LazyLoadingViolation após a desidratação do Livewire
-     */
     public function loadCart()
     {
         $this->cartItems = CartItem::with(['product', 'variant'])
@@ -142,7 +136,7 @@ public function mount()
             $this->useNewAddress = false;
             $address = Address::find($value);
             if ($address) {
-                $this->loadCart(); // HIDRATA O CARRINHO ANTES DE ENVIAR PARA O SERVIÇO
+                $this->loadCart();
                 $this->shippingOptions = $this->shippingService->calculate($address->zip_code, $this->cartItems);
             }
             $this->resetShippingSelection();
@@ -156,7 +150,7 @@ public function mount()
             $this->shippingOptions = []; 
             $cep = preg_replace('/\D/', '', $this->newAddress['zip_code'] ?? '');
             if (strlen($cep) === 8) {
-                $this->loadCart(); // HIDRATA O CARRINHO
+                $this->loadCart(); 
                 $this->shippingOptions = $this->shippingService->calculate($cep, $this->cartItems);
             }
             $this->resetShippingSelection();
@@ -172,7 +166,7 @@ public function mount()
                 $this->fetchAddressFromCep($cep);
                 
                 if (!$this->getErrorBag()->has('newAddress.zip_code')) {
-                    $this->loadCart(); // HIDRATA O CARRINHO
+                    $this->loadCart();
                     $this->shippingOptions = $this->shippingService->calculate($cep, $this->cartItems);
                 } else {
                     $this->shippingOptions = [];
@@ -248,7 +242,6 @@ public function mount()
             return;
         }
 
-        // Reutiliza o loadCart para manter a Fonte Única da Verdade do carrinho
         $this->loadCart();
 
         $realSubtotal = 0;
@@ -272,41 +265,59 @@ public function mount()
         $this->calculateTotals();
     }
 
-    public function calculateTotals()
+   public function calculateTotals()
     {
-        // Ao chamar isso aqui, garantimos que qualquer mudança re-hidrate as relações para o Blade também
         $this->loadCart(); 
 
-        $sub = 0;
+        $currentSubtotal = 0;
+        $fullPriceSubtotal = 0;
+        $now = now(); // Puxa a data e hora atual do sistema
+
         foreach ($this->cartItems as $item) {
-            $sub += $item->total ?? ($item->quantity * ($item->variant ? $item->variant->price : $item->product->base_price));
+            $base = (float) ($item->variant ? $item->variant->price : $item->product->base_price);
+            $unit = $base;
+            
+            // VERIFICAÇÃO RIGOROSA DE DATAS PARA A VARIANTE
+            if ($item->variant && !is_null($item->variant->sale_price) && (float)$item->variant->sale_price > 0 && (float)$item->variant->sale_price < $base) {
+                $start = $item->variant->sale_start_date;
+                $end = $item->variant->sale_end_date;
+                
+                // Só aplica se não tiver data, ou se a data atual estiver dentro do prazo
+                if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
+                    $unit = (float) $item->variant->sale_price;
+                }
+            } 
+            // VERIFICAÇÃO RIGOROSA DE DATAS PARA O PRODUTO BASE
+            elseif (!is_null($item->product->sale_price) && (float)$item->product->sale_price > 0 && (float)$item->product->sale_price < $base) {
+                $start = $item->product->sale_start_date;
+                $end = $item->product->sale_end_date;
+                
+                if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
+                    $unit = (float) $item->product->sale_price;
+                }
+            }
+
+            $currentSubtotal += ($unit * $item->quantity);
+            $fullPriceSubtotal += ($base * $item->quantity);
         }
-        $this->subtotal = $sub;
+
+        $this->subtotal = round($currentSubtotal, 2);
+        
+        $savings = round($fullPriceSubtotal - $currentSubtotal, 2);
+        $this->offerSavings = $savings > 0 ? $savings : 0;
 
         if ($this->appliedCouponId) {
             $coupon = Coupon::find($this->appliedCouponId);
-            $validation = $coupon ? $coupon->validateCoupon($this->subtotal) : ['valid' => false];
-            
-            if ($coupon && $validation['valid']) {
-                $this->discount = $coupon->calculateDiscount($this->subtotal);
-                $this->couponDisplay = $coupon->type === 'percentage' ? '(' . round($coupon->value) . '%)' : '';
-            } else {
-                $this->appliedCouponId = null;
-                $this->discount = 0;
-                $this->couponDisplay = '';
-                $this->addError('couponCode', 'Cupom removido: ' . ($validation['message'] ?? 'Inválido para o carrinho atual.'));
-            }
-        } else {
-            $this->discount = 0;
-            $this->couponDisplay = '';
+            $this->discount = $coupon ? $coupon->calculateDiscount($this->subtotal) : 0;
         }
 
-        $this->total = ($this->subtotal + $this->shippingPrice) - $this->discount;
+        $this->total = round(($this->subtotal + $this->shippingPrice) - $this->discount, 2);
     }
 
-    public function placeOrder()
+   public function placeOrder()
     {
         $this->validate();
+        $this->loadCart();
 
         DB::beginTransaction();
         try {
@@ -332,41 +343,78 @@ public function mount()
                 $address = Address::find($this->selectedAddressId);
             }
             
+            // Puxa o nome legível da transportadora em vez do ID
+            $shippingMethodName = 'Desconhecido';
+            if ($this->shippingMethod && is_array($this->shippingOptions)) {
+                foreach ($this->shippingOptions as $option) {
+                    if ($option['id'] == $this->shippingMethod) {
+                        $shippingMethodName = $option['name'];
+                        break;
+                    }
+                }
+            }
+            
             $order = Order::create([
                 'user_id' => Auth::id(),
                 'coupon_id' => $this->appliedCouponId,
                 'status' => Order::STATUS_PENDING, 
-                'total_amount' => $this->total,
+                'total_amount' => $this->total,   
                 'shipping_cost' => $this->shippingPrice,
-                'discount' => $this->discount, 
+                'shipping_method' => $shippingMethodName, 
+                'discount' => $this->discount,    
                 'payment_method' => $this->paymentMethod, 
-                'address_json' => $address->toArray(), 
+                'address_json' => $address ? $address->toArray() : [], 
             ]);
 
             foreach ($this->cartItems as $item) {
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $item->product_id,
-                    'product_variant_id' => $item->product_variant_id,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->total / $item->quantity,
-                ]);
-            }
+                            $base = (float) ($item->variant ? $item->variant->price : $item->product->base_price);
+                            $unitPrice = $base;
+                            $now = now();
+                        
+                            // Valida as datas antes de salvar o valor no banco
+                            if ($item->variant && !is_null($item->variant->sale_price) && (float)$item->variant->sale_price > 0 && (float)$item->variant->sale_price < $base) {
+                                $start = $item->variant->sale_start_date;
+                                $end = $item->variant->sale_end_date;
+                                if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
+                                    $unitPrice = (float) $item->variant->sale_price;
+                                }
+                            } elseif (!is_null($item->product->sale_price) && (float)$item->product->sale_price > 0 && (float)$item->product->sale_price < $base) {
+                                $start = $item->product->sale_start_date;
+                                $end = $item->product->sale_end_date;
+                                if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
+                                    $unitPrice = (float) $item->product->sale_price;
+                                }
+                            }
+
+                            $productName = $item->product->name;
+
+                            OrderItem::create([
+                                'order_id' => $order->id,
+                                'product_id' => $item->product_id,
+                                'product_variant_id' => $item->product_variant_id,
+                                'product_name' => $productName, 
+                                'quantity' => $item->quantity,
+                                'unit_price' => $unitPrice,
+                            ]);
+                        }
 
             CartItem::where('user_id', Auth::id())->delete();
             DB::commit();
 
-            return redirect()->route('profile.orders')->with('status', 'Pedido realizado com sucesso! Aguardando pagamento.');
+            // DISPARO DE EVENTO PARA O ALPINE/LIVEWIRE: Limpa contadores globais de carrinho.
+            $this->dispatch('cart-updated');
+
+            return redirect()->route('checkout.success', ['order' => $order->id]);
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Falha no Checkout: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             session()->flash('error', 'Ocorreu um erro ao processar seu pedido. Tente novamente.');
         }
     }
 
     public function render()
     {
-        // Proteção extra: Força a busca das relações no último milissegundo antes da tela ser desenhada
         $this->cartItems = CartItem::with(['product', 'variant'])
             ->where('user_id', Auth::id())
             ->get();

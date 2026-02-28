@@ -1,4 +1,4 @@
-<div class="bg-gray-50 min-h-screen pt-32 pb-10"
+<div class=" min-h-screen pt-32 pb-10"
      x-data="{
          formatCEP(value) { 
              let v = value.replace(/\D/g, ''); 
@@ -32,7 +32,7 @@
             {{-- COLUNA ESQUERDA --}}
             <div class="order-2 lg:order-1 w-full lg:w-2/3 space-y-6">
                 
-                <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <section class="bg-white p-6 rounded-2xl border border-gray-100">
                     <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">1</span> 
                         Identificação
@@ -43,7 +43,7 @@
                     </div>
                 </section>
 
-                <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative">
+                <section class="bg-white p-6 rounded-2xl border border-gray-100 relative">
                     <div wire:loading wire:target="selectedAddressId, useNewAddress" class="absolute inset-0 z-10 bg-white/50 backdrop-blur-[1px] rounded-2xl"></div>
                     <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">2</span> 
@@ -120,17 +120,15 @@
                     </div>
                 </section>
 
-           <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+               <section class="bg-white p-6 rounded-2xl border border-gray-100">
                     
                     <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">3</span> 
                         Opções de Frete
                     </h2>
                     
-                    {{-- Wrapper com w-full garantido --}}
                     <div class="relative min-h-[100px] w-full">
                         
-                        {{-- O SEGREDO AQUI: wire:loading.flex em vez de apenas wire:loading --}}
                         <div wire:loading.flex wire:target="newAddress.zip_code, selectedAddressId, useNewAddress" 
                              class="absolute inset-0 z-20 flex-col items-center justify-center text-black">
                             <svg class="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -140,7 +138,6 @@
                             <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500">Calculando...</span>
                         </div>
                         
-                        {{-- O conteúdo do frete --}}
                         <div wire:loading.class="opacity-20 pointer-events-none blur-[2px]" wire:target="newAddress.zip_code, selectedAddressId, useNewAddress" class="transition-all duration-300 w-full">
                             @if(count($shippingOptions) > 0)
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -174,13 +171,12 @@
                     
                     @error('shippingMethod') <span class="text-red-500 text-xs font-bold mt-2 block">{{ $message }}</span> @enderror
                 </section>
-               <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <section class="bg-white p-6 rounded-2xl border border-gray-100">
                     <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">4</span> 
                         Dados Pessoais
                     </h2>
                     
-                    {{-- Grid nivelada com gap-y-6 para um excelente respiro vertical --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-4">
                         
                         <div>
@@ -210,7 +206,7 @@
                     </div>
                 </section>
 
-                <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <section class="bg-white p-6 rounded-2xl border border-gray-100">
                     <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">5</span> 
                         Cupom de Desconto
@@ -222,7 +218,6 @@
                             Aplicar
                         </button>
                     </div>
-                    {{-- Exibição de Erros e Sucesso do Cupom --}}
                     @error('couponCode') 
                         <p class="text-red-500 text-xs mt-2 font-bold">{{ $message }}</p> 
                     @enderror
@@ -231,7 +226,7 @@
                     @endif
                 </section>
 
-                <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <section class="bg-white p-6 rounded-2xl border border-gray-100">
                     <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">6</span> 
                         Forma de Pagamento
@@ -293,7 +288,7 @@
 
                         {{-- BLOCO PIX --}}
                         <div x-show="payMethod === 'pix'" x-transition style="display: none;" class="mt-4 bg-gray-50 p-6 rounded-xl border border-gray-200 text-center flex flex-col items-center justify-center">
-                            <div class="bg-white p-3 rounded-full shadow-sm mb-3">
+                            <div class="bg-white p-3 rounded-full mb-3">
                                 <svg class="w-10 h-10 text-gray-900" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor">
                                     <path d="M306.4 356.5C311.8 351.1 321.1 351.1 326.5 356.5L403.5 433.5C417.7 447.7 436.6 455.5 456.6 455.5L471.7 455.5L374.6 552.6C344.3 582.1 295.1 582.1 264.8 552.6L167.3 455.2L176.6 455.2C196.6 455.2 215.5 447.4 229.7 433.2L306.4 356.5zM326.5 282.9C320.1 288.4 311.9 288.5 306.4 282.9L229.7 206.2C215.5 191.1 196.6 184.2 176.6 184.2L167.3 184.2L264.7 86.8C295.1 56.5 344.3 56.5 374.6 86.8L471.8 183.9L456.6 183.9C436.6 183.9 417.7 191.7 403.5 205.9L326.5 282.9zM176.6 206.7C190.4 206.7 203.1 212.3 213.7 222.1L290.4 298.8C297.6 305.1 307 309.6 316.5 309.6C325.9 309.6 335.3 305.1 342.5 298.8L419.5 221.8C429.3 212.1 442.8 206.5 456.6 206.5L494.3 206.5L552.6 264.8C582.9 295.1 582.9 344.3 552.6 374.6L494.3 432.9L456.6 432.9C442.8 432.9 429.3 427.3 419.5 417.5L342.5 340.5C328.6 326.6 304.3 326.6 290.4 340.6L213.7 417.2C203.1 427 190.4 432.6 176.6 432.6L144.8 432.6L86.8 374.6C56.5 344.3 56.5 295.1 86.8 264.8L144.8 206.7L176.6 206.7z"/>
                                 </svg>
@@ -304,7 +299,7 @@
 
                         {{-- BLOCO BOLETO --}}
                         <div x-show="payMethod === 'boleto'" x-transition style="display: none;" class="mt-4 bg-gray-50 p-6 rounded-xl border border-gray-200 text-center flex flex-col items-center justify-center">
-                            <div class="bg-white p-3 rounded-full shadow-sm mb-3">
+                            <div class="bg-white p-3 rounded-full mb-3">
                                 <svg class="w-10 h-10 text-gray-900" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M4 6h2v12H4zm3 0h1v12H7zm2 0h3v12H9zm4 0h1v12h-1zm2 0h2v12h-2zm3 0h2v12h-2z"/>
                                 </svg>
@@ -316,26 +311,43 @@
                     </div>
                 </section>
 
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:hidden mb-6">
+                {{-- Resumo Mobile --}}
+                <div class="bg-white p-6 rounded-2xl border border-gray-100 lg:hidden mb-6">
                     <div wire:loading wire:target="shippingMethod" class="w-full h-full absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 rounded-2xl"></div>
                     <h3 class="font-bold text-gray-900 mb-4 uppercase tracking-tight text-lg">Total da Compra</h3>
                     <div class="space-y-3 relative z-0">
                         <div class="flex justify-between text-sm text-gray-600">
-                            <span>Subtotal</span>
-                            <span class="font-medium text-gray-900">R$ {{ number_format($subtotal, 2, ',', '.') }}</span>
+                            <span>Preço</span>
+                            <span class="font-medium text-gray-900">R$ {{ number_format($subtotal + $offerSavings, 2, ',', '.') }}</span>
                         </div>
-                        <div class="flex justify-between text-sm text-gray-600">
-                            <span>Frete</span>
-                            <span class="font-medium text-gray-900">
-                                {{ $shippingPrice > 0 ? 'R$ ' . number_format($shippingPrice, 2, ',', '.') : '---' }}
-                            </span>
-                        </div>
-                        @if($discount > 0)
-                            <div class="flex justify-between text-sm text-green-600">
-                                <span>Desconto <span class="font-bold">{{ $couponDisplay }}</span></span>
-                                <span class="font-bold">- R$ {{ number_format($discount, 2, ',', '.') }}</span>
+                        
+                        {{-- Correção da margem do Mobile (> 0.01) --}}
+                        @if($offerSavings > 0.01)
+                            <div class="flex justify-between text-sm text-emerald-600 font-bold">
+                                <span>Desconto de Ofertas</span>
+                                <span>- R$ {{ number_format($offerSavings, 2, ',', '.') }}</span>
                             </div>
                         @endif
+
+                        <div class="flex justify-between text-sm text-gray-600">
+                            <span>Frete</span>
+                            <span class="text-gray-900 font-medium">
+                                @if(is_null($shippingMethod) || $shippingMethod === '')
+                                    —
+                                @else
+                                    {!! $shippingPrice > 0 ? 'R$ ' . number_format($shippingPrice, 2, ',', '.') : '<span class="text-emerald-600 font-bold">Grátis</span>' !!}
+                                @endif
+                            </span>
+                        </div>
+                        
+                        {{-- Correção da margem do Mobile (> 0.01) --}}
+                        @if($discount > 0.01)
+                            <div class="flex justify-between text-sm text-blue-600 font-bold">
+                                <span>Desconto <span class="font-bold">{{ $couponDisplay }}</span></span>
+                                <span>- R$ {{ number_format($discount, 2, ',', '.') }}</span>
+                            </div>
+                        @endif
+                        
                         <div class="flex justify-between items-center pt-3 border-t border-gray-100 mt-3">
                             <span class="font-bold text-lg text-gray-900">Total</span>
                             <span class="font-black text-2xl text-black">R$ {{ number_format($total, 2, ',', '.') }}</span>
@@ -351,46 +363,139 @@
 
             {{-- COLUNA DIREITA: Resumo dos Produtos --}}
             <div class="order-1 lg:order-2 w-full lg:w-1/3">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 sticky top-24 relative">
+                <div class="bg-white p-6 rounded-2xl border border-gray-100 sticky top-24 relative">
                     
                     <div wire:loading wire:target="shippingMethod" class="absolute inset-0 z-10 flex items-center justify-center bg-white/50 backdrop-blur-[1px] rounded-2xl"></div>
 
                     <h2 class="text-xl font-bold text-gray-900 mb-6 uppercase tracking-tight">Resumo do Pedido</h2>
-                    
                     <div class="space-y-4 mb-6 pr-2 relative z-0">
                         @foreach($cartItems as $item)
+                            @php
+                                $img = $item->product->image_url; 
+                                if ($item->variant) {
+                                    if ($item->variant->image) {
+                                        $img = $item->variant->image;
+                                    } elseif (!empty($item->variant->images) && isset($item->variant->images[0])) {
+                                        $img = $item->variant->images[0];
+                                    } 
+                                    else {
+                                        $colorOptions = ['Cor', 'Color', 'COR', 'cor', 'color'];
+                                        $variantColor = null;
+                                        if (is_array($item->variant->options)) {
+                                            foreach ($colorOptions as $key) {
+                                                if (isset($item->variant->options[$key])) {
+                                                    $variantColor = $item->variant->options[$key];
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if ($variantColor && $item->product->variants) {
+                                            foreach ($item->product->variants as $sibling) {
+                                                if ($sibling->id === $item->variant->id) continue;
+                                                $siblingColor = null;
+                                                if ($sibling->options) {
+                                                    foreach ($colorOptions as $key) {
+                                                        if (isset($sibling->options[$key])) {
+                                                            $siblingColor = $sibling->options[$key];
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                                if ($siblingColor === $variantColor) {
+                                                    if ($sibling->image) {
+                                                        $img = $sibling->image;
+                                                        break;
+                                                    } elseif (!empty($sibling->images) && isset($sibling->images[0])) {
+                                                        $img = $sibling->images[0];
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            @endphp
+
                             <div class="flex gap-4">
-                                <div class="w-16 h-20 bg-gray-50 rounded-md overflow-hidden flex-shrink-0 border border-gray-100 flex items-center justify-center">
-                                    <img src="{{ Storage::url($item->product->image_url ?? '') }}" class="w-full h-full object-contain p-1">
+                                <div class="w-16 h-20 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 border border-gray-200 flex items-center justify-center">
+                                    <img src="{{ Storage::url($img) }}" alt="{{ $item->product->name }}" class="w-full h-full object-cover">
                                 </div>
-                                <div class="flex-1 flex flex-col justify-between">
+                                <div class="flex-1 flex flex-col justify-between py-1">
                                     <div>
                                         <p class="font-bold text-sm text-gray-900 line-clamp-2">{{ $item->product->name }}</p>
+                                        
+                                        @if($item->variant && is_array($item->variant->options) && count($item->variant->options) > 0)
+                                            <div class="flex flex-wrap gap-x-3 text-xs text-gray-500 mt-1">
+                                                @foreach($item->variant->options as $key => $value)
+                                                    <span><strong class="font-semibold text-gray-700">{{ ucfirst($key) }}:</strong> {{ $value }}</span>
+                                                @endforeach
+                                            </div>
+                                        @endif
+
                                         <p class="text-xs text-gray-500 mt-1">Qtd: {{ $item->quantity }}</p>
                                     </div>
-                                    <p class="font-bold text-sm text-gray-900">R$ {{ number_format($item->total, 2, ',', '.') }}</p>
+                                   @php
+                                    $basePrice = $item->variant ? $item->variant->price : $item->product->base_price;
+                                    $finalUnitPrice = $basePrice;
+                                    $now = now();
+                                    
+                                    if ($item->variant && $item->variant->sale_price > 0 && $item->variant->sale_price < $basePrice) {
+                                        $start = $item->variant->sale_start_date;
+                                        $end = $item->variant->sale_end_date;
+                                        if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
+                                            $finalUnitPrice = $item->variant->sale_price;
+                                        }
+                                    } elseif ($item->product->sale_price > 0 && $item->product->sale_price < $basePrice) {
+                                        $start = $item->product->sale_start_date;
+                                        $end = $item->product->sale_end_date;
+                                        if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
+                                            $finalUnitPrice = $item->product->sale_price;
+                                        }
+                                    }
+                                @endphp
+                                
+                                <div class="mt-2">
+                                    <p class="font-bold text-sm text-gray-900">
+                                        R$ {{ number_format($finalUnitPrice * $item->quantity, 2, ',', '.') }}
+                                    </p>
+                                </div>
                                 </div>
                             </div>
                         @endforeach
                     </div>
 
-                    <div class="border-t border-gray-100 pt-4 space-y-3 hidden lg:block relative z-0">
+                    <div class="border-t border-gray-100 pt-4 space-y-3">
                         <div class="flex justify-between text-sm text-gray-600">
-                            <span>Subtotal</span>
-                            <span class="font-medium text-gray-900">R$ {{ number_format($subtotal, 2, ',', '.') }}</span>
+                            <span>Preço </span>
+                            <span class="text-gray-900 font-medium">R$ {{ number_format($subtotal + $offerSavings, 2, ',', '.') }}</span>
                         </div>
-                        <div class="flex justify-between text-sm text-gray-600">
-                            <span>Frete</span>
-                            <span class="font-medium text-gray-900">
-                                {{ $shippingPrice > 0 ? 'R$ ' . number_format($shippingPrice, 2, ',', '.') : '---' }}
-                            </span>
-                        </div>
-                        @if($discount > 0)
-                            <div class="flex justify-between text-sm text-green-600">
-                                <span>Desconto <span class="font-bold">{{ $couponDisplay }}</span></span>
-                                <span class="font-bold">- R$ {{ number_format($discount, 2, ',', '.') }}</span>
+
+                        {{-- Correção Descontos Desktop (> 0.01) --}}
+                        @if($offerSavings > 0.01)
+                            <div class="flex justify-between text-sm text-emerald-600 font-bold">
+                                <span>Desconto de Ofertas</span>
+                                <span>- R$ {{ number_format($offerSavings, 2, ',', '.') }}</span>
                             </div>
                         @endif
+
+                        @if($discount > 0.01)
+                            <div class="flex justify-between text-sm text-emerald-600  font-bold">
+                                <span>Cupom Aplicado {{ $couponDisplay }}</span>
+                                <span>- R$ {{ number_format($discount, 2, ',', '.') }}</span>
+                            </div>
+                        @endif
+
+                        <div class="flex justify-between text-sm text-gray-600">
+                            <span>Frete</span>
+                            <span class="text-gray-900 font-medium">
+                                @if(is_null($shippingMethod) || $shippingMethod === '')
+                                    —
+                                @else
+                                    {!! $shippingPrice > 0 ? 'R$ ' . number_format($shippingPrice, 2, ',', '.') : '<span class="text-emerald-600 font-bold">Grátis</span>' !!}
+                                @endif
+                            </span>
+                        </div>
+
                         <div class="flex justify-between items-center pt-3 border-t border-gray-100 mt-3">
                             <span class="font-bold text-lg text-gray-900">Total</span>
                             <span class="font-black text-2xl text-black">R$ {{ number_format($total, 2, ',', '.') }}</span>
