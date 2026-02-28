@@ -25,18 +25,21 @@ class StoreAuthController extends Controller
 
     public function showLoginForm()
     {
-        return view('auth.login');
+        // O sistema usa o componente Alpine (auth-slider) na página inicial.
+        // Se baterem na rota /login, redirecionamos em segurança para a home.
+        return redirect('/');
     }
 
     public function showRegisterForm()
     {
-        return view('auth.register');
+        // O mesmo para a rota /register
+        return redirect('/');
     }
 
     public function showTwoFactorForm()
     {
         if (!Session::has('auth.2fa.id') && !Session::has('auth.registration_email')) {
-            return redirect()->route('login');
+            return redirect('/'); // Alterado de route('login') para '/'
         }
         return view('auth.two-factor');
     }
@@ -91,7 +94,7 @@ class StoreAuthController extends Controller
     // REGISTRO
     // =========================================================================
 
-    public function register(Request $request)
+  public function register(Request $request)
     {
         $passwordRules = PasswordRules::min(8)
             ->letters()
@@ -99,49 +102,32 @@ class StoreAuthController extends Controller
             ->numbers()
             ->symbols();
 
-        // Regex Estrita para Telefone (XX) 9XXXX-XXXX
         $phoneRegex = '/^\(?[1-9]{2}\)?\s?(?:9)[0-9]{4}\-?[0-9]{4}$/';
-        
-        // Regex Estrita para CPF 000.000.000-00
         $cpfRegex = '/^\d{3}\.\d{3}\.\d{3}\-\d{2}$/';
-
-        // [NOVO] Regex Estrita para E-mail (Exige algo@dominio.extensao)
         $emailRegex = '/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/';
 
         $messages = [
             'required' => 'Este campo é obrigatório.',
             'name.required' => 'Precisamos do seu nome para criar a conta.',
-            
+            'last_name.required' => 'O sobrenome é obrigatório para processamento de pagamentos.',
             'email.required' => 'O campo e-mail é obrigatório.',
             'email.email' => 'Por favor, insira um endereço de e-mail válido.',
             'email.unique' => 'Este e-mail já está sendo usado por outra conta.',
-            // [NOVO] Mensagem específica para formato de e-mail incorreto
             'email.regex' => 'O formato do e-mail é inválido. Certifique-se de usar "nome@dominio.com".',
-            
             'cpf.unique' => 'Este CPF já possui uma conta cadastrada.',
             'cpf.regex' => 'O CPF deve estar no formato 000.000.000-00 e conter 11 dígitos.',
-            
             'phone.regex' => 'O telefone deve incluir DDD e começar com 9. Ex: (11) 99999-9999.',
             'phone.unique' => 'Este número de telefone já está cadastrado.',
-            
             'password.required' => 'Crie uma senha para sua segurança.',
             'password.confirmed' => 'A confirmação de senha não confere.',
-            'password.min' => 'A senha deve ter pelo menos 8 caracteres.',
-            'password.letters' => 'A senha deve conter pelo menos uma letra.',
-            'password.mixed' => 'A senha deve conter letras maiúsculas e minúsculas.',
-            'password.numbers' => 'A senha deve conter pelo menos um número.',
-            'password.symbols' => 'A senha deve conter pelo menos um símbolo (ex: @, #, $).',
-            
             'birth_date.required' => 'A data de nascimento é obrigatória.',
             'birth_date.before_or_equal' => 'Você precisa ter pelo menos 18 anos para criar uma conta.',
         ];
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            
-            // [ALTERAÇÃO] Adicionada regex ao e-mail
+            'last_name' => 'required|string|max:255', // NOVO CAMPO
             'email' => ['required', 'string', 'email:rfc,dns', 'max:255', 'unique:users', 'regex:'.$emailRegex],
-            
             'password' => ['required', 'confirmed', $passwordRules],
             'cpf' => ['nullable', 'string', 'regex:' . $cpfRegex, 'unique:users'],
             'phone' => ['nullable', 'string', 'max:20', 'unique:users', 'regex:' . $phoneRegex],
@@ -152,6 +138,7 @@ class StoreAuthController extends Controller
 
         $registrationData = [
             'name' => $validated['name'],
+            'last_name' => $validated['last_name'], // NOVO CAMPO
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'cpf' => $validated['cpf'] ?? null,
@@ -282,7 +269,7 @@ class StoreAuthController extends Controller
         return Socialite::driver('google')->redirect();
     }
 
-    public function handleGoogleCallback()
+  public function handleGoogleCallback()
     {
         try {
             // Stateless é importante para localhost/127.0.0.1
@@ -290,19 +277,33 @@ class StoreAuthController extends Controller
             
             $user = User::where('google_id', $googleUser->id)->orWhere('email', $googleUser->email)->first();
 
+            // Acessamos o array bruto ('user') retornado pela API do Google
+            // O Google já separa inteligentemente o given_name (Nome) e o family_name (Sobrenome)
+            $firstName = $googleUser->user['given_name'] ?? $googleUser->name;
+            $lastName = $googleUser->user['family_name'] ?? '';
+
             if ($user) {
-                $user->update(['google_id' => $googleUser->id, 'avatar' => $googleUser->avatar]);
+                // Atualiza os tokens do Google, mas NÃO sobrescreve o nome e sobrenome
+                // Isso respeita caso o cliente tenha editado os próprios dados na aba "Meus Dados"
+                $user->update([
+                    'google_id' => $googleUser->id, 
+                    'avatar' => $googleUser->avatar
+                ]);
             } else {
+                // Criação de nova conta com os dados exatos do Google
                 $user = User::create([
-                    'name' => $googleUser->name, 'email' => $googleUser->email,
-                    'google_id' => $googleUser->id, 'avatar' => $googleUser->avatar,
+                    'name' => $firstName, 
+                    'last_name' => $lastName, // Agora recebe o family_name exato
+                    'email' => $googleUser->email,
+                    'google_id' => $googleUser->id, 
+                    'avatar' => $googleUser->avatar,
                     'password' => Hash::make(uniqid()),
                 ]);
             }
             Auth::login($user);
             return redirect()->route('profile.index');
         } catch (\Exception $e) {
-            return redirect()->route('login')->withErrors(['email' => 'Não foi possível entrar com o Google.']);
+            return redirect('/')->withErrors(['email' => 'Não foi possível entrar com o Google.']);
         }
     }
 
@@ -409,11 +410,14 @@ class StoreAuthController extends Controller
             'cpf.regex' => 'O CPF deve estar no formato 000.000.000-00.',
             'phone.required' => 'O telefone é obrigatório para contato de entrega.',
             'phone.regex' => 'Formato de telefone inválido. Use (DD) 90000-0000.',
+            'birth_date.required' => 'A data de nascimento é obrigatória.',
+            'birth_date.before_or_equal' => 'É necessário ter pelo menos 18 anos.',
         ];
 
         $request->validate([
             'cpf' => ['required', 'string', 'regex:' . $cpfRegex, 'unique:users,cpf,' . Auth::id()],
             'phone' => ['required', 'string', 'max:20', 'regex:'.$phoneRegex],
+            'birth_date' => 'required|date|before_or_equal:-18 years',
         ], $messages);
 
         $user = Auth::user(); 
@@ -421,6 +425,7 @@ class StoreAuthController extends Controller
         $user->forceFill([
             'cpf' => $request->cpf,
             'phone' => $request->phone,
+            'birth_date' => $request->birth_date,
         ])->save();
 
         return redirect()->route('profile.index')->with('status', 'Perfil completado com sucesso!');

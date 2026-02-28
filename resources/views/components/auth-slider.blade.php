@@ -8,6 +8,7 @@
         password: '',
         code: '',
         name: '',
+        last_name: '',
         password_confirmation: '',
         cpf: '',
         phone: '',
@@ -91,12 +92,13 @@
         async submitRegister() {
             this.loading = true;
             this.errors = {};
-            try {
+           try {
                 const res = await axios.post('{{ route('register') }}', {
-                    name: this.name, email: this.email, password: this.password,
+                    name: this.name, last_name: this.last_name, email: this.email, password: this.password,
                     password_confirmation: this.password_confirmation,
                     cpf: this.cpf, phone: this.phone, birth_date: this.birth_date
                 }, { headers: { 'X-CSRF-TOKEN': this.getToken() } });
+
 
                 if (res.data.status === '2fa_required') {
                     this.mode = '2fa';
@@ -226,10 +228,17 @@
 
             <div x-show="mode === 'register'">
                 <form @submit.prevent="submitRegister" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">Nome Completo</label>
-                        <input type="text" x-model="name" class="block w-full h-12 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
-                        <p x-show="errors.name" class="text-red-500 text-xs mt-1" x-text="errors.name"></p>
+                  <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Nome</label>
+                            <input type="text" x-model="name" class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                            <p x-show="errors.name" class="text-red-500 text-xs mt-1" x-text="errors.name"></p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Sobrenome</label>
+                            <input type="text" x-model="last_name" class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                            <p x-show="errors.last_name" class="text-red-500 text-xs mt-1" x-text="errors.last_name"></p>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Email</label>

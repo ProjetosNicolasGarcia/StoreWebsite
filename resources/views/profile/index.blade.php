@@ -55,10 +55,17 @@
         @method('PUT')
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {{-- Campo: Nome Completo (Dado não sensível) --}}
+          {{-- Campo: Nome (Dado não sensível) --}}
             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">Nome Completo</label>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Nome</label>
                 <input type="text" name="name" value="{{ old('name', $user->name) }}" 
+                       class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+            </div>
+
+            {{-- Campo: Sobrenome (Dado não sensível) --}}
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Sobrenome</label>
+                <input type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}" 
                        class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
             </div>
 

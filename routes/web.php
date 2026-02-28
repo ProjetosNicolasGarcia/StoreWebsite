@@ -9,7 +9,6 @@ use App\Http\Controllers\ShopController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\StoreAuthController;
 use App\Http\Controllers\ProfileController;
-use App\Livewire\CheckoutPage;
 
 // =========================================================================
 // ROTAS PÚBLICAS (Home, Loja, Carrinho)
@@ -144,7 +143,6 @@ Route::post('/fale-conosco', function (Request $request) {
         'order_number' => 'nullable|string',
         'message' => 'required|min:10',
     ]);
-    // Mail::to('admin@minhaloja.com.br')->send(new ContactMail($validated));
     return back()->with('success', 'Sua mensagem foi enviada com sucesso! Responderemos em breve.');
 })->name('pages.contact.send');
 
@@ -171,7 +169,7 @@ Route::middleware('guest')->group(function () {
 
     // Recuperação de Senha
     Route::get('/forgot-password', function () {
-        return view('auth.forgot-password'); // Necessário criar esta view se ainda não existir
+        return view('auth.forgot-password');
     })->name('password.request');
     
     Route::post('/forgot-password', [StoreAuthController::class, 'sendResetLinkEmail'])->name('password.email');
@@ -185,8 +183,6 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     
-
-
     // Logout
     Route::post('/logout', [StoreAuthController::class, 'logout'])->name('logout');
 
@@ -201,11 +197,14 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-// Middleware extra para perfil incompleto
+// Middleware extra para perfil incompleto (E ROTAS DO CHECKOUT/SUCESSO)
 Route::middleware(['auth'])->group(function () {
 
+    // Rotas do Livewire (Checkout) usando namespace absoluto
     Route::get('/checkout', \App\Livewire\CheckoutPage::class)->name('checkout');
-    // Rotas para completar perfil (Middleware EnsureProfileIsComplete vai permitir estas)
+   
+
+    // Rotas para completar perfil
     Route::get('/completar-perfil', [StoreAuthController::class, 'showCompleteProfile'])->name('auth.complete-profile');
     Route::post('/completar-perfil', [StoreAuthController::class, 'updateProfile'])->name('auth.update-profile');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

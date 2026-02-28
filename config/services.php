@@ -43,4 +43,11 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URL'),
     ],
 
+    
+    'payment_gateway' => [
+        'url' => env('PAYMENT_GATEWAY_URL', 'https://api.mercadopago.com/v1'),
+        'access_token' => env('PAYMENT_GATEWAY_ACCESS_TOKEN'),
+        'public_key' => env('PAYMENT_GATEWAY_PUBLIC_KEY'),
+    ],
+
 ];

@@ -32,7 +32,8 @@ class CheckoutPage extends Component
     
     public $cpf;
     public $phone;
-    public $fullName;
+    public $firstName;
+    public $lastName;
 
     public $useNewAddress = false;
     public $newAddress = [
@@ -50,7 +51,8 @@ class CheckoutPage extends Component
     protected function rules()
     {
         $rules = [
-            'fullName' => 'required|min:3',
+            'firstName' => 'required|min:2',
+            'lastName' => 'required|min:2',
             'cpf' => 'required|min:11',
             'phone' => 'required|min:10',
             'shippingMethod' => 'required|string',
@@ -74,7 +76,8 @@ class CheckoutPage extends Component
     protected function messages()
     {
         return [
-            'fullName.required' => 'O nome completo é obrigatório.',
+            'firstName.required' => 'O nome é obrigatório.',
+            'lastName.required' => 'O sobrenome é obrigatório para faturamento.',
             'cpf.required' => 'O CPF é obrigatório.',
             'phone.required' => 'O telefone é obrigatório.',
             'shippingMethod.required' => 'Selecione uma opção de frete.',
@@ -88,10 +91,15 @@ class CheckoutPage extends Component
         ];
     }
 
-    public function mount()
+public function mount()
     {
-        $user = Auth::user();
-        $this->fullName = $user->name;
+        // 1. O método fresh() atualiza a instância da sessão com os dados mais recentes do banco,
+        // garantindo que a nova coluna 'last_name' seja reconhecida.
+        $user = Auth::user()->fresh();
+
+        // 2. Refatorado de fullName para name e lastName com proteção contra nulos
+        $this->firstName = $user->name;
+        $this->lastName = $user->last_name ?? '';
         $this->cpf = $user->cpf ?? ''; 
         $this->phone = $user->phone ?? '';
 

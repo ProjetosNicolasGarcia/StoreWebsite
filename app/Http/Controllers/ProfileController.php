@@ -41,6 +41,7 @@ class ProfileController extends Controller
         // 1. Definição das regras base
         $rules = [
             'name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'phone' => ['nullable', 'string', 'max:20', 'regex:'.$phoneRegex],
             'cpf' => ['nullable', 'string', 'regex:'.$cpfRegex, Rule::unique('users')->ignore($user->id)],
             
@@ -104,6 +105,7 @@ class ProfileController extends Controller
 
         // 5. Persistência dos Dados
         $user->name = $validated['name'];
+        $user->last_name = $validated['last_name'];
         $user->phone = $validated['phone'];
         $user->cpf = $validated['cpf'];
         $user->email = $validated['email'];

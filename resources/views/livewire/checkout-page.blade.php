@@ -174,27 +174,39 @@
                     
                     @error('shippingMethod') <span class="text-red-500 text-xs font-bold mt-2 block">{{ $message }}</span> @enderror
                 </section>
-                <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+               <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">4</span> 
                         Dados Pessoais
                     </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="col-span-1 md:col-span-2">
-                            <label class="block text-sm font-bold text-gray-700 mb-1">Nome Completo</label>
-                            <input type="text" wire:model="fullName" class="appearance-none rounded-xl block w-full px-3 py-3 border {{ $errors->has('fullName') ? 'border-red-500' : 'border-gray-300' }} placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
-                            @error('fullName') <span class="text-red-500 text-xs font-bold mt-1 block">{{ $message }}</span> @enderror
+                    
+                    {{-- Grid nivelada com gap-y-6 para um excelente respiro vertical --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-4">
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Nome</label>
+                            <input type="text" wire:model="firstName" class="appearance-none rounded-xl block w-full px-3 py-3 border {{ $errors->has('firstName') ? 'border-red-500' : 'border-gray-300' }} placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                            @error('firstName') <span class="text-red-500 text-xs font-bold mt-1 block">{{ $message }}</span> @enderror
                         </div>
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Sobrenome</label>
+                            <input type="text" wire:model="lastName" class="appearance-none rounded-xl block w-full px-3 py-3 border {{ $errors->has('lastName') ? 'border-red-500' : 'border-gray-300' }} placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                            @error('lastName') <span class="text-red-500 text-xs font-bold mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                        
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-1">CPF</label>
                             <input type="text" wire:model="cpf" x-on:input="$el.value = formatCPF($el.value); $wire.set('cpf', $el.value)" maxlength="14" class="appearance-none rounded-xl block w-full px-3 py-3 border {{ $errors->has('cpf') ? 'border-red-500' : 'border-gray-300' }} placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm" placeholder="000.000.000-00">
                             @error('cpf') <span class="text-red-500 text-xs font-bold mt-1 block">{{ $message }}</span> @enderror
                         </div>
+                        
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-1">Telefone / WhatsApp</label>
                             <input type="text" wire:model="phone" x-on:input="$el.value = formatPhone($el.value); $wire.set('phone', $el.value)" maxlength="15" class="appearance-none rounded-xl block w-full px-3 py-3 border {{ $errors->has('phone') ? 'border-red-500' : 'border-gray-300' }} placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm" placeholder="(11) 99999-9999">
                             @error('phone') <span class="text-red-500 text-xs font-bold mt-1 block">{{ $message }}</span> @enderror
                         </div>
+                        
                     </div>
                 </section>
 
