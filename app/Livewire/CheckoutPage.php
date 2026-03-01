@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Coupon;
 use App\Services\ShippingService; 
+use App\Services\PaymentService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -44,10 +45,12 @@ class CheckoutPage extends Component
     ];
 
     protected ShippingService $shippingService;
+    protected PaymentService $paymentService;
 
-    public function boot(ShippingService $shippingService)
+    public function boot(ShippingService $shippingService, PaymentService $paymentService)
     {
         $this->shippingService = $shippingService;
+        $this->paymentService = $paymentService;
     }
 
     protected function rules()
@@ -395,6 +398,28 @@ class CheckoutPage extends Component
                                 'product_name' => $productName, 
                                 'quantity' => $item->quantity,
                                 'unit_price' => $unitPrice,
+                            ]);
+                        }
+
+                        if ($this->paymentMethod === 'pix') {
+                            $paymentResult = $this->paymentService->createPixPayment(
+                                $order,
+                                $this->cpf,
+                                $this->firstName,
+                                $this->lastName,
+                                Auth::user()->email
+                            );
+
+                            if (!$paymentResult['success']) {
+                                // Lança exceção para acionar o DB::rollBack() e cancelar a transação no banco
+                                throw new \Exception('Falha ao gerar o PIX: ' . $paymentResult['message']);
+                            }
+
+                            // Atualiza o pedido com os dados recebidos do MP
+                            $order->update([
+                                'payment_id' => $paymentResult['payment_id'],
+                                'pix_qr_code' => $paymentResult['qr_code'],
+                                'pix_qr_code_base64' => $paymentResult['qr_code_base64'],
                             ]);
                         }
 

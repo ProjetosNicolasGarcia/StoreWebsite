@@ -16,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             EnsureProfileIsComplete::class,
         ]);
+
+        // EXCEÇÃO DO CSRF PARA O WEBHOOK DO MERCADO PAGO AQUI
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/mercadopago',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

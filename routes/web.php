@@ -9,6 +9,7 @@ use App\Http\Controllers\ShopController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\StoreAuthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\WebhookController;
 
 // =========================================================================
 // ROTAS PÚBLICAS (Home, Loja, Carrinho)
@@ -212,3 +213,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/completar-perfil', [StoreAuthController::class, 'updateProfile'])->name('auth.update-profile');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+//Mercado pago
+
+Route::post('/webhooks/mercadopago', [WebhookController::class, 'handleMercadoPago'])->name('webhook.mercadopago');

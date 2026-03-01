@@ -58,19 +58,27 @@
                         @if($order->payment_method === 'pix')
                             <p class="text-sm text-gray-600 mb-6">Escaneie o QR Code abaixo pelo aplicativo do seu banco ou copie o código PIX.</p>
                             
-                            <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-                                <div class="w-48 h-48 bg-gray-50 border border-gray-200 flex items-center justify-center rounded-xl text-gray-400 flex-shrink-0">
-                                    [ Imagem QR Code ]
+                            <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6" x-data="{ copyText: '{{ $order->pix_qr_code }}', copied: false }">
+                                <div class="w-48 h-48 bg-gray-50 border border-gray-200 flex items-center justify-center rounded-xl overflow-hidden flex-shrink-0">
+                                    @if($order->pix_qr_code_base64)
+                                        <img src="data:image/jpeg;base64,{{ $order->pix_qr_code_base64 }}" alt="QR Code PIX" class="w-full h-full object-contain">
+                                    @else
+                                        <span class="text-xs text-gray-400">QR Code indisponível</span>
+                                    @endif
                                 </div>
                                 
                                 <div class="w-full">
                                     <label class="block text-sm font-medium text-gray-900 mb-2">Código PIX (Copia e Cola)</label>
                                     <div class="flex shadow-sm rounded-xl w-full flex-col sm:flex-row">
-                                        <input type="text" readonly value="00020126580014br.gov.bcb.pix... [PLACEHOLDER]" class="flex-1 block w-full rounded-t-xl sm:rounded-none sm:rounded-l-xl text-sm border border-gray-300 sm:border-r-0 bg-gray-50 text-gray-700 px-4 py-3 focus:ring-0 outline-none text-left">
-                                        <button type="button" class="relative inline-flex justify-center items-center px-6 py-3 border border-green-600 text-sm font-medium rounded-b-xl sm:rounded-none sm:rounded-r-xl text-white bg-green-600 hover:bg-white hover:text-green-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600">
-                                            Copiar
+                                        <input type="text" readonly x-model="copyText" class="flex-1 block w-full rounded-t-xl sm:rounded-none sm:rounded-l-xl text-sm border border-gray-300 sm:border-r-0 bg-gray-50 text-gray-700 px-4 py-3 focus:ring-0 outline-none text-left">
+                                        <button type="button" 
+                                                @click="navigator.clipboard.writeText(copyText); copied = true; setTimeout(() => copied = false, 2500)" 
+                                                class="relative w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border text-sm font-bold rounded-b-xl sm:rounded-none sm:rounded-r-xl transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                                                :class="copied ? 'bg-white text-green-600 border-green-600 hover:bg-green-50' : 'bg-green-600 text-white border-green-600 hover:bg-white hover:text-green-600 focus:ring-green-600'">
+                                            <span x-text="copied ? 'Copiado!' : 'Copiar'"></span>
                                         </button>
                                     </div>
+                                    <p class="text-xs text-gray-500 mt-3">O pagamento será compensado automaticamente em instantes.</p>
                                 </div>
                             </div>
                         @elseif($order->payment_method === 'boleto')

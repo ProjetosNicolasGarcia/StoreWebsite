@@ -23,15 +23,18 @@ class Order extends Model
     const STATUS_REFUNDED = 'refunded';
 
     // FOI ATUALIZADO AQUI: Uso de $fillable em vez de $guarded para maior segurança
-    protected $fillable = [
+protected $fillable = [
         'user_id',
         'coupon_id',
         'status',
         'total_amount',
         'shipping_cost',
-        'shipping_method', // A nova coluna da transportadora
+        'shipping_method', 
         'discount',
         'payment_method',
+        'payment_id',         
+        'pix_qr_code',        
+        'pix_qr_code_base64', 
         'address_json',
     ];
 
