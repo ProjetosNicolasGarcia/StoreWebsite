@@ -57,18 +57,4 @@ Este projeto foi desenvolvido com as tecnologias mais recentes do ecossistema PH
 
 
 
-## 🛠️ Instalação e Configuração
 
-Siga os passos abaixo para rodar o projeto localmente:
-
-### Pré-requisitos
-- PHP 8.2 ou superior
-- Composer
-- Node.js & NPM
-
-### Passo a Passo
-
-1. **Clone o repositório**
-   ```bash
-   git clone [https://github.com/seu-usuario/storewebsite.git](https://github.com/seu-usuario/storewebsite.git)
-   cd storewebsite
