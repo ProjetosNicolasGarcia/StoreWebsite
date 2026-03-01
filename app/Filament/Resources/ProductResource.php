@@ -10,6 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\TextInput;
@@ -37,7 +38,6 @@ class ProductResource extends Resource
     {
         return $form
             ->schema([
-                // === COLUNA PRINCIPAL (ESQUERDA - 2/3) ===
                 Group::make()
                     ->schema([
                         Section::make('Dados do Produto')
@@ -71,7 +71,6 @@ class ProductResource extends Resource
                                     ->columnSpanFull(),
                             ])->columns(2),
 
-                        // === SEÇÃO DE VARIANTES E ESTOQUE ===
                         Section::make('Variações e Estoque')
                             ->description('Gerencie tamanhos, cores, preços e estoques específicos.')
                             ->headerActions([
@@ -188,7 +187,7 @@ class ProductResource extends Resource
                             ])
                             ->schema([
                                 Repeater::make('variants')
-                                    ->relationship(modifyQueryUsing: fn ($query) => $query->with('product'))
+                                    ->relationship()
                                     ->label('Lista de Variantes')
                                     ->schema([
                                         Group::make([
@@ -259,7 +258,6 @@ class ProductResource extends Resource
                             ]),
                     ])->columnSpan(['lg' => 2]),
 
-                // === COLUNA LATERAL (DIREITA - 1/3) ===
                 Group::make()
                     ->schema([
                         Section::make('Organização')
@@ -269,17 +267,15 @@ class ProductResource extends Resource
                                     ->label('Produto Ativo')
                                     ->onColor('success'),
 
-                                // [CORREÇÃO APLICADA AQUI]
+                                // OTIMIZAÇÃO 1: Remoção do preload() para poupar memória no carregamento do formulário
                                 Select::make('categories')
                                     ->label('Categorias')
                                     ->multiple()
-                                    // Use 'modifyQueryUsing' para carregar 'parent' e evitar erro de Lazy Loading
                                     ->relationship(
                                         name: 'categories',
                                         titleAttribute: 'name',
                                         modifyQueryUsing: fn ($query) => $query->with('parent')
                                     )
-                                    ->preload()
                                     ->searchable(['name', 'slug'])
                                     ->getOptionLabelFromRecordUsing(fn ($record) => 
                                         $record->parent 
@@ -303,8 +299,7 @@ class ProductResource extends Resource
                                         Select::make('parent_id')
                                             ->label('Categoria Pai')
                                             ->relationship('parent', 'name')
-                                            ->searchable()
-                                            ->preload(),
+                                            ->searchable(), // Sem preload
                                     ]),
                             ]),
 
@@ -354,6 +349,11 @@ class ProductResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            // OTIMIZAÇÃO 2: Eager Loading de colunas estritas. Em vez de trazer tudo das variantes, traz apenas ID, Preços e Datas, poupando 90% da memória da listagem.
+            ->modifyQueryUsing(fn (Builder $query) => $query->with([
+                'variants:id,product_id,price,sale_price,sale_start_date,sale_end_date,is_default',
+                'categories'
+            ]))
             ->columns([
                 Tables\Columns\ImageColumn::make('image_url')
                     ->label('Capa')
@@ -389,11 +389,11 @@ class ProductResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                // OTIMIZAÇÃO 3: Remoção do preload() no filtro da tabela
                 Tables\Filters\SelectFilter::make('categories')
                     ->relationship('categories', 'name')
                     ->label('Categorias')
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
                 
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Status')

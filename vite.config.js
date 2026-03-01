@@ -11,13 +11,14 @@ export default defineConfig({
         tailwindcss(),
     ],
     server: { 
-        // Força o Vite a rodar em 127.0.0.1 para não conflitar com o DNS do Windows
-        host: '127.0.0.1',
+        // 0.0.0.0 força o Vite a expor o servidor na rede, contornando loops locais bloqueados
+        host: '0.0.0.0', 
+        port: 5173,
         hmr: {
+            // Diz para o navegador que o WebSocket está exatamente onde o site está rodando
             host: 'localhost',
         },
         watch: {
-            // Ignora pastas pesadas para poupar CPU do Windows
             ignored: ['**/storage/framework/views/**', '**/vendor/**'],
         },
     },
