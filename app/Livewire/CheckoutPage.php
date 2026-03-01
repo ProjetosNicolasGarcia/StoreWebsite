@@ -421,6 +421,26 @@ class CheckoutPage extends Component
                                 'pix_qr_code' => $paymentResult['qr_code'],
                                 'pix_qr_code_base64' => $paymentResult['qr_code_base64'],
                             ]);
+                        }  elseif ($this->paymentMethod === 'boleto') {
+                            // Convertendo a model Address para array para passar ao serviço
+                            $paymentResult = $this->paymentService->createBoletoPayment(
+                                $order,
+                                $this->cpf,
+                                $this->firstName,
+                                $this->lastName,
+                                Auth::user()->email,
+                                $address->toArray() // Passando os dados do endereço
+                            );
+
+                            if (!$paymentResult['success']) {
+                                // Dispara a exceção que faz o rollback da transação de banco de dados
+                                throw new \Exception('Falha ao gerar o Boleto: ' . $paymentResult['message']);
+                            }
+
+                            $order->update([
+                                'payment_id' => $paymentResult['payment_id'],
+                                'boleto_url' => $paymentResult['boleto_url'],
+                            ]);
                         }
 
             CartItem::where('user_id', Auth::id())->delete();

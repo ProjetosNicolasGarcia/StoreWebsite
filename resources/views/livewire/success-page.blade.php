@@ -88,7 +88,7 @@
                                     <p class="text-sm text-gray-500">Vencimento</p>
                                     <p class="text-lg font-bold text-gray-900">{{ now()->addDays(3)->format('d/m/Y') }}</p>
                                 </div>
-                                <a href="#" class="inline-flex justify-center items-center px-8 py-3 border border-green-600 text-sm font-medium rounded-xl text-white bg-green-600 hover:bg-white hover:text-green-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 w-full sm:w-auto">
+                               <a href="{{ $order->boleto_url }}" target="_blank" rel="noopener noreferrer" class="inline-flex justify-center items-center px-8 py-3 border border-green-600 text-sm font-medium rounded-xl text-white bg-green-600 hover:bg-white hover:text-green-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 w-full sm:w-auto">
                                     Imprimir / Baixar Boleto
                                 </a>
                             </div>

@@ -35,6 +35,7 @@ protected $fillable = [
         'payment_id',         
         'pix_qr_code',        
         'pix_qr_code_base64', 
+        'boleto_url',
         'address_json',
     ];
 
