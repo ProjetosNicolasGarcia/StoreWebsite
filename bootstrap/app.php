@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\EnsureProfileIsComplete;
+use App\Http\Middleware\SecurityHeaders;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,7 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Adicione aqui para rodar em todas as rotas web
+        // Appends to the GLOBAL middleware stack, protecting web, api, and Filament routes
+        $middleware->append([
+            SecurityHeaders::class,
+        ]);
+
         $middleware->web(append: [
             EnsureProfileIsComplete::class,
         ]);

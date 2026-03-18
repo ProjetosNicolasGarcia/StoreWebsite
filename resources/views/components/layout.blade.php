@@ -8,9 +8,9 @@
 
     @stack('head')
     
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.13.8/dist/cdn.min.js" integrity="sha256-yA1tVqQv5xP7+pWf9hGgT7gK8L8j4y8q3qHwXwW1Z3A=" crossorigin="anonymous"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.8/dist/axios.min.js" crossorigin="anonymous"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {

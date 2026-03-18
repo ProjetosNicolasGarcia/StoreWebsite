@@ -23,3 +23,18 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# --- ZAP SECURITY FIXES ---
+
+<IfModule mod_headers.c>
+    # Fix: Cross-Domain Misconfiguration (CORS)
+    # Only allow requests from your own domain (update the URL to your actual production domain)
+    Header set Access-Control-Allow-Origin "https://seusite.com.br"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-TOKEN"
+
+    # Fix: Server Leaks Version Information (Apache/PHP)
+    # Remove the Server and X-Powered-By headers completely
+    Header unset Server
+    Header unset X-Powered-By
+</IfModule>
