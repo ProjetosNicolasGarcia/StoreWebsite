@@ -40,12 +40,17 @@ class BannerResource extends Resource
                         Section::make('Conteúdo Visual')
                             ->description('A imagem e os textos principais do banner.')
                             ->schema([
-                                // Upload da Imagem com editor integrado
+                                // Upload da Imagem com editor integrado E otimização de performance
                                 Forms\Components\FileUpload::make('image_url')
                                     ->label('Imagem do Banner')
                                     ->image()
                                     ->imageEditor() // Permite cortar/ajustar a imagem direto no navegador
                                     ->directory('banners') // Salva em: storage/app/public/banners
+                                    // --- INÍCIO DAS OTIMIZAÇÕES DE IMAGEM (PERFORMANCE/LIGHTHOUSE) ---
+                                    ->optimize('webp') // Converte PNGs/JPGs pesados para WebP leve
+                                    ->maxImageWidth(1920) // Evita uploads de resoluções gigantescas (ex: 4K)
+                                    ->quality(80) // 80% mantém excelente qualidade visual e reduz o peso em ~80%
+                                    // -----------------------------------------------------------------
                                     ->required()
                                     ->columnSpanFull(),
 

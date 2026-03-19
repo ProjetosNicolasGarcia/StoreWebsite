@@ -10,7 +10,7 @@
     
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.13.8/dist/cdn.min.js" integrity="sha256-yA1tVqQv5xP7+pWf9hGgT7gK8L8j4y8q3qHwXwW1Z3A=" crossorigin="anonymous"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/axios@1.8/dist/axios.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/axios@1.8/dist/axios.min.js" crossorigin="anonymous"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -24,6 +24,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])

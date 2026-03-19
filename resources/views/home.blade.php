@@ -26,7 +26,12 @@
                      class="absolute inset-0 w-full h-full">
                     
                     <a href="{{ $banner->link_url ?? '#' }}" class="block w-full h-full relative">
-                        <img src="{{ Storage::url($banner->image_url) }}" class="absolute inset-0 w-full h-full object-cover">
+                        <img src="{{ Storage::url($banner->image_url) }}" 
+                             class="absolute inset-0 w-full h-full object-cover"
+                             fetchpriority="{{ $index === 0 ? 'high' : 'auto' }}" 
+                             loading="{{ $index === 0 ? 'eager' : 'lazy' }}"
+                             alt="{{ $banner->title }}">
+                        
                         <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20"></div>
 
                         <div class="absolute bottom-0 left-0 p-8 md:p-16 w-full md:max-w-4xl pb-24 md:pb-16 flex flex-col justify-end">
@@ -87,9 +92,12 @@
                                 Novo
                             </div>
 
-                            <img :src="currentImage" 
-                                 class="object-contain w-full h-full transition duration-500 p-2"
-                                 :class="hovering ? 'scale-105' : ''">
+                            <img src="{{ Storage::url($product->image_url) }}" 
+                                 :src="currentImage" 
+                                 class="object-contain w-full h-full transition duration-500 p-2" 
+                                 :class="hovering ? 'scale-105' : ''" 
+                                 loading="lazy" 
+                                 alt="{{ $product->name }}">
 
                             @if($product->variants->whereNotNull('image')->count() > 0)
                                 <div x-show="hovering"
@@ -103,7 +111,10 @@
                                              @mouseleave="currentImage = originalImage"
                                              @click.stop.prevent="window.location.href = '{{ route('shop.product', $product->slug) }}?variant={{ $variant->id }}'"
                                              class="w-10 h-10 rounded-md border border-gray-200 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all transform hover:scale-110 flex items-center justify-center">
-                                            <img src="{{ Storage::url($variant->image) }}" class="w-full h-full object-contain p-0.5">
+                                            <img src="{{ Storage::url($variant->image) }}" 
+                                                 class="w-full h-full object-contain p-0.5" 
+                                                 loading="lazy" 
+                                                 alt="Variante">
                                         </div>
                                     @endforeach
                                 </div>
@@ -111,7 +122,6 @@
                         </div>
                         
                         <div class="text-center space-y-1">
-                            {{-- CORREÇÃO AQUI: Usar categories->first() --}}
                             @if($product->categories->first())
                                 <p class="text-xs text-gray-500 uppercase tracking-widest">{{ $product->categories->first()->name }}</p>
                             @endif
@@ -172,7 +182,10 @@
         <section class="mb-24">
             <div class="relative w-full h-[300px] md:h-[950px] mb-12 group overflow-hidden">
                  @if($collection->image_url)
-                    <img src="{{ Storage::url($collection->image_url) }}" class="w-full h-full object-cover transition duration-700 group-hover:scale-105">
+                    <img src="{{ Storage::url($collection->image_url) }}" 
+                         loading="lazy" 
+                         class="w-full h-full object-cover transition duration-700 group-hover:scale-105" 
+                         alt="{{ $collection->title }}">
                  @else
                     <div class="w-full h-full bg-gray-900 flex items-center justify-center text-white">Sem Imagem</div>
                  @endif
@@ -207,9 +220,12 @@
                             <a href="{{ route('shop.product', $product->slug) }}" class="block cursor-pointer">
                                 <div class="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-white flex items-center justify-center">
                                     
-                                    <img :src="currentImage" 
+                                    <img src="{{ Storage::url($product->image_url) }}" 
+                                         :src="currentImage" 
                                          class="object-contain w-full h-full transition duration-500 p-2"
-                                         :class="hovering ? 'scale-105' : ''">
+                                         :class="hovering ? 'scale-105' : ''" 
+                                         loading="lazy" 
+                                         alt="{{ $product->name }}">
 
                                     @if($product->variants->whereNotNull('image')->count() > 0)
                                         <div x-show="hovering"
@@ -223,7 +239,10 @@
                                                      @mouseleave="currentImage = originalImage"
                                                      @click.stop.prevent="window.location.href = '{{ route('shop.product', $product->slug) }}?variant={{ $variant->id }}'"
                                                      class="w-10 h-10 rounded-md border border-gray-200 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all transform hover:scale-110 flex items-center justify-center">
-                                                    <img src="{{ Storage::url($variant->image) }}" class="w-full h-full object-contain p-0.5">
+                                                    <img src="{{ Storage::url($variant->image) }}" 
+                                                         class="w-full h-full object-contain p-0.5" 
+                                                         loading="lazy" 
+                                                         alt="Variante">
                                                 </div>
                                             @endforeach
                                         </div>
@@ -231,7 +250,6 @@
                                 </div>
                                 
                                 <div class="text-center space-y-1">
-                                    {{-- CORREÇÃO AQUI TAMBÉM: Usar categories->first() --}}
                                     @if($product->categories->first())
                                         <p class="text-xs text-gray-500 uppercase tracking-widest">{{ $product->categories->first()->name }}</p>
                                     @endif

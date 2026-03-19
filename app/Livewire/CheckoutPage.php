@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use Livewire\Component;
+use Livewire\Attributes\Computed;
 use App\Models\CartItem;
 use App\Models\Address;
 use App\Models\Order;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\Http;
 
 class CheckoutPage extends Component
 {
-    public $cartItems = [];
+    // Removed public $cartItems to save network payload size
     public $subtotal = 0;
     public $shippingPrice = 0;
     public $discount = 0;
@@ -51,6 +52,21 @@ class CheckoutPage extends Component
     {
         $this->shippingService = $shippingService;
         $this->paymentService = $paymentService;
+    }
+
+    // OTIMIZAÇÃO: Propriedade Computada para evitar N+1 e repetição de queries
+    #[Computed]
+    public function cartItems()
+    {
+        $items = CartItem::with(['product', 'variant'])
+            ->where('user_id', Auth::id())
+            ->get();
+            
+        if ($items->isEmpty()) {
+            redirect()->route('cart.index')->with('status', 'Seu carrinho está vazio.');
+        }
+        
+        return $items;
     }
 
     protected function rules()
@@ -111,25 +127,18 @@ class CheckoutPage extends Component
             $this->useNewAddress = true;
         }
 
-        $this->loadCart();
+        // OTIMIZAÇÃO: A API de frete foi removida daqui para não travar o carregamento inicial.
         $this->calculateTotals();
+    }
 
+    // OTIMIZAÇÃO: Novo método chamado de forma assíncrona pela view após o paint inicial
+    public function loadInitialShipping()
+    {
         if ($this->selectedAddressId) {
             $address = Address::find($this->selectedAddressId);
             if ($address) {
                 $this->shippingOptions = $this->shippingService->calculate($address->zip_code, $this->cartItems);
             }
-        }
-    }
-
-    public function loadCart()
-    {
-        $this->cartItems = CartItem::with(['product', 'variant'])
-            ->where('user_id', Auth::id())
-            ->get();
-
-        if ($this->cartItems->isEmpty()) {
-            return redirect()->route('cart.index')->with('status', 'Seu carrinho está vazio.');
         }
     }
 
@@ -139,7 +148,6 @@ class CheckoutPage extends Component
             $this->useNewAddress = false;
             $address = Address::find($value);
             if ($address) {
-                $this->loadCart();
                 $this->shippingOptions = $this->shippingService->calculate($address->zip_code, $this->cartItems);
             }
             $this->resetShippingSelection();
@@ -153,7 +161,6 @@ class CheckoutPage extends Component
             $this->shippingOptions = []; 
             $cep = preg_replace('/\D/', '', $this->newAddress['zip_code'] ?? '');
             if (strlen($cep) === 8) {
-                $this->loadCart(); 
                 $this->shippingOptions = $this->shippingService->calculate($cep, $this->cartItems);
             }
             $this->resetShippingSelection();
@@ -169,7 +176,6 @@ class CheckoutPage extends Component
                 $this->fetchAddressFromCep($cep);
                 
                 if (!$this->getErrorBag()->has('newAddress.zip_code')) {
-                    $this->loadCart();
                     $this->shippingOptions = $this->shippingService->calculate($cep, $this->cartItems);
                 } else {
                     $this->shippingOptions = [];
@@ -225,7 +231,6 @@ class CheckoutPage extends Component
     public function applyCoupon()
     {
         $this->resetErrorBag('couponCode');
-        
         $code = strtoupper(trim($this->couponCode));
 
         if (empty($code)) {
@@ -244,8 +249,6 @@ class CheckoutPage extends Component
             $this->calculateTotals();
             return;
         }
-
-        $this->loadCart();
 
         $realSubtotal = 0;
         foreach ($this->cartItems as $item) {
@@ -270,27 +273,22 @@ class CheckoutPage extends Component
 
    public function calculateTotals()
     {
-        $this->loadCart(); 
-
         $currentSubtotal = 0;
         $fullPriceSubtotal = 0;
-        $now = now(); // Puxa a data e hora atual do sistema
+        $now = now(); 
 
         foreach ($this->cartItems as $item) {
             $base = (float) ($item->variant ? $item->variant->price : $item->product->base_price);
             $unit = $base;
             
-            // VERIFICAÇÃO RIGOROSA DE DATAS PARA A VARIANTE
             if ($item->variant && !is_null($item->variant->sale_price) && (float)$item->variant->sale_price > 0 && (float)$item->variant->sale_price < $base) {
                 $start = $item->variant->sale_start_date;
                 $end = $item->variant->sale_end_date;
                 
-                // Só aplica se não tiver data, ou se a data atual estiver dentro do prazo
                 if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
                     $unit = (float) $item->variant->sale_price;
                 }
             } 
-            // VERIFICAÇÃO RIGOROSA DE DATAS PARA O PRODUTO BASE
             elseif (!is_null($item->product->sale_price) && (float)$item->product->sale_price > 0 && (float)$item->product->sale_price < $base) {
                 $start = $item->product->sale_start_date;
                 $end = $item->product->sale_end_date;
@@ -320,7 +318,6 @@ class CheckoutPage extends Component
    public function placeOrder()
     {
         $this->validate();
-        $this->loadCart();
 
         DB::beginTransaction();
         try {
@@ -346,7 +343,6 @@ class CheckoutPage extends Component
                 $address = Address::find($this->selectedAddressId);
             }
             
-            // Puxa o nome legível da transportadora em vez do ID
             $shippingMethodName = 'Desconhecido';
             if ($this->shippingMethod && is_array($this->shippingOptions)) {
                 foreach ($this->shippingOptions as $option) {
@@ -370,83 +366,66 @@ class CheckoutPage extends Component
             ]);
 
             foreach ($this->cartItems as $item) {
-                            $base = (float) ($item->variant ? $item->variant->price : $item->product->base_price);
-                            $unitPrice = $base;
-                            $now = now();
-                        
-                            // Valida as datas antes de salvar o valor no banco
-                            if ($item->variant && !is_null($item->variant->sale_price) && (float)$item->variant->sale_price > 0 && (float)$item->variant->sale_price < $base) {
-                                $start = $item->variant->sale_start_date;
-                                $end = $item->variant->sale_end_date;
-                                if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
-                                    $unitPrice = (float) $item->variant->sale_price;
-                                }
-                            } elseif (!is_null($item->product->sale_price) && (float)$item->product->sale_price > 0 && (float)$item->product->sale_price < $base) {
-                                $start = $item->product->sale_start_date;
-                                $end = $item->product->sale_end_date;
-                                if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
-                                    $unitPrice = (float) $item->product->sale_price;
-                                }
-                            }
+                $base = (float) ($item->variant ? $item->variant->price : $item->product->base_price);
+                $unitPrice = $base;
+                $now = now();
+            
+                if ($item->variant && !is_null($item->variant->sale_price) && (float)$item->variant->sale_price > 0 && (float)$item->variant->sale_price < $base) {
+                    $start = $item->variant->sale_start_date;
+                    $end = $item->variant->sale_end_date;
+                    if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
+                        $unitPrice = (float) $item->variant->sale_price;
+                    }
+                } elseif (!is_null($item->product->sale_price) && (float)$item->product->sale_price > 0 && (float)$item->product->sale_price < $base) {
+                    $start = $item->product->sale_start_date;
+                    $end = $item->product->sale_end_date;
+                    if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
+                        $unitPrice = (float) $item->product->sale_price;
+                    }
+                }
 
-                            $productName = $item->product->name;
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $item->product_id,
+                    'product_variant_id' => $item->product_variant_id,
+                    'product_name' => $item->product->name, 
+                    'quantity' => $item->quantity,
+                    'unit_price' => $unitPrice,
+                ]);
+            }
 
-                            OrderItem::create([
-                                'order_id' => $order->id,
-                                'product_id' => $item->product_id,
-                                'product_variant_id' => $item->product_variant_id,
-                                'product_name' => $productName, 
-                                'quantity' => $item->quantity,
-                                'unit_price' => $unitPrice,
-                            ]);
-                        }
+            if ($this->paymentMethod === 'pix') {
+                $paymentResult = $this->paymentService->createPixPayment(
+                    $order, $this->cpf, $this->firstName, $this->lastName, Auth::user()->email
+                );
 
-                        if ($this->paymentMethod === 'pix') {
-                            $paymentResult = $this->paymentService->createPixPayment(
-                                $order,
-                                $this->cpf,
-                                $this->firstName,
-                                $this->lastName,
-                                Auth::user()->email
-                            );
+                if (!$paymentResult['success']) {
+                    throw new \Exception('Falha ao gerar o PIX: ' . $paymentResult['message']);
+                }
 
-                            if (!$paymentResult['success']) {
-                                // Lança exceção para acionar o DB::rollBack() e cancelar a transação no banco
-                                throw new \Exception('Falha ao gerar o PIX: ' . $paymentResult['message']);
-                            }
+                $order->update([
+                    'payment_id' => $paymentResult['payment_id'],
+                    'pix_qr_code' => $paymentResult['qr_code'],
+                    'pix_qr_code_base64' => $paymentResult['qr_code_base64'],
+                ]);
+            }  elseif ($this->paymentMethod === 'boleto') {
+                $paymentResult = $this->paymentService->createBoletoPayment(
+                    $order, $this->cpf, $this->firstName, $this->lastName, Auth::user()->email, $address->toArray()
+                );
 
-                            // Atualiza o pedido com os dados recebidos do MP
-                            $order->update([
-                                'payment_id' => $paymentResult['payment_id'],
-                                'pix_qr_code' => $paymentResult['qr_code'],
-                                'pix_qr_code_base64' => $paymentResult['qr_code_base64'],
-                            ]);
-                        }  elseif ($this->paymentMethod === 'boleto') {
-                            // Convertendo a model Address para array para passar ao serviço
-                            $paymentResult = $this->paymentService->createBoletoPayment(
-                                $order,
-                                $this->cpf,
-                                $this->firstName,
-                                $this->lastName,
-                                Auth::user()->email,
-                                $address->toArray() // Passando os dados do endereço
-                            );
+                if (!$paymentResult['success']) {
+                    throw new \Exception('Falha ao gerar o Boleto: ' . $paymentResult['message']);
+                }
 
-                            if (!$paymentResult['success']) {
-                                // Dispara a exceção que faz o rollback da transação de banco de dados
-                                throw new \Exception('Falha ao gerar o Boleto: ' . $paymentResult['message']);
-                            }
-
-                            $order->update([
-                                'payment_id' => $paymentResult['payment_id'],
-                                'boleto_url' => $paymentResult['boleto_url'],
-                            ]);
-                        }
+                $order->update([
+                    'payment_id' => $paymentResult['payment_id'],
+                    'boleto_url' => $paymentResult['boleto_url'],
+                ]);
+            }
 
             CartItem::where('user_id', Auth::id())->delete();
             DB::commit();
 
-            // DISPARO DE EVENTO PARA O ALPINE/LIVEWIRE: Limpa contadores globais de carrinho.
             $this->dispatch('cart-updated');
 
             return redirect()->route('checkout.success', ['order' => $order->id]);
@@ -460,10 +439,6 @@ class CheckoutPage extends Component
 
     public function render()
     {
-        $this->cartItems = CartItem::with(['product', 'variant'])
-            ->where('user_id', Auth::id())
-            ->get();
-
-        return view('livewire.checkout-page')->layout('components.layout', ['title' => 'Checkout Segura']);
+        return view('livewire.checkout-page')->layout('components.layout', ['title' => 'Checkout Seguro']);
     }
 }

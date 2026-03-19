@@ -233,19 +233,27 @@ class ProductResource extends Resource
                                             Forms\Components\DateTimePicker::make('sale_end_date')->label('Fim Oferta')->native(false)->seconds(false)->after('sale_start_date'),
                                         ])->columns(2),
 
+                                        // --- OTIMIZAÇÃO: Foto da Variante ---
                                         FileUpload::make('image')
                                             ->label('Foto desta Variante')
                                             ->image()
                                             ->imageEditor()
                                             ->directory('products/variants')
+                                            ->optimize('webp')
+                                            ->maxImageWidth(1920)
+                                            ->quality(80)
                                             ->columnSpanFull(),
 
+                                        // --- OTIMIZAÇÃO: Galeria da Variante ---
                                         FileUpload::make('images')
                                             ->label('Galeria Extra (Ângulos)')
                                             ->image()
                                             ->multiple()
                                             ->reorderable()
                                             ->directory('products/variants')
+                                            ->optimize('webp')
+                                            ->maxImageWidth(1920)
+                                            ->quality(80)
                                             ->columnSpanFull(),
                                     ])
                                     ->collapsed()
@@ -305,13 +313,18 @@ class ProductResource extends Resource
 
                         Section::make('Mídia Principal')
                             ->schema([
+                                // --- OTIMIZAÇÃO: Capa Principal do Produto ---
                                 FileUpload::make('image_url')
                                     ->label('Capa da Vitrine')
                                     ->image()
                                     ->imageEditor()
                                     ->directory('products')
+                                    ->optimize('webp')
+                                    ->maxImageWidth(1920)
+                                    ->quality(80)
                                     ->required(),
 
+                                // --- OTIMIZAÇÃO: Galeria Principal do Produto ---
                                 FileUpload::make('gallery')
                                     ->label('Galeria Geral')
                                     ->helperText('Fotos que aparecem para todas as variantes.')
@@ -319,6 +332,9 @@ class ProductResource extends Resource
                                     ->multiple()
                                     ->reorderable()
                                     ->directory('products/gallery')
+                                    ->optimize('webp')
+                                    ->maxImageWidth(1920)
+                                    ->quality(80)
                                     ->maxFiles(5),
                             ]),
 

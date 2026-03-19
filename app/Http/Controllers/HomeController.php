@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache; // Ensure this is imported for caching
 use App\Models\Product;
 use App\Models\Banner;
 use App\Models\Collection;
@@ -31,37 +32,46 @@ class HomeController extends Controller
 
     public function index()
     {
-        // 1. Carrossel Principal (Hero)
-        $heroBanners = Banner::where('is_active', true)
-            ->where('location', 'hero')
-            ->orderBy('position')
-            ->get();
+        // Define tempo de cache: 60 minutos (ajuste conforme a necessidade do negócio)
+        $cacheTtl = now()->addMinutes(60);
 
-        // 2. Seção de Novidades
-        $newArrivals = Product::where('is_active', true)
-            ->latest()
-            ->take(8)
-            ->with(['variants' => fn($q) => $this->variantFields($q)])
-            // CORREÇÃO: Usamos 'categories.' para evitar erro de ambiguidade SQL e pegamos apenas o necessário.
-            ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)])
-            ->get();
+        // 1. Carrossel Principal (Hero) - Cacheado
+        $heroBanners = Cache::remember('home_hero_banners', $cacheTtl, function () {
+            return Banner::where('is_active', true)
+                ->where('location', 'hero')
+                ->orderBy('position')
+                ->get();
+        });
 
-        // 3. Coleções em Destaque
-        $collections = Collection::where('featured_on_home', true)
-            ->where('is_active', true)
-            ->with(['products' => function ($query) {
-                $query->where('is_active', true)
-                      ->latest()
-                      ->take(8) 
-                      ->with(['variants' => fn($q) => $this->variantFields($q)])
-                      // CORREÇÃO: Mesmo ajuste aqui para as categorias dentro das coleções
-                      ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)]);
-            }])
-            ->get();
+        // 2. Seção de Novidades - Cacheado
+        $newArrivals = Cache::remember('home_new_arrivals', $cacheTtl, function () {
+            return Product::where('is_active', true)
+                ->latest()
+                ->take(8)
+                ->with(['variants' => fn($q) => $this->variantFields($q)])
+                ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)])
+                ->get();
+        });
 
-        // Fallback de segurança para limitar a visualização
-        $collections->each(function($collection) {
-            $collection->setRelation('products', $collection->products->take(8));
+        // 3. Coleções em Destaque - Cacheado
+        $collections = Cache::remember('home_collections', $cacheTtl, function () {
+            $cols = Collection::where('featured_on_home', true)
+                ->where('is_active', true)
+                ->with(['products' => function ($query) {
+                    $query->where('is_active', true)
+                          ->latest()
+                          ->take(8) 
+                          ->with(['variants' => fn($q) => $this->variantFields($q)])
+                          ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)]);
+                }])
+                ->get();
+
+            // Fallback de segurança para limitar a visualização
+            $cols->each(function($collection) {
+                $collection->setRelation('products', $collection->products->take(8));
+            });
+
+            return $cols;
         });
 
         return view('home', compact('heroBanners', 'newArrivals', 'collections'));

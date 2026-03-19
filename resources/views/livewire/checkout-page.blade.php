@@ -120,7 +120,7 @@
                     </div>
                 </section>
 
-               <section class="bg-white p-6 rounded-2xl border border-gray-100">
+               <section wire:init="loadInitialShipping" class="bg-white p-6 rounded-2xl border border-gray-100">
                     
                     <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                         <span class="bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">3</span> 
@@ -129,7 +129,7 @@
                     
                     <div class="relative min-h-[100px] w-full">
                         
-                        <div wire:loading.flex wire:target="newAddress.zip_code, selectedAddressId, useNewAddress" 
+                        <div wire:loading.flex wire:target="newAddress.zip_code, selectedAddressId, useNewAddress, loadInitialShipping" 
                              class="absolute inset-0 z-20 flex-col items-center justify-center text-black">
                             <svg class="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-10" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -138,7 +138,7 @@
                             <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500">Calculando...</span>
                         </div>
                         
-                        <div wire:loading.class="opacity-20 pointer-events-none blur-[2px]" wire:target="newAddress.zip_code, selectedAddressId, useNewAddress" class="transition-all duration-300 w-full">
+                        <div wire:loading.class="opacity-20 pointer-events-none blur-[2px]" wire:target="newAddress.zip_code, selectedAddressId, useNewAddress, loadInitialShipping" class="transition-all duration-300 w-full">
                             @if(count($shippingOptions) > 0)
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     @foreach($shippingOptions as $option)
@@ -321,7 +321,6 @@
                             <span class="font-medium text-gray-900">R$ {{ number_format($subtotal + $offerSavings, 2, ',', '.') }}</span>
                         </div>
                         
-                        {{-- Correção da margem do Mobile (> 0.01) --}}
                         @if($offerSavings > 0.01)
                             <div class="flex justify-between text-sm text-emerald-600 font-bold">
                                 <span>Desconto de Ofertas</span>
@@ -340,7 +339,6 @@
                             </span>
                         </div>
                         
-                        {{-- Correção da margem do Mobile (> 0.01) --}}
                         @if($discount > 0.01)
                             <div class="flex justify-between text-sm text-blue-600 font-bold">
                                 <span>Desconto <span class="font-bold">{{ $couponDisplay }}</span></span>
@@ -369,7 +367,7 @@
 
                     <h2 class="text-xl font-bold text-gray-900 mb-6 uppercase tracking-tight">Resumo do Pedido</h2>
                     <div class="space-y-4 mb-6 pr-2 relative z-0">
-                        @foreach($cartItems as $item)
+                        @foreach($this->cartItems as $item)
                             @php
                                 $img = $item->product->image_url; 
                                 if ($item->variant) {
@@ -470,7 +468,6 @@
                             <span class="text-gray-900 font-medium">R$ {{ number_format($subtotal + $offerSavings, 2, ',', '.') }}</span>
                         </div>
 
-                        {{-- Correção Descontos Desktop (> 0.01) --}}
                         @if($offerSavings > 0.01)
                             <div class="flex justify-between text-sm text-emerald-600 font-bold">
                                 <span>Desconto de Ofertas</span>

@@ -86,12 +86,17 @@ class CollectionResource extends Resource
                     ->schema([
                         Section::make('Mídia e Visibilidade')
                             ->schema([
+                                // --- INÍCIO DAS OTIMIZAÇÕES DE IMAGEM (PERFORMANCE/LIGHTHOUSE) ---
                                 Forms\Components\FileUpload::make('image_url')
                                     ->label('Capa / Banner')
                                     ->image()
                                     ->imageEditor()
                                     ->directory('collections') // storage/app/public/collections
+                                    ->optimize('webp') // Converte para WebP
+                                    ->maxImageWidth(1920) // Redimensiona caso exceda 1920px
+                                    ->quality(80) // Compressão de 80%
                                     ->columnSpanFull(),
+                                // -----------------------------------------------------------------
 
                                 Forms\Components\Toggle::make('is_active')
                                     ->label('Coleção Ativa')

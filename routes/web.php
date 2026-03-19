@@ -10,6 +10,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\StoreAuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\OrderController; // <-- NOVO CONTROLLER ADICIONADO AQUI
 
 // =========================================================================
 // ROTAS PÚBLICAS (Home, Loja, Carrinho)
@@ -66,7 +67,7 @@ Route::get('/politica-de-privacidade', function () {
             <h3 class="text-xl font-bold text-black mt-8 mb-2">1. Informações que Coletamos</h3>
             <p>Solicitamos informações pessoais apenas quando realmente precisamos delas para lhe fornecer um serviço.</p>
             <h3 class="text-xl font-bold text-black mt-8 mb-2">2. Uso das Informações</h3>
-            <p>Podemos usar as informações coletadas para fornecer, operar e manter nosso site.</p>
+            <p>Podemos usar as informações coletadas para fornecer, operate e manter nosso site.</p>
             <h3 class="text-xl font-bold text-black mt-8 mb-2">3. Segurança</h3>
             <p>Apenas retemos as informações coletadas pelo tempo necessário para fornecer o serviço solicitado.</p>
         '
@@ -204,8 +205,8 @@ Route::middleware(['auth'])->group(function () {
     // Rotas do Livewire (Checkout) usando namespace absoluto
     Route::get('/checkout', \App\Livewire\CheckoutPage::class)->name('checkout');
 
-    // Direcionar para a página de sucesso do pedido
-    Route::get('/pedido-confirmado/{order}', \App\Livewire\SuccessPage::class)->name('checkout.success');
+    // Direcionar para a página de sucesso do pedido (AGORA USANDO O ORDERCONTROLLER)
+    Route::get('/pedido-confirmado/{order}', [OrderController::class, 'success'])->name('checkout.success');
    
 
     // Rotas para completar perfil
@@ -215,5 +216,4 @@ Route::middleware(['auth'])->group(function () {
 });
 
 //Mercado pago
-
 Route::post('/webhooks/mercadopago', [WebhookController::class, 'handleMercadoPago'])->name('webhook.mercadopago');
