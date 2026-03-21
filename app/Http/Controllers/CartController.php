@@ -94,7 +94,7 @@ class CartController extends Controller
     /**
      * Adiciona um item ao carrinho.
      */
-    public function add(Request $request, $productId)
+   public function add(Request $request, $productId)
     {
         $request->validate([
             'variant_id' => 'required|exists:product_variants,id',
@@ -107,7 +107,10 @@ class CartController extends Controller
         // [SEGURANÇA 1] Integridade do Produto
         $product = Product::findOrFail($productId);
         if (!$product->is_active) {
-             return redirect()->back()->with('error', 'Este produto não está mais disponível.');
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'error' => 'Este produto não está mais disponível.'], 400);
+            }
+            return redirect()->back()->with('error', 'Este produto não está mais disponível.');
         }
 
         // 2. Verificação de Estoque da Variante
@@ -115,10 +118,16 @@ class CartController extends Controller
 
         // [SEGURANÇA 2] Integridade da Variante (Anti-Fraude)
         if ($variant->product_id !== $product->id) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'error' => 'Inconsistência detectada: Variante inválida.'], 400);
+            }
             abort(400, 'Inconsistência detectada: Variante inválida para este produto.');
         }
 
         if ($variant->quantity < $quantity) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'error' => 'Estoque insuficiente para esta opção.'], 400);
+            }
             return redirect()->back()->with('error', 'Estoque insuficiente para esta opção.');
         }
 
@@ -151,6 +160,12 @@ class CartController extends Controller
             CartItem::create(array_merge($conditions, ['quantity' => $quantity]));
         }
 
+        // Retorno Assíncrono (AJAX)
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Adicionado ao carrinho']);
+        }
+
+        // Retorno Síncrono Tradicional
         if ($request->input('redirect_to_cart') === 'true') {
             return redirect()->route('cart.index');
         }

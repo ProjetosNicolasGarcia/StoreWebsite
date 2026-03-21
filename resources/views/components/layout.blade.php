@@ -26,7 +26,10 @@
 </head>
 
 <body class="bg-white text-gray-900 font-sans antialiased" 
-      x-data="{ cartOpen: {{ session('open_cart') ? 'true' : 'false' }}, categoryMenuOpen: false }">
+      x-data="{ cartOpen: {{ session('open_cart') ? 'true' : 'false' }}, categoryMenuOpen: false, cartLoading: false }"
+      @open-cart.window="cartOpen = true"
+      @start-cart-loading.window="cartLoading = true"
+      @update-cart-count.window="cartLoading = false">
 
     @if (session('status'))
         <div x-data="{ show: true }" 

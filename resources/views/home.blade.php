@@ -158,15 +158,64 @@
                                class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300 flex items-center justify-center">
                                 ADICIONAR AO CARRINHO
                             </a>
-                        @elseif($variantCount === 1)
-                            <form action="{{ route('cart.add', $product->id) }}" method="POST">
-                                @csrf
-                                <input type="hidden" name="variant_id" value="{{ $product->variants->first()->id }}">
-                                <button type="submit" class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300">
-                                    Adicionar ao Carrinho
-                                </button>
-                            </form>
-                        @else
+                    @elseif($variantCount === 1)
+    <form 
+        x-data="{ loading: false }"
+       @submit.prevent="
+            // Abre o carrinho e exibe o loader INSTANTANEAMENTE
+            window.dispatchEvent(new CustomEvent('open-cart'));
+            window.dispatchEvent(new CustomEvent('start-cart-loading'));
+            
+            loading = true;
+
+            fetch('{{ route('cart.add', $product->id) }}', {
+                method: 'POST',
+                body: new FormData($event.target),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading = false;
+                if(data.success) {
+                    // O Livewire assume a partir daqui. Ao finalizar, o próprio CartSidebar
+                    // emite o 'update-cart-count' que desligará nosso loader instantâneo.
+                    Livewire.dispatch('cartUpdated');
+                } else {
+                    window.dispatchEvent(new CustomEvent('update-cart-count')); // Desliga o loader forçadamente
+                    cartOpen = false;
+                    alert(data.error || 'Erro ao adicionar ao carrinho');
+                }
+            })
+            .catch(error => {
+                loading = false;
+                window.dispatchEvent(new CustomEvent('update-cart-count')); // Desliga o loader forçadamente
+                cartOpen = false;
+                console.error('Erro:', error);
+                alert('Ocorreu um erro de conexão.');
+            });
+        "
+    >
+        @csrf
+        <input type="hidden" name="variant_id" value="{{ $product->variants->first()->id }}">
+        
+        <button type="submit" 
+                :disabled="loading"
+                class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed">
+            
+            <span x-show="!loading">Adicionar ao Carrinho</span>
+            <span x-show="loading" class="flex items-center gap-2" style="display: none;">
+                <svg class="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Adicionando...
+            </span>
+        </button>
+    </form>
+@else
                             <span class="text-xs text-gray-400 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
                                 Indisponível
                             </span>
@@ -286,15 +335,63 @@
                                        class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300 flex items-center justify-center">
                                         ADICIONAR AO CARRINHO
                                     </a>
-                                @elseif($variantCount === 1)
-                                    <form action="{{ route('cart.add', $product->id) }}" method="POST">
-                                        @csrf
-                                        <input type="hidden" name="variant_id" value="{{ $product->variants->first()->id }}">
-                                        <button type="submit" class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300">
-                                            Adicionar ao Carrinho
-                                        </button>
-                                    </form>
-                                @else
+                              @elseif($variantCount === 1)
+    <form 
+        x-data="{ loading: false }"
+        @submit.prevent="
+            // 1. ABRE O CARRINHO IMEDIATAMENTE (UX Instantânea)
+            window.dispatchEvent(new CustomEvent('open-cart'));
+            
+            // 2. Inicia o loading no botão
+            loading = true;
+
+            // 3. Envia a requisição silenciosa ao backend
+            fetch('{{ route('cart.add', $product->id) }}', {
+                method: 'POST',
+                body: new FormData($event.target),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading = false;
+                if(data.success) {
+                    // 4. Manda o Livewire atualizar a lista de itens no carrinho
+                    Livewire.dispatch('cartUpdated');
+                } else {
+                    // Se der erro (ex: sem estoque), fecha o carrinho e avisa o usuário
+                    cartOpen = false;
+                    alert(data.error || 'Erro ao adicionar ao carrinho');
+                }
+            })
+            .catch(error => {
+                loading = false;
+                cartOpen = false;
+                console.error('Erro:', error);
+                alert('Ocorreu um erro de conexão.');
+            });
+        "
+    >
+        @csrf
+        <input type="hidden" name="variant_id" value="{{ $product->variants->first()->id }}">
+        
+        <button type="submit" 
+                :disabled="loading"
+                class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed">
+            
+            <span x-show="!loading">Adicionar ao Carrinho</span>
+            <span x-show="loading" class="flex items-center gap-2" style="display: none;">
+                <svg class="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Adicionando...
+            </span>
+        </button>
+    </form>
+@else
                                     <span class="text-xs text-gray-400 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
                                         Indisponível
                                     </span>
