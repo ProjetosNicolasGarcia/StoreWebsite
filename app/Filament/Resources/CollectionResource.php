@@ -94,7 +94,6 @@ class CollectionResource extends Resource
                                     ->directory('collections') // storage/app/public/collections
                                     ->optimize('webp') // Converte para WebP
                                     ->maxImageWidth(1920) // Redimensiona caso exceda 1920px
-                                    ->quality(80) // Compressão de 80%
                                     ->columnSpanFull(),
                                 // -----------------------------------------------------------------
 

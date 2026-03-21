@@ -326,10 +326,20 @@
                 <div class="flex flex-col gap-2 max-w-sm">
                     <form action="{{ route('cart.add', $product->id) }}" method="POST" class="w-full" @submit.prevent="submitCart($el)">
                         @csrf <input type="hidden" name="variant_id" :value="cartVariant ? cartVariant.id : ''">
+                        
+                        {{-- [MODIFIED] Added loading states and spinner to main button --}}
                         <button type="submit" 
-                                class="w-full flex justify-center items-center h-12 px-4 border rounded-xl shadow-md text-sm font-black transition-all duration-200 focus:outline-none uppercase tracking-widest transform active:scale-[0.99]" 
+                                :disabled="loading || (cartVariant && cartVariant.stock <= 0)"
+                                class="w-full flex justify-center items-center h-12 px-4 border rounded-xl shadow-md text-sm font-black transition-all duration-200 focus:outline-none uppercase tracking-widest transform active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed" 
                                 :class="getButtonClass()">
-                            <span x-text="getButtonLabel()"></span>
+                            <span x-show="!loading" x-text="getButtonLabel()"></span>
+                            <span x-show="loading" class="flex items-center gap-2" style="display: none;">
+                                <svg class="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Adicionando...
+                            </span>
                         </button>
                     </form>
                     <div x-show="showError" x-transition class="text-xs text-red-600 font-bold flex items-center gap-1 pl-1" style="display: none;">
@@ -503,11 +513,48 @@
                                     Escolher Opções
                                 </a>
                             @elseif($variantCount === 1)
-                                <form action="{{ route('cart.add', $related->id) }}" method="POST">
+                                {{-- [MODIFIED] AJAX Form for Related Products --}}
+                                <form 
+                                    x-data="{ loading: false }"
+                                    @submit.prevent="
+                                        window.dispatchEvent(new CustomEvent('open-cart'));
+                                        window.dispatchEvent(new CustomEvent('start-cart-loading'));
+                                        
+                                        loading = true;
+
+                                        fetch('{{ route('cart.add', $related->id) }}', {
+                                            method: 'POST',
+                                            body: new FormData($event.target),
+                                            headers: {
+                                                'X-Requested-With': 'XMLHttpRequest',
+                                                'Accept': 'application/json'
+                                            }
+                                        })
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            loading = false;
+                                            if(data.success) {
+                                                Livewire.dispatch('cartUpdated');
+                                            } else {
+                                                window.dispatchEvent(new CustomEvent('update-cart-count'));
+                                                alert(data.error || 'Erro ao adicionar ao carrinho');
+                                            }
+                                        })
+                                        .catch(error => {
+                                            loading = false;
+                                            window.dispatchEvent(new CustomEvent('update-cart-count'));
+                                            console.error('Erro:', error);
+                                            alert('Ocorreu um erro de conexão.');
+                                        });
+                                    "
+                                >
                                     @csrf 
                                     <input type="hidden" name="variant_id" value="{{ $related->variants->first()->id }}">
-                                    <button type="submit" class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300">
-                                        Adicionar ao Carrinho
+                                    <button type="submit" :disabled="loading" class="bg-black text-white border border-black px-8 py-2 rounded-xl uppercase font-bold text-xs tracking-widest shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 hover:bg-white hover:text-black transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center">
+                                        <span x-show="!loading">Adicionar ao Carrinho</span>
+                                        <span x-show="loading" class="flex items-center gap-2" style="display: none;">
+                                            <svg class="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        </span>
                                     </button>
                                 </form>
                             @endif
@@ -523,6 +570,8 @@
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('productSelector', (config) => ({
+                // [MODIFIED] Added loading state
+                loading: false,
                 variants: config.variants,
                 optionsMap: config.optionsMap,
                 selectedOptions: {},
@@ -635,8 +684,39 @@
                 getButtonLabel() { if (this.cartVariant && this.cartVariant.stock <= 0) return 'ESGOTADO'; return 'COMPRAR AGORA'; },
                 getButtonClass() { if (this.cartVariant && this.cartVariant.stock <= 0) return 'bg-gray-200 text-gray-400 border-gray-200 cursor-not-allowed'; return 'bg-black hover:bg-white hover:text-black text-white border-black'; },
                 
-                submitCart(form) { 
-                    if (this.cartVariant && this.cartVariant.stock > 0) { form.submit(); } 
+                // [MODIFIED] AJAX submission instead of form.submit()
+                async submitCart(form) { 
+                    if (this.cartVariant && this.cartVariant.stock > 0) { 
+                        this.loading = true;
+                        window.dispatchEvent(new CustomEvent('open-cart'));
+                        window.dispatchEvent(new CustomEvent('start-cart-loading'));
+
+                        try {
+                            const response = await fetch(form.action, {
+                                method: 'POST',
+                                body: new FormData(form),
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Accept': 'application/json'
+                                }
+                            });
+
+                            const data = await response.json();
+                            this.loading = false;
+
+                            if (data.success) {
+                                Livewire.dispatch('cartUpdated');
+                            } else {
+                                window.dispatchEvent(new CustomEvent('update-cart-count'));
+                                alert(data.error || 'Erro ao adicionar ao carrinho');
+                            }
+                        } catch (error) {
+                            this.loading = false;
+                            window.dispatchEvent(new CustomEvent('update-cart-count'));
+                            console.error('Erro:', error);
+                            alert('Ocorreu um erro de conexão.');
+                        }
+                    } 
                     else {
                         this.showError = true;
                         if (this.cartVariant && this.cartVariant.stock <= 0) this.errorMessage = "Produto esgotado."; 

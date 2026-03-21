@@ -49,7 +49,6 @@ class BannerResource extends Resource
                                     // --- INÍCIO DAS OTIMIZAÇÕES DE IMAGEM (PERFORMANCE/LIGHTHOUSE) ---
                                     ->optimize('webp') // Converte PNGs/JPGs pesados para WebP leve
                                     ->maxImageWidth(1920) // Evita uploads de resoluções gigantescas (ex: 4K)
-                                    ->quality(80) // 80% mantém excelente qualidade visual e reduz o peso em ~80%
                                     // -----------------------------------------------------------------
                                     ->required()
                                     ->columnSpanFull(),

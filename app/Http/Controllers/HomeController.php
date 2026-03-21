@@ -3,16 +3,13 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache; // Ensure this is imported for caching
+use Illuminate\Support\Facades\Cache;
 use App\Models\Product;
 use App\Models\Banner;
 use App\Models\Collection;
 
 class HomeController extends Controller
 {
-    /**
-     * Helper privado para otimização de consultas SQL.
-     */
     private function variantFields($query)
     {
         $query->select([
@@ -32,19 +29,22 @@ class HomeController extends Controller
 
     public function index()
     {
-        // Define tempo de cache: 60 minutos (ajuste conforme a necessidade do negócio)
-        $cacheTtl = now()->addMinutes(60);
+        // Banners mudam pouco, podem ficar cacheados por 60 min
+        $bannersCacheTtl = now()->addMinutes(60);
+        
+        // [MODIFICADO] Produtos e Ofertas precisam de dados "frescos". Cache curto de 2 minutos.
+        $productsCacheTtl = now()->addMinutes(2);
 
-        // 1. Carrossel Principal (Hero) - Cacheado
-        $heroBanners = Cache::remember('home_hero_banners', $cacheTtl, function () {
+        // 1. Carrossel Principal (Hero)
+        $heroBanners = Cache::remember('home_hero_banners', $bannersCacheTtl, function () {
             return Banner::where('is_active', true)
                 ->where('location', 'hero')
                 ->orderBy('position')
                 ->get();
         });
 
-        // 2. Seção de Novidades - Cacheado
-        $newArrivals = Cache::remember('home_new_arrivals', $cacheTtl, function () {
+        // 2. Seção de Novidades
+        $newArrivals = Cache::remember('home_new_arrivals', $productsCacheTtl, function () {
             return Product::where('is_active', true)
                 ->latest()
                 ->take(8)
@@ -53,8 +53,8 @@ class HomeController extends Controller
                 ->get();
         });
 
-        // 3. Coleções em Destaque - Cacheado
-        $collections = Cache::remember('home_collections', $cacheTtl, function () {
+        // 3. Coleções em Destaque
+        $collections = Cache::remember('home_collections', $productsCacheTtl, function () {
             $cols = Collection::where('featured_on_home', true)
                 ->where('is_active', true)
                 ->with(['products' => function ($query) {
@@ -66,7 +66,6 @@ class HomeController extends Controller
                 }])
                 ->get();
 
-            // Fallback de segurança para limitar a visualização
             $cols->each(function($collection) {
                 $collection->setRelation('products', $collection->products->take(8));
             });

@@ -241,7 +241,6 @@ class ProductResource extends Resource
                                             ->directory('products/variants')
                                             ->optimize('webp')
                                             ->maxImageWidth(1920)
-                                            ->quality(80)
                                             ->columnSpanFull(),
 
                                         // --- OTIMIZAÇÃO: Galeria da Variante ---
@@ -253,7 +252,6 @@ class ProductResource extends Resource
                                             ->directory('products/variants')
                                             ->optimize('webp')
                                             ->maxImageWidth(1920)
-                                            ->quality(80)
                                             ->columnSpanFull(),
                                     ])
                                     ->collapsed()
@@ -321,7 +319,6 @@ class ProductResource extends Resource
                                     ->directory('products')
                                     ->optimize('webp')
                                     ->maxImageWidth(1920)
-                                    ->quality(80)
                                     ->required(),
 
                                 // --- OTIMIZAÇÃO: Galeria Principal do Produto ---
@@ -334,7 +331,6 @@ class ProductResource extends Resource
                                     ->directory('products/gallery')
                                     ->optimize('webp')
                                     ->maxImageWidth(1920)
-                                    ->quality(80)
                                     ->maxFiles(5),
                             ]),
 
