@@ -49,7 +49,7 @@
             }
          }" 
          @scroll.window.throttle.10ms="onScroll()" 
-         class="container mx-auto px-4 pt-48 pb-24">
+         class="container mx-auto px-4 pt-48 pb-24 bg-white"> {{-- Added bg-white to ensure consistency --}}
         
         <div class="grid grid-cols-1 md:grid-cols-12 gap-16 max-w-7xl mx-auto">
             
@@ -87,7 +87,7 @@
                             
                             <h2 class="text-2xl font-bold text-gray-900 mb-8 border-b border-gray-100 pb-4 flex items-center">
                                 {{-- Indicador Visual: Barra preta que aparece quando a seção está ativa --}}
-                                <span class="w-2 h-8 bg-black mr-4 rounded-full" 
+                                <span class="w-2 h-8 bg-black mr-4 rounded-none" {{-- Removed rounded-full to match squared style --}}
                                       x-show="activeSection === '{{ $topic['slug'] }}'" 
                                       x-transition.opacity.duration.500ms></span>
                                 {{ $topic['title'] }}
@@ -96,7 +96,8 @@
                             {{-- Listagem de Perguntas (Accordions) --}}
                             <div class="space-y-4">
                                 @foreach($topic['questions'] as $item)
-                                    <div x-data="{ open: false }" class="border border-gray-100 rounded-lg bg-white overflow-hidden group hover:border-gray-300 transition-colors">
+                                    {{-- Changed: Replaced rounded-lg with rounded-none for brutalist style --}}
+                                    <div x-data="{ open: false }" class="border border-gray-200 rounded-none bg-white overflow-hidden group hover:border-black transition-colors">
                                         
                                         {{-- Botão Toggle da Pergunta --}}
                                         <button @click="open = !open" class="w-full flex justify-between items-center p-6 text-left focus:outline-none">
@@ -109,8 +110,9 @@
                                         </button>
 
                                         {{-- Resposta: Expandível via Alpine x-collapse --}}
-                                        <div x-show="open" x-collapse class="bg-white">
-                                            <div class="p-6 pt-0 text-gray-600 leading-relaxed">
+                                        {{-- Note: Ensure Alpine Collapse plugin is loaded for 'x-collapse' to work smoothly --}}
+                                        <div x-show="open" x-collapse class="bg-white border-t border-gray-100" x-cloak>
+                                            <div class="p-6 pt-4 text-gray-600 leading-relaxed">
                                                 {!! $item['answer'] !!}
                                             </div>
                                         </div>

@@ -3,11 +3,11 @@
     <div class="min-h-screen flex items-center justify-center bg-white py-12 px-4 sm:px-6 lg:px-8">
 
         {{-- Wrapper do Conteúdo: Define a largura máxima e o espaçamento entre elementos --}}
-        <div class="max-w-md w-full space-y-8">
+        <div class="max-w-md w-full space-y-8 bg-white p-10 border border-gray-100 shadow-sm rounded-none">
             
             {{-- Cabeçalho da Página --}}
             <div>
-                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                <h2 class="mt-6 text-center text-3xl font-black text-gray-900 uppercase tracking-tight">
                     Redefinir Senha
                 </h2>
                 <p class="mt-2 text-center text-sm text-gray-600">
@@ -27,8 +27,9 @@
                     {{-- Campo de Email: Configurado como Readonly para garantir a integridade do link enviado --}}
                     <div>
                         <label for="email-address" class="block text-sm font-bold text-gray-700 mb-1">Email</label>
+                        {{-- Changed: Replaced rounded-xl with rounded-none --}}
                         <input id="email-address" name="email" type="email" autocomplete="email" required readonly
-                            class="block w-full h-12 rounded-xl border border-gray-300 bg-gray-100 text-gray-500 shadow-none cursor-not-allowed px-4" 
+                            class="block w-full h-12 rounded-none border border-gray-300 bg-gray-100 text-gray-500 shadow-none cursor-not-allowed px-4" 
                             value="{{ $email ?? old('email') }}">
                     </div>
 
@@ -36,8 +37,9 @@
                     <div>
                         <label for="password" class="block text-sm font-bold text-gray-700 mb-1">Nova Senha</label>
                         <div class="relative">
+                            {{-- Changed: Replaced rounded-xl with rounded-none --}}
                             <input id="password" name="password" :type="showPassword ? 'text' : 'password'" required 
-                                class="block w-full h-12 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all px-4 pr-10" 
+                                class="block w-full h-12 rounded-none border border-gray-300 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all px-4 pr-10" 
                                 placeholder="Nova Senha">
                             
                             {{-- Botão para Alternar Visibilidade (Toggle) --}}
@@ -59,8 +61,9 @@
                     <div>
                         <label for="password-confirm" class="block text-sm font-bold text-gray-700 mb-1">Confirmar Nova Senha</label>
                         <div class="relative">
+                            {{-- Changed: Replaced rounded-xl with rounded-none --}}
                             <input id="password-confirm" name="password_confirmation" :type="showPassword ? 'text' : 'password'" required 
-                                class="block w-full h-12 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all px-4 pr-10" 
+                                class="block w-full h-12 rounded-none border border-gray-300 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all px-4 pr-10" 
                                 placeholder="Confirmar Senha">
                         </div>
                     </div>
@@ -68,7 +71,8 @@
 
                 {{-- Exibição de Erros de Validação: Renderiza mensagens caso a validação do Laravel falhe --}}
                 @if ($errors->any())
-                    <div class="text-red-500 text-sm font-bold bg-red-50 p-3 rounded-lg border border-red-100">
+                    {{-- Changed: Replaced rounded-lg with rounded-none --}}
+                    <div class="text-red-500 text-sm font-bold bg-red-50 p-3 rounded-none border border-red-100">
                         <ul class="list-disc list-inside">
                             @foreach ($errors->all() as $error)
                                 <li>{{ $error }}</li>
@@ -78,8 +82,9 @@
                 @endif
 
                 {{-- Ação do Formulário: Botão de Submissão --}}
-                <div>
-                    <button type="submit" class="w-full h-12 px-4 border border-black rounded-xl text-base font-bold text-white bg-black hover:bg-white hover:text-black transition-all cursor-pointer focus:outline-none shadow-sm">
+                <div class="pt-2">
+                    {{-- Changed: Replaced rounded-xl with rounded-none and removed shadow --}}
+                    <button type="submit" class="w-full h-12 flex justify-center items-center px-4 border border-black rounded-none text-base font-bold text-white bg-black hover:bg-white hover:text-black transition-all duration-200 cursor-pointer uppercase tracking-wide">
                         REDEFINIR SENHA
                     </button>
                 </div>

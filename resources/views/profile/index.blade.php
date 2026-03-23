@@ -14,15 +14,13 @@
               originalEmail: '{{ $user->email }}',
               originalPhone: '{{ $user->phone }}',
               originalCPF: '{{ $user->cpf }}',
-              // [CORREÇÃO] Simplificado com null-safe operator para evitar erro de sintaxe
-              originalBirthDate: '{{ $user->birth_date?->format("Y-m-d") }}',
+              originalBirthDate: '{{ $user->birth_date?->format('Y-m-d') }}',
               
               // --- ESTADO ATUAL (Reativo via x-model) ---
               currentEmail: '{{ old('email', $user->email) }}',
               currentPhone: '{{ old('phone', $user->phone) }}',
               currentCPF: '{{ old('cpf', $user->cpf) }}',
-              // [CORREÇÃO] Simplificado com null-safe operator e aspas duplas no formato
-              currentBirthDate: '{{ old('birth_date', $user->birth_date?->format("Y-m-d")) }}',
+              currentBirthDate: '{{ old('birth_date', $user->birth_date?->format('Y-m-d')) }}',
               
               newPassword: '',
               
@@ -59,21 +57,21 @@
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Nome</label>
                 <input type="text" name="name" value="{{ old('name', $user->name) }}" 
-                       class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                       class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
             </div>
 
             {{-- Campo: Sobrenome (Dado não sensível) --}}
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">Sobrenome</label>
                 <input type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}" 
-                       class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                       class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
             </div>
 
             {{-- Campo: E-mail (Sensível) --}}
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">E-mail</label>
                 <input type="email" name="email" x-model="currentEmail"
-                       class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                       class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
             </div>
 
             {{-- Campo: CPF (Sensível com Máscara) --}}
@@ -82,7 +80,7 @@
                 <input type="text" name="cpf" x-model="currentCPF"
                        x-on:input="currentCPF = formatCPF($el.value)"
                        maxlength="14" placeholder="000.000.000-00"
-                       class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                       class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
             </div>
 
             {{-- Campo: Telefone (Sensível com Máscara) --}}
@@ -91,7 +89,7 @@
                 <input type="text" name="phone" x-model="currentPhone"
                        x-on:input="currentPhone = formatPhone($el.value)"
                        maxlength="15" placeholder="(00) 00000-0000"
-                       class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                       class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
             </div>
 
             {{-- Campo: Data de Nascimento --}}
@@ -99,7 +97,7 @@
                 <label class="block text-sm font-bold text-gray-700 mb-1">Data de Nascimento</label>
                 <input type="date" name="birth_date" x-model="currentBirthDate"
                        max="{{ date('Y-m-d', strtotime('-18 years')) }}"
-                       class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                       class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                 @error('birth_date')
                     <p class="text-red-500 text-xs mt-1 font-bold">{{ $message }}</p>
                 @enderror
@@ -114,13 +112,13 @@
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Nova Senha</label>
                     <input type="password" name="password" x-model="newPassword"
-                           class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                           class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     <p class="text-xs text-gray-500 mt-1">Deixe em branco para manter a atual.</p>
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Confirmar Senha</label>
                     <input type="password" name="password_confirmation" 
-                           class="block w-full h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                           class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                 </div>
             </div>
         </div>
@@ -128,7 +126,7 @@
         {{-- BOX DE SEGURANÇA: Aparece apenas se houver mudanças sensíveis ou erro de validação --}}
         <div x-show="isSensitiveChange() || {{ $errors->has('current_password') ? 'true' : 'false' }}" 
              x-transition.opacity
-             class="mt-8 bg-yellow-50 border border-yellow-200 p-6 rounded-xl">
+             class="mt-8 bg-yellow-50 border border-yellow-200 p-6 rounded-none">
             
             <div class="flex items-start gap-3">
                 <svg class="w-6 h-6 text-yellow-600 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,7 +140,7 @@
                     
                     <label class="block text-sm font-bold text-gray-700 mb-1">Digite sua Senha Atual</label>
                     <input type="password" name="current_password" 
-                           class="block w-full md:w-1/2 h-12 px-4 rounded-xl border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                           class="block w-full md:w-1/2 h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     
                     @error('current_password')
                         <p class="text-red-500 text-xs mt-1 font-bold">{{ $message }}</p>
@@ -154,7 +152,7 @@
         {{-- Botão de Submissão --}}
         <div class="mt-10 flex justify-end">
             <button type="submit" 
-                    class="h-12 px-8 border border-black rounded-xl text-base font-bold text-white bg-black hover:bg-white hover:text-black transition-all duration-200 cursor-pointer shadow-lg uppercase">
+                    class="h-12 px-8 border border-black rounded-none text-base font-bold text-white bg-black hover:bg-white hover:text-black transition-all duration-200 cursor-pointer shadow-none uppercase tracking-widest">
                 Salvar Alterações
             </button>
         </div>
@@ -176,7 +174,7 @@
         <div class="mt-10 flex justify-end" x-data="{ open: {{ $errors->userDeletion->isNotEmpty() ? 'true' : 'false' }} }">
             
             <button @click="open = true" type="button" 
-                    class="h-12 px-8 border border-red-600 rounded-xl text-base font-bold text-white bg-red-600 hover:bg-white hover:text-red-600 uppercase transition-all duration-200 cursor-pointer shadow-lg">
+                    class="h-12 px-8 border border-red-600 rounded-none text-base font-bold text-white bg-red-600 hover:bg-white hover:text-red-600 uppercase tracking-widest transition-all duration-200 cursor-pointer shadow-none">
                 Excluir minha conta
             </button>
 
@@ -200,20 +198,21 @@
                          x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                          x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                          @click.away="open = false"
-                         class="relative transform overflow-hidden rounded-xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                         class="relative transform overflow-hidden rounded-none bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-gray-200">
                         
                         <form method="post" action="{{ route('profile.destroy') }}" class="p-6">
                             @csrf
                             @method('delete')
 
                             <div class="sm:flex sm:items-start">
-                                <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                {{-- Ícone de alerta quadrado --}}
+                                <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-none bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
                                     <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                                     </svg>
                                 </div>
                                 <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                                    <h3 class="text-base font-semibold leading-6 text-gray-900" id="modal-title">Confirmar Exclusão de Conta</h3>
+                                    <h3 class="text-base font-bold uppercase tracking-widest leading-6 text-gray-900" id="modal-title">Confirmar Exclusão de Conta</h3>
                                     <div class="mt-2">
                                         <p class="text-sm text-gray-500">
                                             Tem certeza que deseja excluir sua conta? Todos os seus dados de acesso serão removidos permanentemente. 
@@ -223,7 +222,7 @@
                                     
                                     <div class="mt-4">
                                         <input type="password" name="password" placeholder="Sua senha atual"
-                                               class="block w-full h-11 px-4 rounded-lg border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                               class="block w-full h-11 px-4 rounded-none border border-gray-500 text-gray-900 placeholder:text-gray-400 focus:border-red-500 focus:ring-red-500 sm:text-sm">
                                         
                                         @if($errors->userDeletion->has('password'))
                                             <p class="mt-2 text-sm text-red-600 font-bold">
@@ -236,12 +235,12 @@
 
                             <div class="mt-6 flex flex-row-reverse gap-2">
                                 {{-- Botão Confirmar --}}
-                                <button type="submit" class="inline-flex w-full justify-center rounded-xl border border-red-600 bg-red-600 px-3 py-2 text-sm font-bold text-white shadow-sm hover:bg-white hover:text-red-600 transition-all duration-200 sm:w-auto uppercase tracking-wide">
+                                <button type="submit" class="inline-flex w-full justify-center rounded-none border border-red-600 bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-white hover:text-red-600 transition-all duration-200 sm:w-auto uppercase tracking-widest cursor-pointer">
                                     Confirmar Exclusão
                                 </button>
                                 
                                 {{-- Botão Cancelar --}}
-                                <button type="button" @click="open = false" class="mt-3 inline-flex w-full justify-center rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-900 shadow-sm hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-all duration-200 sm:mt-0 sm:w-auto uppercase tracking-wide">
+                                <button type="button" @click="open = false" class="mt-3 inline-flex w-full justify-center rounded-none border border-gray-500 bg-white px-4 py-2 text-sm font-bold text-gray-900 hover:bg-black hover:text-white hover:border-black transition-all duration-200 sm:mt-0 sm:w-auto uppercase tracking-widest cursor-pointer">
                                     Cancelar
                                 </button>
                             </div>

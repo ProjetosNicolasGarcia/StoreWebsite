@@ -67,7 +67,8 @@
                         }
                     @endphp
                     
-                    <div class="w-20 h-24 bg-white rounded-md overflow-hidden flex-shrink-0 border border-gray-200 flex items-center justify-center">
+                    {{-- Miniatura com cantos quadrados --}}
+                    <div class="w-20 h-24 bg-white rounded-none overflow-hidden flex-shrink-0 border border-gray-200 flex items-center justify-center">
                         <img src="{{ Storage::url($img) }}" loading="lazy" decoding="async" alt="{{ $item->product->name }}" class="w-full h-full object-contain p-1">
                     </div>
 
@@ -96,7 +97,7 @@
                                 @if($item->variant && is_array($item->variant->options))
                                     <div class="flex flex-wrap gap-1 mt-1">
                                         @foreach($item->variant->options as $key => $value)
-                                            <span class="text-[10px] px-1.5 py-0.5 rounded text-gray-600 uppercase font-bold">
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded-none text-gray-600 uppercase font-bold border border-gray-100">
                                                 {{ $key }}: {{ $value }}
                                             </span>
                                         @endforeach
@@ -106,7 +107,8 @@
                         </div>
 
                         <div class="flex items-end justify-between mt-2">
-                            <div class="flex items-center border border-gray-200 rounded h-8">
+                            {{-- Seletor de quantidade com cantos quadrados --}}
+                            <div class="flex items-center border border-gray-200 rounded-none h-8">
                                 <button type="button" 
                                         wire:click="updateQuantity({{ $item->id }}, 'decrease')" 
                                         wire:loading.attr="disabled"
@@ -158,11 +160,11 @@
                 <span class="font-black text-xl">R$ {{ number_format($cartTotal ?? 0, 2, ',', '.') }}</span>
             </div>
             @auth
-                <a href="{{ route('checkout') }}" class="block w-full text-center bg-black text-white border border-black rounded-xl py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300 cursor-pointer">
+                <a href="{{ route('checkout') }}" class="block w-full text-center bg-black text-white border border-black rounded-none py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300 cursor-pointer">
                     Finalizar Compra
                 </a>
             @else
-                <button type="button" @click="cartOpen = false; setTimeout(() => $dispatch('open-auth-slider'), 300)" class="w-full bg-black text-white border border-black rounded-xl py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300 cursor-pointer focus:outline-none">
+                <button type="button" @click="cartOpen = false; setTimeout(() => $dispatch('open-auth-slider'), 300)" class="w-full bg-black text-white border border-black rounded-none py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300 cursor-pointer focus:outline-none">
                     Finalizar Compra
                 </button>
             @endauth
@@ -188,5 +190,4 @@
         </svg>
         <span class="text-sm font-bold text-gray-600 uppercase tracking-widest animate-pulse">Atualizando...</span>
     </div>
-
 </div>
