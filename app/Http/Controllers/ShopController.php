@@ -8,13 +8,10 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use App\Services\ShippingService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Storage; // Necessário para correção das imagens na busca
 
 class ShopController extends Controller
 {
-    /**
-     * OTIMIZAÇÃO: Define colunas essenciais para performance.
-     * As datas são obrigatórias para validar se a promoção está ativa.
-     */
     private function variantFields($query)
     {
         $query->select([
@@ -79,7 +76,7 @@ class ShopController extends Controller
             ->with([
                 'categories', 
                 'collections', 
-                'variants', // Carrega variantes completas na PDP para garantir todos os dados
+                'variants', 
                 'reviews.user' 
             ])
             ->firstOrFail();
@@ -91,7 +88,7 @@ class ShopController extends Controller
                 ->first();
         }
 
-        $relatedProducts = Product::where('is_active', true)
+       $relatedProducts = Product::where('is_active', true)
             ->where('id', '!=', $product->id)
             ->where(function (Builder $query) use ($product) {
                 $categoryIds = $product->categories->pluck('id');
@@ -108,9 +105,11 @@ class ShopController extends Controller
                 }
             })
             ->with(['variants' => fn($q) => $this->variantFields($q)])
-            ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)])
+            // [CORREÇÃO DE BUG]: Removido o ->take(1) dentro do select de relacionamento. 
+            // O Laravel não aplica o take(1) "por produto" no Eager Load, ele destrói os resultados da array geral.
+            ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')])
+            ->latest()
             ->take(4)
-            ->inRandomOrder()
             ->get();
 
         return view('shop.product', compact('product', 'relatedProducts', 'preSelectedVariant'));
@@ -148,9 +147,6 @@ class ShopController extends Controller
         ]);
     }
 
-    /**
-     * CORREÇÃO: Sugestões agora usam a lógica inteligente de vitrine.
-     */
     public function suggestions(Request $request)
     {
         $query = $request->input('q');
@@ -160,32 +156,29 @@ class ShopController extends Controller
         $products = Product::where('is_active', true)
             ->where('name', 'like', "%{$query}%")
             ->take(5)
-            // Carregamos TODAS as colunas necessárias para calcular a promoção corretamente
             ->with(['variants' => fn($q) => $this->variantFields($q)]) 
             ->get(['products.id', 'products.name', 'products.slug', 'products.image_url']); 
 
         $results = $products->map(function ($product) {
-            // [CORREÇÃO] Em vez de pegar a primeira, pega a MELHOR variante (com promoção)
-            // O atributo showcase_variant no Model Product já faz essa escolha inteligente.
             $variant = $product->showcase_variant;
             
-            // Fallback se não tiver nenhuma variante
             if (!$variant) return null;
 
             $price = $variant->price;
             $salePrice = $variant->sale_price;
-            $isOnSale = $product->isOnSale(); // Usa a lógica robusta de data do Model
+            $isOnSale = $product->isOnSale(); 
 
             return [
                 'id' => $product->id,
                 'name' => $product->name,
                 'slug' => $product->slug,
-                'image_url' => $product->image_url ?? 'images/placeholder.jpg',
+                // [CORREÇÃO]: Frontend espera path válido. Adicionado Storage::url direto na API
+                'image_url' => $product->image_url ? Storage::url($product->image_url) : asset('images/placeholder.jpg'),
                 'price' => $isOnSale ? $salePrice : $price,
                 'original_price' => $isOnSale ? $price : null,
                 'on_sale' => $isOnSale
             ];
-        })->filter(); // Remove nulos
+        })->filter();
 
         return response()->json($results->values());
     }

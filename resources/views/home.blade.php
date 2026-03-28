@@ -4,15 +4,20 @@
         <div x-data="{ 
                 activeSlide: 0, 
                 slides: {{ $heroBanners->count() }},
+                interval: 5000, {{-- Tempo de exibição de cada banner (5 segundos) --}}
                 autoplay: null,
                 next() { this.activeSlide = (this.activeSlide + 1) % this.slides },
                 prev() { this.activeSlide = (this.activeSlide - 1 + this.slides) % this.slides },
-                startAutoplay() { this.autoplay = setInterval(() => this.next(), 3000) },
-                stopAutoplay() { clearInterval(this.autoplay) }
+                startAutoplay() { 
+                    if (this.autoplay) clearInterval(this.autoplay);
+                    this.autoplay = setInterval(() => this.next(), this.interval); 
+                },
+                goTo(index) {
+                    this.activeSlide = index;
+                    this.startAutoplay(); {{-- Reseta o timer ao clicar manualmente --}}
+                }
              }" 
              x-init="startAutoplay()"
-             @mouseenter="stopAutoplay()"
-             @mouseleave="startAutoplay()"
              class="relative w-full h-[65vh] md:h-screen group overflow-hidden bg-black">
             
             @foreach($heroBanners as $index => $banner)
@@ -25,7 +30,6 @@
                      x-transition:leave-end="-translate-x-full"
                      class="absolute inset-0 w-full h-full">
                     
-                    {{-- REMOVIDO cursor-pointer do wrapper A, colocado apenas na imagem --}}
                     <a href="{{ $banner->link_url ?? '#' }}" class="block w-full h-full relative">
                         <img src="{{ Storage::url($banner->image_url) }}" 
                              class="absolute inset-0 w-full h-full object-cover cursor-pointer"
@@ -56,20 +60,34 @@
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
             </button>
 
-            <div class="absolute bottom-6 left-0 right-0 flex justify-center space-x-3 z-20">
-                @foreach($heroBanners as $index => $banner)
-                    <button @click="activeSlide = {{ $index }}" 
-                            :class="activeSlide === {{ $index }} ? 'bg-white scale-125' : 'bg-white/40 hover:bg-white/70'"
-                            class="w-3 h-3 rounded-full transition-all duration-300 shadow-sm cursor-pointer">
-                    </button>
-                @endforeach
+            {{-- CORREÇÃO: PROGRESS BAR MAIS VISÍVEL --}}
+            <div class="absolute bottom-6 md:bottom-10 left-0 w-full z-30 px-6 sm:px-12 flex items-center justify-center">
+                <div class="flex gap-3 items-center w-full max-w-5xl">
+                    @foreach($heroBanners as $index => $banner)
+                        {{-- O Fundo da Linha (Agora mais grosso, mais claro e com sombra para contraste perfeito) --}}
+                        <button 
+                            @click="goTo({{ $index }})"
+                            type="button"
+                            class="flex-1 h-1.5 sm:h-2 bg-white/40 backdrop-blur-sm rounded-full overflow-hidden focus:outline-none cursor-pointer relative group shadow-[0_2px_4px_rgba(0,0,0,0.5)] border border-white/10"
+                            aria-label="Ir para banner {{ $index + 1 }}"
+                        >
+                            {{-- O Preenchimento (Branco Intenso) que anima a largura (width) --}}
+                            <div 
+                                class="absolute top-0 left-0 h-full bg-white transition-all ease-linear shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+                                :style="activeSlide === {{ $index }} ? 'width: 100%; transition-duration: ' + interval + 'ms;' : 'width: 0%; transition-duration: 0ms;'"
+                            ></div>
+                            
+                            {{-- Efeito visual leve ao passar o mouse --}}
+                            <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-30 transition-opacity"></div>
+                        </button>
+                    @endforeach
+                </div>
             </div>
         </div>
     @endif
 
     {{-- 2. NOVIDADES (NEW ARRIVALS) --}}
     <section class="container mx-auto px-4 py-16">
-        {{-- ALINHAMENTO À ESQUERDA (text-left) --}}
         <div class="text-left mb-12">
             <h3 class="text-3xl font-black uppercase tracking-widest text-gray-900">Novidades</h3>
             <p class="text-gray-500 mt-2 uppercase tracking-widest text-xs font-bold">Os últimos lançamentos da loja</p>
@@ -100,9 +118,7 @@
                             </svg>
                         </button>
 
-                        {{-- REMOVIDO cursor-pointer do bloco A, aplicado apenas à imagem --}}
                         <a href="{{ route('shop.product', $product->slug) }}" class="absolute inset-0 block z-0">
-                            {{-- ETIQUETA "NOVO" --}}
                             <div class="absolute top-3 left-3 bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest z-10 shadow-sm pointer-events-none">
                                 Novo
                             </div>
@@ -168,7 +184,7 @@
                                     </button>
                                 </form>
                             @else
-                                <div class="w-full bg-gray-100 border-t border-gray-200 text-gray-400 py-3 uppercase font-bold text-xs tracking-widest flex items-center justify-center">
+                                <div class="w-full bg-gray-100 border-t border-gray-200 text-gray-400 py-3 uppercase font-bold text-xs tracking-widest flex items-center justify-center cursor-default">
                                     Indisponível
                                 </div>
                             @endif
@@ -280,7 +296,6 @@
                                     </svg>
                                 </button>
 
-                                {{-- REMOVIDO cursor-pointer do bloco A, aplicado apenas à imagem --}}
                                 <a href="{{ route('shop.product', $product->slug) }}" class="absolute inset-0 block z-0">
                                     <img src="{{ Storage::url($product->image_url) }}" 
                                          :src="currentImage" 
@@ -399,7 +414,6 @@
                 </div>
 
                 <div class="flex justify-center">
-                    {{-- BOTÃO VER MAIS QUADRADO (rounded-none) --}}
                     <a href="{{ url('/collections/' . $collection->slug) }}" 
                        class="inline-block border border-black rounded-none bg-white text-black px-12 py-3 uppercase font-bold text-sm tracking-widest hover:bg-black hover:text-white transition duration-300 cursor-pointer">
                         Ver mais

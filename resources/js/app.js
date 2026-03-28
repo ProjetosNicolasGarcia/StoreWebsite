@@ -1,6 +1,33 @@
 import './bootstrap';
 
-// Lógica para o cabeçalho transparente que muda ao rolar
+// =========================================================================
+// 1. CONFIGURAÇÃO GLOBAL DO AXIOS (Otimização de Performance)
+// Remove a necessidade do CDN no <head> e previne bloqueio de renderização
+// =========================================================================
+import axios from 'axios';
+window.axios = axios;
+window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+
+const token = document.querySelector('meta[name="csrf-token"]');
+if (token) {
+    window.axios.defaults.headers.common['X-CSRF-TOKEN'] = token.content;
+}
+
+// =========================================================================
+// 2. CONFIGURAÇÃO DO ALPINE.JS (Otimização de Performance)
+// Injeta o plugin diretamente no bundle do Vite
+// =========================================================================
+import collapse from '@alpinejs/collapse';
+
+// O Livewire 3 expõe o Alpine globalmente. Injetamos o plugin antes da inicialização.
+document.addEventListener('alpine:init', () => {
+    window.Alpine.plugin(collapse);
+});
+
+// =========================================================================
+// 3. LÓGICA DO CABEÇALHO TRANSPARENTE (UI do seu projeto)
+// Lógica para o cabeçalho transparente que muda ao rolar na Home
+// =========================================================================
 document.addEventListener('DOMContentLoaded', function() {
     
     // >>> TRAVA DE SEGURANÇA <<<

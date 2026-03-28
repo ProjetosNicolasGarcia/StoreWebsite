@@ -8,9 +8,9 @@
         <link rel="canonical" href="{{ route('shop.product', $product->slug) }}" />
     @endpush
 
-    {{-- 
+   {{-- 
         =================================================================
-        BLOCO PHP: DADOS E LÓGICA
+        BLOCO PHP: DADOS E LÓGICA (OTIMIZADO)
         =================================================================
     --}}
     @php
@@ -28,11 +28,9 @@
         $normalizedVariants = [];
         $colorImagesFallback = []; 
         
-        // Variáveis para lógica inteligente de texto promocional
         $totalVariantsCount = 0;
         $onSaleVariantsCount = 0;
         
-        // Variáveis de controle de seleção
         $bestInitialVariant = null; 
         $userSelectedVariant = null; 
 
@@ -49,24 +47,25 @@
                     }
                 }
                 
-                $vArray = $variant->toArray();
-                $vArray['options'] = $cleanOptions;
-                $vArray['is_on_sale'] = $variant->isOnSale();
+                $isOnSale = $variant->isOnSale();
                 
-                // Contagem para estatística de promoção
-                $totalVariantsCount++;
-                if ($vArray['is_on_sale']) {
-                    $onSaleVariantsCount++;
-                }
-                
-                // B. Estoque
-                $vArray['stock'] = (int)($variant->quantity ?? 0);
+                // [CORREÇÃO DE PERFORMANCE]: Mapeamento direto em vez de $variant->toArray()
+                // Evita que o framework serialize relações inteiras e faça conversões profundas repetidas vezes.
+                $vArray = [
+                    'id' => $variant->id,
+                    'price' => $variant->price,
+                    'sale_price' => $variant->sale_price,
+                    'is_on_sale' => $isOnSale,
+                    'options' => $cleanOptions,
+                    'stock' => (int)($variant->quantity ?? 0),
+                    'formatted_price' => number_format($variant->price, 2, ',', '.'),
+                    'formatted_sale_price' => $variant->sale_price ? number_format($variant->sale_price, 2, ',', '.') : null,
+                    'discount_percentage' => ($isOnSale && $variant->price > 0) ? round((($variant->price - $variant->sale_price) / $variant->price) * 100) : 0,
+                    'sale_end_date' => ($isOnSale && $variant->sale_end_date) ? $variant->sale_end_date->format('Y-m-d H:i:s') : null,
+                ];
 
-                // C. Formatação
-                $vArray['formatted_price'] = number_format($variant->price, 2, ',', '.');
-                $vArray['formatted_sale_price'] = $variant->sale_price ? number_format($variant->sale_price, 2, ',', '.') : null;
-                $vArray['discount_percentage'] = ($vArray['is_on_sale'] && $variant->price > 0) ? round((($variant->price - $variant->sale_price) / $variant->price) * 100) : 0;
-                $vArray['sale_end_date'] = ($vArray['is_on_sale'] && $variant->sale_end_date) ? $variant->sale_end_date->format('Y-m-d H:i:s') : null;
+                $totalVariantsCount++;
+                if ($isOnSale) $onSaleVariantsCount++;
 
                 // D. Imagens
                 $vImages = [];
@@ -80,13 +79,11 @@
                 $cKey = null;
                 foreach(['Cor', 'Color', 'COR'] as $k) { if (isset($cleanOptions[$k])) { $cKey = $cleanOptions[$k]; break; } }
                 
-                if ($cKey) {
-                    if (!isset($colorImagesFallback[$cKey]) || !empty($vImages)) {
-                        $colorImagesFallback[$cKey] = $finalGallery;
-                    }
+                if ($cKey && (!isset($colorImagesFallback[$cKey]) || !empty($vImages))) {
+                    $colorImagesFallback[$cKey] = $finalGallery;
                 }
 
-                // --- LÓGICA DE SELEÇÃO ---
+                // Lógica de Seleção
                 if (isset($preSelectedVariant) && $variant->id == $preSelectedVariant->id) {
                     $userSelectedVariant = $vArray;
                 }
@@ -110,9 +107,7 @@
 
         foreach ($optionsMap as $key => $values) $optionsMap[$key] = array_values(array_unique($values));
 
-        if ($userSelectedVariant) {
-            $bestInitialVariant = $userSelectedVariant;
-        }
+        if ($userSelectedVariant) $bestInitialVariant = $userSelectedVariant;
 
         if (!$bestInitialVariant) {
             $bestInitialVariant = [
@@ -130,14 +125,10 @@
             ];
         }
 
-        // Lógica Inteligente de Texto Promocional
         $initialPromoText = "";
-        
         if ($onSaleVariantsCount > 0) {
             if ($onSaleVariantsCount === $totalVariantsCount) {
-                if ($totalVariantsCount > 1) {
-                    $initialPromoText = "Oferta válida para todas as opções";
-                }
+                if ($totalVariantsCount > 1) $initialPromoText = "Oferta válida para todas as opções";
             } else {
                 $foundPattern = false;
                 foreach ($optionsMap as $attrName => $possibleValues) {
@@ -147,9 +138,7 @@
                         $countTotal = count($variantsWithThisVal);
                         $countSale = count(array_filter($variantsWithThisVal, fn($v) => $v['is_on_sale']));
 
-                        if ($countTotal > 0 && $countTotal === $countSale) {
-                            $promotedValues[] = $val;
-                        }
+                        if ($countTotal > 0 && $countTotal === $countSale) $promotedValues[] = $val;
                     }
 
                     if (!empty($promotedValues)) {
@@ -158,10 +147,7 @@
                         break; 
                     }
                 }
-
-                if (!$foundPattern) {
-                    $initialPromoText = "Oferta em opções selecionadas";
-                }
+                if (!$foundPattern) $initialPromoText = "Oferta em opções selecionadas";
             }
         }
 

@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\Http;
 
 class CheckoutPage extends Component
 {
-    // Removed public $cartItems to save network payload size
     public $subtotal = 0;
     public $shippingPrice = 0;
     public $discount = 0;
@@ -54,7 +53,6 @@ class CheckoutPage extends Component
         $this->paymentService = $paymentService;
     }
 
-    // OTIMIZAÇÃO: Propriedade Computada para evitar N+1 e repetição de queries
     #[Computed]
     public function cartItems()
     {
@@ -114,7 +112,9 @@ class CheckoutPage extends Component
 
     public function mount()
     {
-        $user = Auth::user()->fresh();
+        // [CORREÇÃO DE PERFORMANCE]: Adicionado eager loading para addresses
+        // Evita problema de N+1 bloqueante durante a carga inicial do Livewire
+        $user = Auth::user()->fresh(['addresses']);
 
         $this->firstName = $user->name;
         $this->lastName = $user->last_name ?? '';
@@ -127,11 +127,9 @@ class CheckoutPage extends Component
             $this->useNewAddress = true;
         }
 
-        // OTIMIZAÇÃO: A API de frete foi removida daqui para não travar o carregamento inicial.
         $this->calculateTotals();
     }
 
-    // OTIMIZAÇÃO: Novo método chamado de forma assíncrona pela view após o paint inicial
     public function loadInitialShipping()
     {
         if ($this->selectedAddressId) {

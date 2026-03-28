@@ -72,8 +72,6 @@ class Category extends Model
      */
     public function scopeActive(Builder $query)
     {
-        // Verifica se a coluna is_active existe antes de filtrar (retrocompatibilidade)
-        // Se não tiver a coluna na migração, assume que tudo é ativo.
         return $query->where('is_active', true);
     }
 
@@ -83,17 +81,26 @@ class Category extends Model
 
     /**
      * Retorna a árvore de categorias completa para o menu.
-     * Otimizado: Faz apenas 1 ou 2 queries em vez de N queries recursivas.
-     * Pode ser cacheado facilmente no AppServiceProvider.
+     * Algoritmo In-Memory: Previne a LazyLoadingViolationException hidratando os
+     * relacionamentos de forma descendente em todas as categorias usando apenas 1 query.
      */
     public static function getTree()
     {
-        return static::root()
-            ->active()
-            ->with(['children' => function($q) {
-                $q->active()->select('id', 'parent_id', 'name', 'slug'); // Select otimizado
-            }])
+        // 1. Busca todas as categorias ativas de uma vez (Apenas 1 Query massiva)
+        $allCategories = static::active()
             ->orderBy('name')
-            ->get(['id', 'name', 'slug']); // Select otimizado na raiz
+            ->get(['id', 'parent_id', 'name', 'slug']);
+
+        // 2. Agrupa as categorias de acordo com o parent_id
+        $grouped = $allCategories->groupBy('parent_id');
+
+        // 3. Hidrata manualmente a relação 'children' para evitar o Lazy Loading no Blade
+        // O setRelation informa ao Eloquent que a relação já foi pré-carregada.
+        $allCategories->each(function ($category) use ($grouped) {
+            $category->setRelation('children', $grouped->get($category->id, collect()));
+        });
+
+        // 4. Retorna as categorias de nível 0 (raízes), já com as ramificações recursivas populadas
+        return $allCategories->whereNull('parent_id')->values();
     }
 }

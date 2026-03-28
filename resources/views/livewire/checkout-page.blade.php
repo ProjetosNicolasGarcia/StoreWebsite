@@ -20,14 +20,7 @@
             </div>
         @endif
 
-        <form wire:submit.prevent="placeOrder" 
-              x-data="{ 
-                  payMethod: $wire.entangle('paymentMethod').live,
-                  shipMethod: $wire.entangle('shippingMethod').live,
-                  addrId: $wire.entangle('selectedAddressId').live,
-                  newAddr: $wire.entangle('useNewAddress').live
-              }" 
-              class="flex flex-col lg:flex-row gap-8 relative">
+        <form x-data="paymentManager()" @submit.prevent="submitOrder" class="flex flex-col lg:flex-row gap-8 relative">
             
             {{-- COLUNA ESQUERDA --}}
             <div class="order-2 lg:order-1 w-full lg:w-2/3 space-y-6">
@@ -262,32 +255,47 @@
                     <div class="pt-2 border-t border-gray-200">
                         
                         {{-- BLOCO CARTÃO DE CRÉDITO --}}
-                        <div x-show="payMethod === 'credit_card'" x-transition style="display: none;" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                            <div class="col-span-1 md:col-span-2">
-                                <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Número do Cartão</label>
-                                <div class="relative">
-                                    <input type="text" x-on:input="$el.value = formatCardNumber($el.value)" maxlength="19" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm" placeholder="0000 0000 0000 0000">
-                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                        <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
-                                    </div>
+                        <div x-show="payMethod === 'credit_card'" style="display: none;" class="mt-6">
+
+                            <div class="flex justify-center items-center gap-6 mb-8">
+                                <img src="https://www.svgrepo.com/show/362033/visa.svg" alt="Visa" class="h-8 object-contain">
+                                <img src="https://www.svgrepo.com/show/355117/mastercard.svg" alt="Mastercard" class="h-8 object-contain">
+                                <img src="https://www.svgrepo.com/show/328152/elo.svg" alt="Elo" class="h-8 object-contain">
+                                <img src="https://www.svgrepo.com/show/328129/amex.svg" alt="Amex" class="h-8 object-contain">
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="col-span-1 md:col-span-2">
+                                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Número do Cartão</label>
+                                    <input type="text" x-model="cardNumber" x-on:input="cardNumber = formatCardNumber($event.target.value)" maxlength="19" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 focus:ring-black focus:border-black sm:text-sm" placeholder="0000 0000 0000 0000">
                                 </div>
-                            </div>
-                            <div class="col-span-1 md:col-span-2">
-                                <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Nome Impresso no Cartão</label>
-                                <input type="text" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm uppercase" placeholder="JOÃO DA SILVA">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Validade</label>
-                                <input type="text" x-on:input="$el.value = formatCardExpiry($el.value)" maxlength="5" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm" placeholder="MM/AA">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">CVV</label>
-                                <input type="text" maxlength="4" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm" placeholder="123">
+                                <div class="col-span-1 md:col-span-2">
+                                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Nome Impresso no Cartão</label>
+                                    <input type="text" x-model="cardName" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 focus:ring-black focus:border-black sm:text-sm uppercase" placeholder="JOÃO DA SILVA">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Validade</label>
+                                    <input type="text" x-model="cardExpiry" x-on:input="cardExpiry = formatCardExpiry($event.target.value)" maxlength="5" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 focus:ring-black focus:border-black sm:text-sm" placeholder="MM/AA">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">CVV</label>
+                                    <input type="text" x-model="cardCvv" maxlength="4" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 focus:ring-black focus:border-black sm:text-sm" placeholder="123">
+                                </div>
+                                
+                                <div class="col-span-1 md:col-span-2 mt-2" x-show="installmentsOptions.length > 0" style="display: none;">
+                                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Parcelamento</label>
+                                    <select x-model="selectedInstallment" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 bg-white focus:outline-none focus:ring-black focus:border-black sm:text-sm font-bold">
+                                        <template x-for="option in installmentsOptions" :key="option.installments">
+                                            <option :value="option.installments" x-text="option.recommended_message"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                
                             </div>
                         </div>
 
                         {{-- BLOCO PIX --}}
-                        <div x-show="payMethod === 'pix'" x-transition style="display: none;" class="mt-4 bg-white p-6 rounded-none border border-gray-200 text-center flex flex-col items-center justify-center">
+                        <div x-show="payMethod === 'pix'" style="display: none;" class="mt-4 bg-white p-6 rounded-none border border-gray-200 text-center flex flex-col items-center justify-center">
                             <div class="bg-white border border-gray-200 p-3 rounded-none mb-3">
                                 <svg class="w-10 h-10 text-gray-900" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor">
                                     <path d="M306.4 356.5C311.8 351.1 321.1 351.1 326.5 356.5L403.5 433.5C417.7 447.7 436.6 455.5 456.6 455.5L471.7 455.5L374.6 552.6C344.3 582.1 295.1 582.1 264.8 552.6L167.3 455.2L176.6 455.2C196.6 455.2 215.5 447.4 229.7 433.2L306.4 356.5zM326.5 282.9C320.1 288.4 311.9 288.5 306.4 282.9L229.7 206.2C215.5 191.1 196.6 184.2 176.6 184.2L167.3 184.2L264.7 86.8C295.1 56.5 344.3 56.5 374.6 86.8L471.8 183.9L456.6 183.9C436.6 183.9 417.7 191.7 403.5 205.9L326.5 282.9zM176.6 206.7C190.4 206.7 203.1 212.3 213.7 222.1L290.4 298.8C297.6 305.1 307 309.6 316.5 309.6C325.9 309.6 335.3 305.1 342.5 298.8L419.5 221.8C429.3 212.1 442.8 206.5 456.6 206.5L494.3 206.5L552.6 264.8C582.9 295.1 582.9 344.3 552.6 374.6L494.3 432.9L456.6 432.9C442.8 432.9 429.3 427.3 419.5 417.5L342.5 340.5C328.6 326.6 304.3 326.6 290.4 340.6L213.7 417.2C203.1 427 190.4 432.6 176.6 432.6L144.8 432.6L86.8 374.6C56.5 344.3 56.5 295.1 86.8 264.8L144.8 206.7L176.6 206.7z"/>
@@ -298,7 +306,7 @@
                         </div>
 
                         {{-- BLOCO BOLETO --}}
-                        <div x-show="payMethod === 'boleto'" x-transition style="display: none;" class="mt-4 bg-white p-6 rounded-none border border-gray-200 text-center flex flex-col items-center justify-center">
+                        <div x-show="payMethod === 'boleto'" style="display: none;" class="mt-4 bg-white p-6 rounded-none border border-gray-200 text-center flex flex-col items-center justify-center">
                             <div class="bg-white border border-gray-200 p-3 rounded-none mb-3">
                                 <svg class="w-10 h-10 text-gray-900" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M4 6h2v12H4zm3 0h1v12H7zm2 0h3v12H9zm4 0h1v12h-1zm2 0h2v12h-2zm3 0h2v12h-2z"/>
@@ -353,7 +361,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-black text-white border border-black rounded-none py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black cursor-pointer">
+                <button type="submit" :disabled="isProcessing" x-text="isProcessing ? 'Processando...' : 'Finalizar Pedido'" class="w-full bg-black text-white border border-black rounded-none py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                     Finalizar Pedido
                 </button>
 
@@ -504,4 +512,131 @@
 
         </form>
     </div>
+
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
+
+
+
+    <script>
+    // 1. Instância protegida FORA do Alpine.js para evitar corrupção por Proxy
+    let mpInstance = null;
+
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('paymentManager', () => ({
+            payMethod: @entangle('paymentMethod').live,
+            shipMethod: @entangle('shippingMethod').live,
+            addrId: @entangle('selectedAddressId').live,
+            newAddr: @entangle('useNewAddress').live,
+
+            cardNumber: '',
+            cardName: '',
+            cardExpiry: '',
+            cardCvv: '',
+            
+            installmentsOptions: [],
+            selectedInstallment: 1,
+            cardBrand: '',
+            paymentMethodId: '',
+            issuerId: '',
+            isProcessing: false,
+
+            init() {
+                // 2. Inicializa o Mercado Pago na variável protegida
+                const publicKey = '{{ config("services.payment_gateway.public_key", "SUA_PUBLIC_KEY_AQUI") }}';
+                mpInstance = new MercadoPago(publicKey, { locale: 'pt-BR' });
+
+                this.$watch('cardNumber', (value) => {
+                    let bin = value.replace(/\D/g, '').substring(0, 6);
+                    if (bin.length === 6) {
+                        this.fetchInstallments(bin);
+                    } else if (bin.length < 6) {
+                        this.installmentsOptions = [];
+                        this.cardBrand = '';
+                    }
+                });
+            },
+
+            async fetchInstallments(bin) {
+                try {
+                    let amount = await this.$wire.get('total');
+                    if (!amount || amount <= 0) amount = 1; 
+
+                    // 3. Usa a variável protegida mpInstance
+                    const response = await mpInstance.getInstallments({ amount: String(amount), bin: bin });
+                    
+                    if (response && response.length > 0 && response[0].payer_costs) {
+                        this.installmentsOptions = response[0].payer_costs;
+                        this.paymentMethodId = response[0].payment_method_id;
+                        this.cardBrand = this.paymentMethodId; 
+                        this.issuerId = response[0].issuer ? response[0].issuer.id : null;
+                        this.selectedInstallment = this.installmentsOptions[0].installments;
+                    } else {
+                        this.installmentsOptions = [{ installments: 1, recommended_message: "1x (À vista)" }];
+                        this.selectedInstallment = 1;
+                    }
+                } catch (error) {
+                    console.error("Erro MP API: Bandeira Inválida ou Falha na Conexão", error);
+                    let fallbackAmount = await this.$wire.get('total') || 0;
+                    this.installmentsOptions = [{ installments: 1, recommended_message: "1x de R$ " + fallbackAmount }];
+                    this.selectedInstallment = 1;
+                }
+            },
+
+            async submitOrder() {
+                if (this.payMethod === 'credit_card') {
+                    if(this.isProcessing) return;
+                    this.isProcessing = true;
+
+                    try {
+                        const expiryParts = this.cardExpiry.split('/');
+                        if (expiryParts.length !== 2) throw new Error("A validade deve estar no formato MM/AA.");
+
+                        const month = expiryParts[0].trim();
+                        // Garante que o ano vai sempre no formato de 4 dígitos exigido pelo MP (Ex: 2030)
+                        const year = expiryParts[1].trim().length === 2 ? '20' + expiryParts[1].trim() : expiryParts[1].trim(); 
+                        
+                        const cpfValue = await this.$wire.get('cpf');
+                        if (!cpfValue || cpfValue.trim() === '') {
+                            throw new Error("O CPF do titular na seção de Dados Pessoais não pode estar vazio.");
+                        }
+                        
+                        // 4. Criação do Token isolada
+                        const tokenResponse = await mpInstance.createCardToken({
+                            cardNumber: this.cardNumber.replace(/\D/g, ''),
+                            cardholderName: this.cardName,
+                            cardExpirationMonth: month,
+                            cardExpirationYear: year,
+                            securityCode: this.cardCvv,
+                            identificationType: 'CPF',
+                            identificationNumber: cpfValue.replace(/\D/g, '')
+                        });
+
+                        if (!tokenResponse || !tokenResponse.id) {
+                            throw new Error("Falha interna. O Mercado Pago não gerou o Token.");
+                        }
+
+                        // Define propriedades silenciosas para o Back-End Processar
+                        this.$wire.set('cardToken', tokenResponse.id);
+                        this.$wire.set('installments', this.selectedInstallment);
+                        this.$wire.set('cardPaymentMethodId', this.paymentMethodId);
+                        this.$wire.set('cardIssuerId', this.issuerId);
+
+                        // Chama a função final no Livewire
+                        await this.$wire.placeOrder();
+
+                    } catch (error) {
+                        console.error("Falha na Tokenização:", error);
+                        // Agora o erro exato aparecerá no alerta
+                        const errorMsg = error.message || "Revise os dados informados.";
+                        alert("Não foi possível validar o cartão: " + errorMsg);
+                    } finally {
+                        this.isProcessing = false;
+                    }
+                } else {
+                    this.$wire.placeOrder();
+                }
+            }
+        }));
+    });
+    </script>
 </div>

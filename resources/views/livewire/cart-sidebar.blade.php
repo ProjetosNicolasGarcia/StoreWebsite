@@ -16,58 +16,47 @@
 
     {{-- Área dos produtos do carrinho --}}
     <div class="flex-1 overflow-y-auto p-6 space-y-6 relative">
-        @if(isset($cartItems) && $cartItems->count() > 0)
-            @foreach($cartItems as $item)
+        {{-- ACESSO OTIMIZADO: Utilizamos $this->cartItems para acessar o #[Computed] sem serializar o array na RAM --}}
+        @if($this->cartItems && $this->cartItems->count() > 0)
+            @php $calculatedTotal = 0; @endphp
+            
+            @foreach($this->cartItems as $item)
                 @if(!$item->variant && !$item->product) @continue @endif
 
                 <div class="flex gap-4" wire:key="cart-item-{{ $item->id }}">
                     @php
+                        // LÓGICA DE IMAGEM OTIMIZADA: Fallback direto e limpo.
+                        // Removemos os loops N^2 de "siblings" e checagem profunda de cor.
                         $img = $item->product->image_url; 
+                        
                         if ($item->variant) {
                             if ($item->variant->image) {
                                 $img = $item->variant->image;
-                            } elseif (!empty($item->variant->images) && isset($item->variant->images[0])) {
+                            } elseif (!empty($item->variant->images) && is_array($item->variant->images) && isset($item->variant->images[0])) {
                                 $img = $item->variant->images[0];
-                            } 
-                            else {
-                                $colorOptions = ['Cor', 'Color', 'COR', 'cor', 'color'];
-                                $variantColor = null;
-                                if (is_array($item->variant->options)) {
-                                    foreach ($colorOptions as $key) {
-                                        if (isset($item->variant->options[$key])) {
-                                            $variantColor = $item->variant->options[$key];
-                                            break;
-                                        }
-                                    }
-                                }
-                                if ($variantColor && $item->product->variants) {
-                                    foreach ($item->product->variants as $sibling) {
-                                        if ($sibling->id === $item->variant->id) continue;
-                                        $siblingColor = null;
-                                        if ($sibling->options) {
-                                            foreach ($colorOptions as $key) {
-                                                if (isset($sibling->options[$key])) {
-                                                    $siblingColor = $sibling->options[$key];
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        if ($siblingColor === $variantColor) {
-                                            if ($sibling->image) {
-                                                $img = $sibling->image;
-                                                break;
-                                            } elseif (!empty($sibling->images) && isset($sibling->images[0])) {
-                                                $img = $sibling->images[0];
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
                             }
                         }
+
+                        // LÓGICA DE PREÇO (Limpa e eficiente)
+                        $isOnSale = false;
+                        $unitPrice = 0;
+                        $originalPrice = 0;
+
+                        if ($item->variant) {
+                            $isOnSale = $item->variant->isOnSale();
+                            $unitPrice = $isOnSale ? $item->variant->sale_price : $item->variant->price;
+                            $originalPrice = $item->variant->price;
+                        } else {
+                            $isOnSale = $item->product->isOnSale();
+                            $unitPrice = $isOnSale ? $item->product->sale_price : $item->product->price;
+                            $originalPrice = $item->product->price;
+                        }
+
+                        // Acumula o total para não precisar de uma query/variável separada
+                        $calculatedTotal += ($unitPrice * $item->quantity);
                     @endphp
                     
-                    {{-- Miniatura com cantos quadrados --}}
+                    {{-- Miniatura --}}
                     <div class="w-20 h-24 bg-white rounded-none overflow-hidden flex-shrink-0 border border-gray-200 flex items-center justify-center">
                         <img src="{{ Storage::url($img) }}" loading="lazy" decoding="async" alt="{{ $item->product->name }}" class="w-full h-full object-contain p-1">
                     </div>
@@ -107,7 +96,7 @@
                         </div>
 
                         <div class="flex items-end justify-between mt-2">
-                            {{-- Seletor de quantidade com cantos quadrados --}}
+                            {{-- Seletor de quantidade --}}
                             <div class="flex items-center border border-gray-200 rounded-none h-8">
                                 <button type="button" 
                                         wire:click="updateQuantity({{ $item->id }}, 'decrease')" 
@@ -127,12 +116,6 @@
                             </div>
 
                             <div class="text-right">
-                                @php
-                                    $unitPrice = $item->variant ? $item->variant->final_price : ($item->product->isOnSale() ? $item->product->sale_price : $item->product->base_price);
-                                    $isOnSale = $item->variant ? $item->variant->isOnSale() : $item->product->isOnSale();
-                                    $originalPrice = $item->variant ? $item->variant->price : $item->product->base_price;
-                                @endphp
-
                                 @if($isOnSale)
                                     <p class="text-xs text-gray-400 line-through">R$ {{ number_format($originalPrice * $item->quantity, 2, ',', '.') }}</p>
                                     <p class="font-bold text-red-600">R$ {{ number_format($unitPrice * $item->quantity, 2, ',', '.') }}</p>
@@ -153,11 +136,12 @@
         @endif
     </div>
 
-    @if(isset($cartItems) && $cartItems->count() > 0)
+    @if($this->cartItems && $this->cartItems->count() > 0)
         <div class="p-6 border-t border-gray-100 relative">
             <div class="flex justify-between items-center mb-4">
                 <span class="text-gray-500 uppercase text-xs tracking-widest">Subtotal</span>
-                <span class="font-black text-xl">R$ {{ number_format($cartTotal ?? 0, 2, ',', '.') }}</span>
+                {{-- Usa a variável local calculada na view --}}
+                <span class="font-black text-xl">R$ {{ number_format($calculatedTotal ?? 0, 2, ',', '.') }}</span>
             </div>
             @auth
                 <a href="{{ route('checkout') }}" class="block w-full text-center bg-black text-white border border-black rounded-none py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300 cursor-pointer">
@@ -171,10 +155,8 @@
         </div>
     @endif
 
-    {{-- TELAS DE CARREGAMENTO (Abaixo de tudo para sobrepor o carrinho todo com z-index alto) --}}
-    
-    {{-- 1. OVERLAY (ALPINE - Disparado pela Home) --}}
-    <div x-show="cartLoading" x-transition.opacity style="display: none;" class="absolute inset-0 z-[100] bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center cursor-wait">
+    {{-- TELA DE CARREGAMENTO EXTERNA (Disparada via Alpine.js por botões na Home e Listagem) --}}
+    <div x-cloak x-show="cartLoading" x-transition.opacity class="absolute inset-0 z-[100] bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center cursor-wait">
         <svg class="animate-spin h-10 w-10 text-black mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -182,8 +164,8 @@
         <span class="text-sm font-bold text-gray-600 uppercase tracking-widest animate-pulse">Atualizando...</span>
     </div>
 
-    {{-- 2. OVERLAY (LIVEWIRE - Cliques de + / - / Lixeira internos) --}}
-    <div wire:loading.flex class="absolute inset-0 z-[100] bg-white/70 backdrop-blur-sm flex-col items-center justify-center cursor-wait">
+    {{-- TELA DE CARREGAMENTO INTERNA (Apenas para cliques de + / - / Remover) --}}
+    <div wire:loading.flex wire:target="updateQuantity, removeItem" class="absolute inset-0 z-[100] bg-white/70 backdrop-blur-sm flex-col items-center justify-center cursor-wait">
         <svg class="animate-spin h-10 w-10 text-black mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>

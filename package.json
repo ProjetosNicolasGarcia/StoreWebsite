@@ -9,7 +9,7 @@
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
         "autoprefixer": "^10.4.23",
-        "axios": "^1.11.0",
+        "axios": "^1.13.6",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^2.0.0",
         "postcss": "^8.5.6",
@@ -17,6 +17,7 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
+        "@alpinejs/collapse": "^3.15.8",
         "@tailwindcss/postcss": "^4.1.18",
         "@vitejs/plugin-vue": "^6.0.3",
         "vue": "^3.5.26"

@@ -40,8 +40,6 @@ class PaymentService
             ]
         ];
 
-        
-
         // Chamada à API com Timeout e Idempotency Key (Evita duplicidade em caso de timeout)
         $response = Http::withToken($this->accessToken)
             ->withHeaders(['X-Idempotency-Key' => (string) Str::uuid()])
@@ -67,7 +65,7 @@ class PaymentService
     /**
      * Gera um pagamento via Boleto Bancário no Mercado Pago.
      */
-public function createBoletoPayment(Order $order, string $cpf, string $firstName, string $lastName, string $email, array $address): array
+    public function createBoletoPayment(Order $order, string $cpf, string $firstName, string $lastName, string $email, array $address): array
     {
         $cleanCpf = preg_replace('/\D/', '', $cpf);
         $cleanZip = preg_replace('/\D/', '', $address['zip_code'] ?? '');
@@ -124,6 +122,60 @@ public function createBoletoPayment(Order $order, string $cpf, string $firstName
             \Illuminate\Support\Facades\Log::error('Erro MercadoPago Boleto', ['payload' => $payload, 'response' => $errorData]);
 
             return ['success' => false, 'message' => $errorMessage];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Falha de comunicação: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Gera um pagamento via Cartão de Crédito no Mercado Pago.
+     */
+    public function createCreditCardPayment(Order $order, string $cpf, string $firstName, string $lastName, string $email, string $token, int $installments, string $paymentMethodId, ?string $issuerId = null): array
+    {
+        $cleanCpf = preg_replace('/\D/', '', $cpf);
+
+        $payload = [
+            'transaction_amount' => round((float) $order->total_amount, 2),
+            'token' => $token, // Token gerado com segurança no frontend
+            'description' => "Pedido #" . str_pad($order->id, 6, '0', STR_PAD_LEFT),
+            'installments' => $installments,
+            'payment_method_id' => $paymentMethodId,
+            'payer' => [
+                'email' => $email,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'identification' => [
+                    'type' => 'CPF',
+                    'number' => $cleanCpf
+                ]
+            ]
+        ];
+
+        // Se a bandeira exigir identificação do banco emissor (ex: algumas variações da Master/Visa)
+        if ($issuerId) {
+            $payload['issuer_id'] = $issuerId;
+        }
+
+        try {
+            $response = Http::withToken($this->accessToken)
+                ->withHeaders(['X-Idempotency-Key' => (string) \Illuminate\Support\Str::uuid()])
+                ->timeout(20)
+                ->post("{$this->baseUrl}/payments", $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return [
+                    'success' => true,
+                    'payment_id' => $data['id'],
+                    'status' => $data['status'], // Valores comuns: 'approved', 'in_process', 'rejected'
+                ];
+            }
+
+            $errorData = $response->json();
+            \Illuminate\Support\Facades\Log::error('Erro MercadoPago Credit Card', ['payload' => $payload, 'response' => $errorData]);
+            
+            return ['success' => false, 'message' => $errorData['message'] ?? 'Pagamento recusado pela operadora. Verifique os dados.'];
 
         } catch (\Exception $e) {
             return ['success' => false, 'message' => 'Falha de comunicação: ' . $e->getMessage()];

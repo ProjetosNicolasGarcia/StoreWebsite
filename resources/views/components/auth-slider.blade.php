@@ -4,31 +4,44 @@
     x-data="{ 
         open: false, 
         mode: 'login', 
-        email: '',
-        password: '',
+        
+        // FIX: Estados separados para evitar compartilhamento de campos
+        loginEmail: '',
+        loginPassword: '',
+        
+        registerEmail: '',
+        registerPassword: '',
+        password_confirmation: '',
+        
+        forgotEmail: '',
+
         code: '',
         name: '',
         last_name: '',
-        password_confirmation: '',
         cpf: '',
         phone: '',
         birth_date: '',
+        
         errors: {},
         statusMessage: '',
         loading: false,
         
-        // CONTROLE DE VISIBILIDADE DAS SENHAS
         showPassword: false, 
         showPasswordConfirmation: false,
 
         toggle() { this.open = !this.open },
 
-        // Auxiliar para Token CSRF
         getToken() {
             return document.querySelector('meta[name=\'csrf-token\']').getAttribute('content');
         },
 
-        // --- MÁSCARAS ---
+        // Função para trocar de modo limpando os erros
+        switchMode(newMode) {
+            this.mode = newMode;
+            this.errors = {};
+            this.statusMessage = '';
+        },
+
         formatCPF(value) {
             return value.replace(/\D/g, '')
                 .replace(/(\d{3})(\d)/, '$1.$2')
@@ -49,11 +62,13 @@
             this.errors = {};
             try {
                 const res = await axios.post('{{ route('login') }}', 
-                    { email: this.email, password: this.password },
-                    { headers: { 'X-CSRF-TOKEN': this.getToken() } }
+                    // Usa a variável exclusiva de Login
+                    { email: this.loginEmail, password: this.loginPassword },
+                    // FIX: Cabeçalho Accept força o Laravel a devolver JSON para engatilhar o 2FA
+                    { headers: { 'X-CSRF-TOKEN': this.getToken(), 'Accept': 'application/json' } }
                 );
                 
-                if (res.data.status === '2fa_required') {
+                if (res.data && res.data.status === '2fa_required') {
                     this.mode = '2fa';
                 } else {
                     window.location.reload();
@@ -75,7 +90,7 @@
             try {
                 await axios.post('{{ route('auth.two-factor') }}', 
                     { two_factor_code: this.code },
-                    { headers: { 'X-CSRF-TOKEN': this.getToken() } }
+                    { headers: { 'X-CSRF-TOKEN': this.getToken(), 'Accept': 'application/json' } }
                 );
                 window.location.href = '{{ route('profile.index') }}';
             } catch (e) {
@@ -94,13 +109,19 @@
             this.errors = {};
            try {
                 const res = await axios.post('{{ route('register') }}', {
-                    name: this.name, last_name: this.last_name, email: this.email, password: this.password,
+                    name: this.name, 
+                    last_name: this.last_name, 
+                    // Usa a variável exclusiva de Registro
+                    email: this.registerEmail, 
+                    password: this.registerPassword,
                     password_confirmation: this.password_confirmation,
-                    cpf: this.cpf, phone: this.phone, birth_date: this.birth_date
-                }, { headers: { 'X-CSRF-TOKEN': this.getToken() } });
+                    cpf: this.cpf, 
+                    phone: this.phone, 
+                    birth_date: this.birth_date
+                }, { headers: { 'X-CSRF-TOKEN': this.getToken(), 'Accept': 'application/json' } });
 
 
-                if (res.data.status === '2fa_required') {
+                if (res.data && res.data.status === '2fa_required') {
                     this.mode = '2fa';
                 } else {
                     window.location.reload();
@@ -123,8 +144,8 @@
             
             try {
                 const res = await axios.post('{{ route('password.email') }}', 
-                    { email: this.email }, 
-                    { headers: { 'X-CSRF-TOKEN': this.getToken() } }
+                    { email: this.forgotEmail }, 
+                    { headers: { 'X-CSRF-TOKEN': this.getToken(), 'Accept': 'application/json' } }
                 );
                 
                 this.statusMessage = res.data.message; 
@@ -167,17 +188,18 @@
                 </button>
             </div>
 
+            {{-- FORMULÁRIO DE LOGIN --}}
             <div x-show="mode === 'login'">
                 <form @submit.prevent="submitLogin" class="space-y-5">
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Email</label>
-                        <input type="email" x-model="email" class="block w-full h-12 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                        <input type="email" x-model="loginEmail" class="block w-full h-12 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                         <p x-show="errors.email" class="text-red-500 text-xs mt-1" x-text="errors.email"></p>
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Senha</label>
                         <div class="relative">
-                            <input :type="showPassword ? 'text' : 'password'" x-model="password" class="block w-full h-12 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all pr-10">
+                            <input :type="showPassword ? 'text' : 'password'" x-model="loginPassword" class="block w-full h-12 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all pr-10">
                             <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-black cursor-pointer focus:outline-none">
                                 <svg x-show="!showPassword" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
                                 <svg x-show="showPassword" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="display: none;"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
@@ -187,7 +209,7 @@
                     </div>
                     
                     <div class="flex items-center justify-end">
-                        <button type="button" @click="mode = 'forgot'; errors = {}; statusMessage = ''" class="text-sm text-gray-600 hover:text-black hover:underline cursor-pointer">Esqueceu a senha?</button>
+                        <button type="button" @click="switchMode('forgot')" class="text-sm text-gray-600 hover:text-black hover:underline cursor-pointer">Esqueceu a senha?</button>
                     </div>
 
                     <button type="submit" :disabled="loading" class="w-full flex justify-center items-center h-12 px-4 border border-black rounded-none shadow-sm text-base font-bold text-white bg-black hover:bg-white hover:text-black transition-all duration-200 cursor-pointer focus:outline-none">
@@ -203,7 +225,6 @@
                     </div>
                     <div class="mt-8">
                         <a href="{{ route('auth.google') }}" class="w-full flex justify-center items-center gap-2 h-12 px-4 border border-gray-300 rounded-none shadow-sm bg-white text-sm font-medium text-gray-700 hover:border-black hover:text-black transition-all cursor-pointer">
-                            {{-- LOGO OFICIAL DO GOOGLE (Colorido) --}}
                             <svg class="h-5 w-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -215,10 +236,11 @@
                     </div>
                 </div>
                 <p class="mt-8 text-center text-sm text-gray-600">
-                    Não tem uma conta? <button @click="mode = 'register'" class="font-bold text-black hover:underline cursor-pointer">Cadastre-se</button>
+                    Não tem uma conta? <button @click="switchMode('register')" class="font-bold text-black hover:underline cursor-pointer">Cadastre-se</button>
                 </p>
             </div>
 
+            {{-- 2FA --}}
             <div x-show="mode === '2fa'" class="space-y-5">
                 <p class="text-sm text-gray-600">Enviamos um código para o seu e-mail.</p>
                 <div>
@@ -229,9 +251,10 @@
                 <button @click="submit2FA" :disabled="loading" class="w-full h-12 px-4 border border-black rounded-none text-base font-bold text-white bg-black hover:bg-white hover:text-black transition-all cursor-pointer">
                     VALIDAR
                 </button>
-                <button @click="mode = 'login'" class="w-full mt-2 text-sm text-gray-500 hover:text-black cursor-pointer">Voltar</button>
+                <button @click="switchMode('login')" class="w-full mt-2 text-sm text-gray-500 hover:text-black cursor-pointer">Voltar</button>
             </div>
 
+            {{-- FORMULÁRIO DE REGISTRO --}}
             <div x-show="mode === 'register'">
                 <form @submit.prevent="submitRegister" class="space-y-4">
                   <div class="grid grid-cols-2 gap-3">
@@ -248,7 +271,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Email</label>
-                        <input type="email" x-model="email" class="block w-full h-12 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
+                        <input type="email" x-model="registerEmail" class="block w-full h-12 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                         <p x-show="errors.email" class="text-red-500 text-xs mt-1" x-text="errors.email"></p>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
@@ -272,7 +295,7 @@
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Senha</label>
                         <div class="relative">
-                            <input :type="showPassword ? 'text' : 'password'" x-model="password" 
+                            <input :type="showPassword ? 'text' : 'password'" x-model="registerPassword" 
                                    class="block w-full h-12 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all pr-10">
                             
                             <button type="button" @click="showPassword = !showPassword" 
@@ -312,9 +335,10 @@
                         CRIAR CONTA
                     </button>
                 </form>
-                <button @click="mode = 'login'" class="w-full mt-6 text-center text-sm font-bold text-black hover:underline cursor-pointer">Já tenho conta</button>
+                <button @click="switchMode('login')" class="w-full mt-6 text-center text-sm font-bold text-black hover:underline cursor-pointer">Já tenho conta</button>
             </div>
             
+            {{-- ESQUECEU A SENHA --}}
             <div x-show="mode === 'forgot'" class="space-y-5">
                 <p class="text-sm text-gray-600">Digite seu email para receber um link de redefinição.</p>
                 
@@ -325,7 +349,7 @@
                 <form @submit.prevent="submitForgot">
                     <div class="mb-4">
                          <label class="block text-sm font-bold text-gray-700 mb-1">Email</label>
-                         <input type="email" x-model="email" placeholder="Seu email" 
+                         <input type="email" x-model="forgotEmail" placeholder="Seu email" 
                                 class="block w-full h-12 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                          <p x-show="errors.email" class="text-red-500 text-xs mt-1" x-text="errors.email"></p>
                     </div>
@@ -334,7 +358,7 @@
                         <span x-show="loading">ENVIANDO...</span>
                     </button>
                 </form>
-                <button @click="mode = 'login'" class="w-full mt-2 text-sm text-gray-500 hover:text-black cursor-pointer">Voltar</button>
+                <button @click="switchMode('login')" class="w-full mt-2 text-sm text-gray-500 hover:text-black cursor-pointer">Voltar</button>
             </div>
 
         </div>

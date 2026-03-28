@@ -25,21 +25,18 @@ class StoreAuthController extends Controller
 
     public function showLoginForm()
     {
-        // O sistema usa o componente Alpine (auth-slider) na página inicial.
-        // Se baterem na rota /login, redirecionamos em segurança para a home.
         return redirect('/');
     }
 
     public function showRegisterForm()
     {
-        // O mesmo para a rota /register
         return redirect('/');
     }
 
     public function showTwoFactorForm()
     {
         if (!Session::has('auth.2fa.id') && !Session::has('auth.registration_email')) {
-            return redirect('/'); // Alterado de route('login') para '/'
+            return redirect('/'); 
         }
         return view('auth.two-factor');
     }
@@ -71,6 +68,9 @@ class StoreAuthController extends Controller
 
         $user->generateTwoFactorCode();
         
+        // FIX: Força o registro do código no laravel.log independentemente do disparador de e-mail
+        \Log::info("🔑 Código 2FA de LOGIN para {$user->email}: {$user->two_factor_code}");
+        
         try {
             Mail::to($user->email)->send(new TwoFactorCodeMail($user->two_factor_code));
         } catch (\Exception $e) {
@@ -80,7 +80,7 @@ class StoreAuthController extends Controller
         Session::put('auth.2fa.id', $user->id);
         Session::forget('auth.registration_email');
 
-        if ($request->wantsJson()) {
+        if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'status' => '2fa_required',
                 'message' => 'Código de verificação enviado.'
@@ -94,7 +94,7 @@ class StoreAuthController extends Controller
     // REGISTRO
     // =========================================================================
 
-  public function register(Request $request)
+    public function register(Request $request)
     {
         $passwordRules = PasswordRules::min(8)
             ->letters()
@@ -126,7 +126,7 @@ class StoreAuthController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255', // NOVO CAMPO
+            'last_name' => 'required|string|max:255', 
             'email' => ['required', 'string', 'email:rfc,dns', 'max:255', 'unique:users', 'regex:'.$emailRegex],
             'password' => ['required', 'confirmed', $passwordRules],
             'cpf' => ['nullable', 'string', 'regex:' . $cpfRegex, 'unique:users'],
@@ -136,9 +136,12 @@ class StoreAuthController extends Controller
 
         $code = rand(100000, 999999);
 
+        // FIX: Força o registro do código no laravel.log independentemente do disparador de e-mail
+        \Log::info("🔑 Código 2FA de REGISTRO para {$validated['email']}: {$code}");
+
         $registrationData = [
             'name' => $validated['name'],
-            'last_name' => $validated['last_name'], // NOVO CAMPO
+            'last_name' => $validated['last_name'], 
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'cpf' => $validated['cpf'] ?? null,
@@ -158,7 +161,7 @@ class StoreAuthController extends Controller
         Session::put('auth.registration_email', $validated['email']);
         Session::forget('auth.2fa.id');
 
-        if ($request->wantsJson()) {
+        if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'status' => '2fa_required',
                 'message' => 'Tudo certo! Verifique o código enviado ao seu e-mail.'
@@ -189,7 +192,7 @@ class StoreAuthController extends Controller
             return $this->verifyRegistration($request);
         }
 
-        if ($request->wantsJson()) {
+        if ($request->wantsJson() || $request->ajax()) {
             return response()->json(['message' => 'A sessão expirou. Recomece o login.'], 419);
         }
         return redirect()->route('login');
@@ -210,7 +213,7 @@ class StoreAuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        if ($request->wantsJson()) {
+        if ($request->wantsJson() || $request->ajax()) {
             return response()->json(['status' => 'success', 'redirect_url' => route('profile.index')]);
         }
         return redirect()->intended(route('profile.index'));
@@ -246,7 +249,7 @@ class StoreAuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        if ($request->wantsJson()) {
+        if ($request->wantsJson() || $request->ajax()) {
             return response()->json(['status' => 'success', 'redirect_url' => route('profile.index')]);
         }
         return redirect()->route('profile.index');
@@ -261,39 +264,25 @@ class StoreAuthController extends Controller
     }
 
     // =========================================================================
-    // GOOGLE SOCIALITE
+    // GOOGLE SOCIALITE E RECUPERAÇÃO DE SENHA (Sem Alterações)
     // =========================================================================
     
-    public function redirectToGoogle()
-    {
-        return Socialite::driver('google')->redirect();
-    }
+    public function redirectToGoogle() { return Socialite::driver('google')->redirect(); }
 
-  public function handleGoogleCallback()
+    public function handleGoogleCallback()
     {
         try {
-            // Stateless é importante para localhost/127.0.0.1
             $googleUser = Socialite::driver('google')->stateless()->user();
-            
             $user = User::where('google_id', $googleUser->id)->orWhere('email', $googleUser->email)->first();
-
-            // Acessamos o array bruto ('user') retornado pela API do Google
-            // O Google já separa inteligentemente o given_name (Nome) e o family_name (Sobrenome)
             $firstName = $googleUser->user['given_name'] ?? $googleUser->name;
             $lastName = $googleUser->user['family_name'] ?? '';
 
             if ($user) {
-                // Atualiza os tokens do Google, mas NÃO sobrescreve o nome e sobrenome
-                // Isso respeita caso o cliente tenha editado os próprios dados na aba "Meus Dados"
-                $user->update([
-                    'google_id' => $googleUser->id, 
-                    'avatar' => $googleUser->avatar
-                ]);
+                $user->update(['google_id' => $googleUser->id, 'avatar' => $googleUser->avatar]);
             } else {
-                // Criação de nova conta com os dados exatos do Google
                 $user = User::create([
                     'name' => $firstName, 
-                    'last_name' => $lastName, // Agora recebe o family_name exato
+                    'last_name' => $lastName, 
                     'email' => $googleUser->email,
                     'google_id' => $googleUser->id, 
                     'avatar' => $googleUser->avatar,
@@ -307,10 +296,6 @@ class StoreAuthController extends Controller
         }
     }
 
-    // =========================================================================
-    // RECUPERAÇÃO DE SENHA
-    // =========================================================================
-
     protected function getPasswordStatusMessage($status)
     {
         $messages = [
@@ -320,7 +305,6 @@ class StoreAuthController extends Controller
             Password::INVALID_TOKEN => 'O link de redefinição é inválido ou expirou.',
             'passwords.throttled' => 'Muitas tentativas. Por favor, aguarde antes de tentar novamente.',
         ];
-
         return $messages[$status] ?? 'Ocorreu um erro desconhecido.';
     }
 
@@ -334,7 +318,7 @@ class StoreAuthController extends Controller
         $status = Password::sendResetLink($request->only('email'));
         $message = $this->getPasswordStatusMessage($status);
         
-        if ($request->wantsJson()) {
+        if ($request->wantsJson() || $request->ajax()) {
              return $status === Password::RESET_LINK_SENT
                 ? response()->json(['message' => $message])
                 : response()->json(['message' => $message], 422);
@@ -352,7 +336,6 @@ class StoreAuthController extends Controller
     public function resetPassword(Request $request)
     {
         $passwordRules = PasswordRules::min(8)->letters()->mixedCase()->numbers()->symbols();
-
         $messages = [
             'password.confirmed' => 'A confirmação de senha não confere.',
             'password.min' => 'A senha deve ter no mínimo 8 caracteres.',
@@ -390,20 +373,12 @@ class StoreAuthController extends Controller
         return back()->withInput($request->only('email'))->withErrors(['email' => $message]);
     }
 
-    // =========================================================================
-    // COMPLETAR PERFIL (GOOGLE/SOCIALITE)
-    // =========================================================================
-
-    public function showCompleteProfile()
-    {
-        return view('auth.complete-profile');
-    }
+    public function showCompleteProfile() { return view('auth.complete-profile'); }
 
     public function updateProfile(Request $request)
     {
         $phoneRegex = '/^\(?[1-9]{2}\)?\s?(?:9)[0-9]{4}\-?[0-9]{4}$/';
         $cpfRegex = '/^\d{3}\.\d{3}\.\d{3}\-\d{2}$/';
-
         $messages = [
             'cpf.required' => 'O CPF é obrigatório para emissão de nota fiscal.',
             'cpf.unique' => 'Este CPF já está em uso.',
@@ -421,12 +396,7 @@ class StoreAuthController extends Controller
         ], $messages);
 
         $user = Auth::user(); 
-        
-        $user->forceFill([
-            'cpf' => $request->cpf,
-            'phone' => $request->phone,
-            'birth_date' => $request->birth_date,
-        ])->save();
+        $user->forceFill(['cpf' => $request->cpf, 'phone' => $request->phone, 'birth_date' => $request->birth_date])->save();
 
         return redirect()->route('profile.index')->with('status', 'Perfil completado com sucesso!');
     }
