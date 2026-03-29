@@ -3,21 +3,13 @@
 namespace App\Livewire;
 
 use Livewire\Component;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\On;
 use App\Models\CartItem;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 
 class CartSidebar extends Component
 {
-    // Escuta eventos globais para atualizar o carrinho (ex: quando adiciona item na PDP)
-    #[On('cartUpdated')]
-    public function refreshCart()
-    {
-        // No Livewire 3, limpar a propriedade computada força ela a buscar dados novos no próximo acesso
-        unset($this->cartItems);
-    }
+    protected $listeners = ['cartUpdated' => '$refresh'];
 
     public function updateQuantity($itemId, $action)
     {
@@ -25,7 +17,6 @@ class CartSidebar extends Component
 
         if (!$item) return;
 
-        // Proteção de segurança: Garante que apenas o dono do carrinho pode modificá-lo
         $isOwner = Auth::check() ? $item->user_id === Auth::id() : $item->session_id === Session::getId();
         if (!$isOwner) return;
 
@@ -38,9 +29,6 @@ class CartSidebar extends Component
                 $item->delete(); 
             }
         }
-
-        // Limpa o cache computado para forçar re-renderização precisa
-        unset($this->cartItems);
     }
 
     public function removeItem($itemId)
@@ -53,20 +41,14 @@ class CartSidebar extends Component
                 $item->delete();
             }
         }
-
-        unset($this->cartItems);
     }
 
-    // =========================================================================
-    // #[Computed] - Arquitetura de Performance
-    // O Livewire só executa esta query SE a view pedir os dados, e descarta
-    // da memória após renderizar, evitando sobrecarregar o HTML com JSON.
-    // =========================================================================
-    #[Computed]
-    public function cartItems()
+    public function render()
     {
+        $cartItems = collect();
+        
         if (Auth::check() || Session::getId()) {
-            return CartItem::with(['product.categories', 'product.variants', 'variant'])
+            $cartItems = CartItem::with(['product.categories', 'product.variants', 'variant'])
                 ->where(function ($query) {
                     if (Auth::check()) {
                         $query->where('user_id', Auth::id());
@@ -76,15 +58,23 @@ class CartSidebar extends Component
                 })->get();
         }
 
-        return collect();
-    }
+        $cartTotal = $cartItems->sum(function ($item) {
+            if (!$item->product) return 0;
+            
+            $unitPrice = $item->variant 
+                ? $item->variant->final_price 
+                : ($item->product->isOnSale() ? $item->product->sale_price : $item->product->base_price);
+                
+            return $unitPrice * $item->quantity;
+        });
 
-    public function render()
-    {
-        // Envia a contagem exata para o Header via Alpine.js sem precisar de queries extras
-        $this->dispatch('update-cart-count', count: $this->cartItems->count());
+        // [PERFORMANCE FIX] O Sidebar mesmo conta os itens e envia o número exato para o Alpine.js no navegador
+        // Isso mata a necessidade de uma segunda requisição ao servidor.
+        $this->dispatch('update-cart-count', count: $cartItems->count());
 
-        // Não passamos mais arrays pesados para a view. A view acessa via $this->cartItems.
-        return view('livewire.cart-sidebar');
+        return view('livewire.cart-sidebar', [
+            'cartItems' => $cartItems,
+            'cartTotal' => $cartTotal,
+        ]);
     }
 }

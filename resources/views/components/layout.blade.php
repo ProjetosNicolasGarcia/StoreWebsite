@@ -49,10 +49,9 @@
 
     @php
         $isHome = request()->routeIs('home');
-        // REMOVIDO: shadow-md das classes estáticas
         $headerClasses = $isHome 
             ? 'fixed top-0 w-full z-50 transition-all duration-300' 
-            : 'fixed top-0 w-full z-50 transition-all duration-300 bg-white text-gray-900 py-4';
+            : 'fixed top-0 w-full z-50 transition-all duration-300 bg-white text-gray-900 shadow-md py-4';
     @endphp
 
     <header id="main-header" class="{{ $headerClasses }}"
@@ -75,8 +74,7 @@
                 @endif
             }
         }" 
-        {{-- REMOVIDO: shadow-md das classes dinâmicas do Alpine --}}
-        @if($isHome) @scroll.window="scrolled = (window.pageYOffset > 20)" :class="scrolled ? 'bg-white text-gray-900 py-4' : 'bg-transparent text-white py-6'" @endif
+        @if($isHome) @scroll.window="scrolled = (window.pageYOffset > 20)" :class="scrolled ? 'bg-white text-gray-900 shadow-md py-4' : 'bg-transparent text-white py-6'" @endif
     >
         <div class="container mx-auto px-2 sm:px-4 lg:px-8 relative" x-show="!searchOpen">
             <div class="grid grid-cols-3 items-center">
@@ -84,14 +82,19 @@
                 {{-- ESQUERDA --}}
                 <div class="flex items-center justify-start gap-4">
                     
+                    {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
                     <button @click="mobileMenuOpen = !mobileMenuOpen" type="button" class="lg:hidden p-2 -ml-2 mr-1 focus:outline-none z-20 transition-all duration-200 hover:scale-110 cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'" aria-label="Abrir menu mobile">
                         <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                     </button>
 
                     <div class="hidden lg:flex items-center gap-6">
-                        {{-- CORREÇÃO: "PRODUTOS" agora é uma tag <a> com font-medium dentro da <nav> --}}
+                        {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
+                        <button @click="categoryMenuOpen = true" type="button" class="flex items-center gap-2 font-bold tracking-wide transition-all duration-200 hover:underline underline-offset-4 cursor-pointer group focus:outline-none" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
+                            <span>PRODUTOS</span>
+                        </button>
+
                         <nav class="flex space-x-6 items-center">
-                            <a href="#" @click.prevent="categoryMenuOpen = true" class="font-medium tracking-wide transition-all duration-200 hover:underline underline-offset-4 cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">PRODUTOS</a>
+                            {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
                             <a href="{{ route('shop.offers') }}" class="font-medium tracking-wide transition-all duration-200 hover:underline underline-offset-4 cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">OFERTAS</a>
                             <a href="#" class="font-medium tracking-wide transition-all duration-200 hover:underline underline-offset-4 cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">SOBRE NÓS</a>
                         </nav>
@@ -99,25 +102,30 @@
                 </div>
 
                 {{-- CENTRO --}}
+                {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
                 <a href="{{ route('home') }}" id="header-logo" class="justify-self-center text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight lg:tracking-widest uppercase transition-all duration-200 hover:scale-105 cursor-pointer whitespace-nowrap z-10 text-center" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">NOME DA LOJA</a>
 
                 {{-- DIREITA --}}
                 <div class="flex items-center justify-end space-x-2 sm:space-x-4 lg:space-x-6 header-icons z-20">
                     
+                    {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
                     <button type="button" aria-label="Buscar produtos" @click="searchOpen = true; $nextTick(() => $refs.searchInputDesktop.focus())" class="transition-all duration-200 hover:scale-110 p-1 focus:outline-none cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </button>
 
                     @auth
+                        {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
                         <a href="{{ route('profile.index') }}" aria-label="Perfil" class="transition-all duration-200 hover:scale-110 p-1 flex items-center gap-1 focus:outline-none cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                         </a>
                     @else
+                        {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
                         <button type="button" aria-label="Login" @click="$dispatch('open-auth-slider')" class="transition-all duration-200 hover:scale-110 p-1 focus:outline-none cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                         </button>
                     @endauth
 
+                    {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
                     <button type="button" aria-label="Carrinho" @click="cartOpen = true" class="transition-all duration-200 hover:scale-110 relative p-1 focus:outline-none cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                         
@@ -135,7 +143,7 @@
         </div>
 
         {{-- BUSCA --}}
-        <div x-cloak x-show="searchOpen" x-transition class="fixed top-0 left-0 w-full z-50 bg-white flex items-center justify-center px-4 h-18">
+        <div x-cloak x-show="searchOpen" x-transition class="fixed top-0 left-0 w-full z-50 bg-white flex items-center justify-center px-4 shadow-md h-18">
             <div class="container mx-auto max-w-4xl relative w-full">
                 <form action="{{ route('shop.search') }}" method="GET" class="w-full flex items-center">
                     <svg class="h-8 w-8 text-gray-900 mr-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -247,8 +255,7 @@
 
     <div x-cloak x-show="cartOpen" x-transition.opacity class="fixed inset-0 bg-black/50 z-[60] backdrop-blur-sm" @click="cartOpen = false"></div>
 
-    {{-- [PERFORMANCE FIX] Livewire Component agora utiliza lazy loading --}}
-    <livewire:cart-sidebar lazy />
+    @livewire('cart-sidebar')
 
     <footer class="bg-[#080808] text-gray-300 py-16 mt-20 text-sm border-t border-[#080808]">
         <div class="container mx-auto px-8 grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
@@ -303,6 +310,14 @@
     <x-auth-slider />
     
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            if (token) {
+                axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
+                axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+            }
+        });
+
         window.addEventListener('beforeunload', function() { sessionStorage.setItem('scrollPosition', window.scrollY); });
         @if(session('open_cart'))
             document.addEventListener('DOMContentLoaded', function() {
