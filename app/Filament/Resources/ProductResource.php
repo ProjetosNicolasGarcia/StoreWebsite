@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductResource\Pages;
+use App\Filament\Resources\ProductResource\RelationManagers;
 use App\Models\Product;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -15,14 +16,10 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\KeyValue;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Actions\Action;
-use Filament\Notifications\Notification;
-use Filament\Forms\Get;
 
 class ProductResource extends Resource
 {
@@ -71,197 +68,37 @@ class ProductResource extends Resource
                                     ->columnSpanFull(),
                             ])->columns(2),
 
-                        Section::make('Variações e Estoque')
-                            ->description('Gerencie tamanhos, cores, preços e estoques específicos.')
-                            ->headerActions([
-                                Action::make('apply_promotion')
-                                    ->label('Aplicar Promoção em Massa')
-                                    ->icon('heroicon-m-tag')
-                                    ->color('warning')
-                                    ->form([
-                                        Toggle::make('apply_to_all')
-                                            ->label('Aplicar a TODAS as variantes?')
-                                            ->helperText('Ignora filtros e aplica a todas as variantes cadastradas.')
-                                            ->default(false)
-                                            ->live(),
-
-                                        Select::make('target_attribute')
-                                            ->label('Atributo Alvo')
-                                            ->placeholder('Selecione... (Ex: Cor)')
-                                            ->options(function (\Livewire\Component $livewire) {
-                                                $variants = $livewire->data['variants'] ?? [];
-                                                $attributes = [];
-                                                foreach ($variants as $variant) {
-                                                    $options = $variant['options'] ?? [];
-                                                    if (is_array($options)) {
-                                                        foreach (array_keys($options) as $key) {
-                                                            $attributes[$key] = $key;
-                                                        }
-                                                    }
-                                                }
-                                                return $attributes;
-                                            })
-                                            ->live()
-                                            ->required(fn (Get $get) => !$get('apply_to_all'))
-                                            ->hidden(fn (Get $get) => $get('apply_to_all')),
-
-                                        Select::make('target_value')
-                                            ->label('Valor do Atributo')
-                                            ->placeholder('Selecione... (Ex: Azul)')
-                                            ->options(function (Get $get, \Livewire\Component $livewire) {
-                                                $attribute = $get('target_attribute');
-                                                if (!$attribute) return [];
-                                                
-                                                $variants = $livewire->data['variants'] ?? [];
-                                                $values = [];
-                                                foreach ($variants as $variant) {
-                                                    $options = $variant['options'] ?? [];
-                                                    if (isset($options[$attribute])) {
-                                                        $val = $options[$attribute];
-                                                        $values[$val] = $val;
-                                                    }
-                                                }
-                                                return array_unique($values);
-                                            })
-                                            ->required(fn (Get $get) => !$get('apply_to_all'))
-                                            ->hidden(fn (Get $get) => $get('apply_to_all')),
-
-                                        Group::make([
-                                            TextInput::make('bulk_sale_price')
-                                                ->label('Novo Preço Promocional')
-                                                ->numeric()
-                                                ->prefix('R$')
-                                                ->required(),
-                                        ])->columnSpanFull(),
-
-                                        Group::make([
-                                            Forms\Components\DateTimePicker::make('bulk_start_date')
-                                                ->label('Início')
-                                                ->native(false)
-                                                ->seconds(false),
-                                            Forms\Components\DateTimePicker::make('bulk_end_date')
-                                                ->label('Fim')
-                                                ->native(false)
-                                                ->seconds(false),
-                                        ])->columns(2),
-                                    ])
-                                    ->action(function (array $data, \Livewire\Component $livewire, Forms\Set $set) {
-                                        $variants = $livewire->data['variants'] ?? [];
-                                        
-                                        if (empty($variants)) {
-                                            Notification::make()->title("Erro")->body("Não há variantes criadas.")->danger()->send();
-                                            return;
-                                        }
-
-                                        $updatedCount = 0;
-                                        $applyToAll = $data['apply_to_all'] ?? false;
-                                        $targetAttribute = $data['target_attribute'] ?? null;
-                                        $targetValue = $data['target_value'] ?? null;
-
-                                        foreach ($variants as $key => $variant) {
-                                            $shouldUpdate = false;
-                                            
-                                            if ($applyToAll) {
-                                                $shouldUpdate = true;
-                                            } else {
-                                                $options = $variant['options'] ?? [];
-                                                if (isset($options[$targetAttribute]) && $options[$targetAttribute] == $targetValue) {
-                                                    $shouldUpdate = true;
-                                                }
-                                            }
-
-                                            if ($shouldUpdate) {
-                                                $set("variants.{$key}.sale_price", $data['bulk_sale_price']);
-                                                $set("variants.{$key}.sale_start_date", $data['bulk_start_date']);
-                                                $set("variants.{$key}.sale_end_date", $data['bulk_end_date']);
-                                                $updatedCount++;
-                                            }
-                                        }
-                                        
-                                        if ($updatedCount > 0) {
-                                            Notification::make()->title("Sucesso")->body("Promoção aplicada a {$updatedCount} variantes.")->success()->send();
-                                        } else {
-                                            Notification::make()->title("Atenção")->body("Nenhuma variante encontrada com os critérios.")->warning()->send();
-                                        }
-                                    }),
-                            ])
+                        // NOVA SEÇÃO: Visível apenas na criação
+                        Section::make('Configuração Inicial (Variante Padrão)')
+                            ->description('Defina o preço e estoque base. Variações adicionais (cores, tamanhos) poderão ser cadastradas na próxima etapa.')
                             ->schema([
-                                Repeater::make('variants')
-                                    ->relationship()
-                                    ->label('Lista de Variantes')
-                                    ->schema([
-                                        Group::make([
-                                            KeyValue::make('options')
-                                                ->label('Opções (Ex: Cor: Azul, Tam: G)')
-                                                ->keyLabel('Atributo')
-                                                ->valueLabel('Valor')
-                                                ->columnSpanFull(),
-                                            
-                                            TextInput::make('sku')
-                                                ->label('SKU (Código Único)')
-                                                ->required(),
-                                            
-                                            Toggle::make('is_default')
-                                                ->label('Variante Principal?')
-                                                ->helperText('Define qual variação aparece primeiro na loja.')
-                                                ->inline(false)
-                                                ->onColor('success'),
-                                        ])->columns(3),
+                                TextInput::make('sku')
+                                    ->label('SKU (Código Único)')
+                                    ->required(),
+                                
+                                TextInput::make('price')
+                                    ->numeric()
+                                    ->prefix('R$')
+                                    ->label('Preço Base')
+                                    ->required(),
+                                
+                                TextInput::make('quantity')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->label('Estoque Inicial')
+                                    ->required(),
+                            ])
+                            ->columns(3)
+                            ->visibleOn('create'), 
 
-                                        Group::make([
-                                            TextInput::make('price')
-                                                ->numeric()
-                                                ->prefix('R$')
-                                                ->label('Preço Base')
-                                                ->required(),
-
-                                            TextInput::make('sale_price')
-                                                ->numeric()
-                                                ->prefix('R$')
-                                                ->label('Preço Oferta')
-                                                ->lt('price'),
-
-                                            TextInput::make('quantity')
-                                                ->numeric()
-                                                ->default(0)
-                                                ->label('Estoque')
-                                                ->required(),
-                                        ])->columns(3),
-
-                                        Group::make([
-                                            Forms\Components\DateTimePicker::make('sale_start_date')->label('Início Oferta')->native(false)->seconds(false),
-                                            Forms\Components\DateTimePicker::make('sale_end_date')->label('Fim Oferta')->native(false)->seconds(false)->after('sale_start_date'),
-                                        ])->columns(2),
-
-                                        // --- OTIMIZAÇÃO: Foto da Variante ---
-                                        FileUpload::make('image')
-                                            ->label('Foto desta Variante')
-                                            ->image()
-                                            ->imageEditor()
-                                            ->directory('products/variants')
-                                            ->optimize('webp')
-                                            ->maxImageWidth(1920)
-                                            ->columnSpanFull(),
-
-                                        // --- OTIMIZAÇÃO: Galeria da Variante ---
-                                        FileUpload::make('images')
-                                            ->label('Galeria Extra (Ângulos)')
-                                            ->image()
-                                            ->multiple()
-                                            ->reorderable()
-                                            ->directory('products/variants')
-                                            ->optimize('webp')
-                                            ->maxImageWidth(1920)
-                                            ->columnSpanFull(),
-                                    ])
-                                    ->collapsed()
-                                    ->cloneable()
-                                    ->itemLabel(fn (array $state): ?string => 
-                                        (isset($state['sku']) ? $state['sku'] : 'Nova Variante') . 
-                                        (isset($state['price']) ? ' - R$ ' . $state['price'] : '')
-                                    )
-                                    ->columnSpanFull(),
-                            ]),
+                        Section::make('Dimensões (Frete)')
+                            ->description('Usado para cálculo de Correios/Transportadora.')
+                            ->schema([
+                                TextInput::make('weight')->label('Peso (Kg)')->numeric()->step(0.001)->default(0),
+                                TextInput::make('height')->label('Altura (cm)')->numeric()->default(0),
+                                TextInput::make('width')->label('Largura (cm)')->numeric()->default(0),
+                                TextInput::make('length')->label('Comp. (cm)')->numeric()->default(0),
+                            ])->columns(2),
                     ])->columnSpan(['lg' => 2]),
 
                 Group::make()
@@ -273,7 +110,6 @@ class ProductResource extends Resource
                                     ->label('Produto Ativo')
                                     ->onColor('success'),
 
-                                // OTIMIZAÇÃO 1: Remoção do preload() para poupar memória no carregamento do formulário
                                 Select::make('categories')
                                     ->label('Categorias')
                                     ->multiple()
@@ -305,13 +141,12 @@ class ProductResource extends Resource
                                         Select::make('parent_id')
                                             ->label('Categoria Pai')
                                             ->relationship('parent', 'name')
-                                            ->searchable(), // Sem preload
+                                            ->searchable(),
                                     ]),
                             ]),
 
                         Section::make('Mídia Principal')
                             ->schema([
-                                // --- OTIMIZAÇÃO: Capa Principal do Produto ---
                                 FileUpload::make('image_url')
                                     ->label('Capa da Vitrine')
                                     ->image()
@@ -321,7 +156,6 @@ class ProductResource extends Resource
                                     ->maxImageWidth(1920)
                                     ->required(),
 
-                                // --- OTIMIZAÇÃO: Galeria Principal do Produto ---
                                 FileUpload::make('gallery')
                                     ->label('Galeria Geral')
                                     ->helperText('Fotos que aparecem para todas as variantes.')
@@ -333,15 +167,6 @@ class ProductResource extends Resource
                                     ->maxImageWidth(1920)
                                     ->maxFiles(5),
                             ]),
-
-                        Section::make('Dimensões (Frete)')
-                            ->description('Usado para cálculo de Correios/Transportadora.')
-                            ->schema([
-                                TextInput::make('weight')->label('Peso (Kg)')->numeric()->step(0.001)->default(0),
-                                TextInput::make('height')->label('Altura (cm)')->numeric()->default(0),
-                                TextInput::make('width')->label('Largura (cm)')->numeric()->default(0),
-                                TextInput::make('length')->label('Comp. (cm)')->numeric()->default(0),
-                            ])->columns(2),
 
                         Section::make('Auditoria')
                             ->schema([
@@ -361,7 +186,6 @@ class ProductResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            // OTIMIZAÇÃO 2: Eager Loading de colunas estritas. Em vez de trazer tudo das variantes, traz apenas ID, Preços e Datas, poupando 90% da memória da listagem.
             ->modifyQueryUsing(fn (Builder $query) => $query->with([
                 'variants:id,product_id,price,sale_price,sale_start_date,sale_end_date,is_default',
                 'categories'
@@ -401,7 +225,6 @@ class ProductResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                // OTIMIZAÇÃO 3: Remoção do preload() no filtro da tabela
                 Tables\Filters\SelectFilter::make('categories')
                     ->relationship('categories', 'name')
                     ->label('Categorias')
@@ -424,9 +247,15 @@ class ProductResource extends Resource
             ]);
     }
 
-    public static function getRelations(): array { return []; }
+    public static function getRelations(): array 
+    { 
+        return [
+            RelationManagers\VariantsRelationManager::class,
+        ]; 
+    }
     
-    public static function getPages(): array {
+    public static function getPages(): array 
+    {
         return [
             'index' => Pages\ListProducts::route('/'),
             'create' => Pages\CreateProduct::route('/create'),

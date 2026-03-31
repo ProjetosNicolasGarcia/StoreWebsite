@@ -11,6 +11,7 @@ use Filament\Forms\Components\Group;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\DateTimePicker;
 use Illuminate\Database\Eloquent\Collection;
@@ -104,6 +105,90 @@ class VariantsRelationManager extends RelationManager
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()->label('Nova Variante'),
+
+                Tables\Actions\Action::make('apply_promotion')
+                    ->label('Aplicar Promoção Específica')
+                    ->icon('heroicon-m-tag')
+                    ->color('warning')
+                    ->form([
+                        Toggle::make('apply_to_all')
+                            ->label('Aplicar a TODAS as variantes do produto?')
+                            ->live()
+                            ->default(false),
+
+                        Select::make('target_attribute')
+                            ->label('Atributo Alvo (Ex: Cor)')
+                            ->options(function (\Livewire\Component $livewire) {
+                                $variants = $livewire->ownerRecord->variants;
+                                $attributes = [];
+                                foreach ($variants as $variant) {
+                                    if (is_array($variant->options)) {
+                                        foreach (array_keys($variant->options) as $key) {
+                                            $attributes[$key] = $key;
+                                        }
+                                    }
+                                }
+                                return $attributes;
+                            })
+                            ->live()
+                            ->required(fn (\Filament\Forms\Get $get) => !$get('apply_to_all'))
+                            ->hidden(fn (\Filament\Forms\Get $get) => $get('apply_to_all')),
+
+                        Select::make('target_value')
+                            ->label('Valor do Atributo (Ex: Azul)')
+                            ->options(function (\Livewire\Component $livewire, \Filament\Forms\Get $get) {
+                                $attribute = $get('target_attribute');
+                                if (!$attribute) return [];
+
+                                $variants = $livewire->ownerRecord->variants;
+                                $values = [];
+                                foreach ($variants as $variant) {
+                                    if (is_array($variant->options) && isset($variant->options[$attribute])) {
+                                        $val = $variant->options[$attribute];
+                                        $values[$val] = $val;
+                                    }
+                                }
+                                return array_unique($values);
+                            })
+                            ->required(fn (\Filament\Forms\Get $get) => !$get('apply_to_all'))
+                            ->hidden(fn (\Filament\Forms\Get $get) => $get('apply_to_all')),
+
+                        Group::make([
+                            TextInput::make('bulk_sale_price')
+                                ->label('Novo Preço Promocional')
+                                ->numeric()
+                                ->prefix('R$')
+                                ->required(),
+                        ])->columnSpanFull(),
+
+                        Group::make([
+                            DateTimePicker::make('bulk_start_date')->label('Início')->native(false),
+                            DateTimePicker::make('bulk_end_date')->label('Fim')->native(false),
+                        ])->columns(2),
+                    ])
+                    ->action(function (array $data, \Livewire\Component $livewire) {
+                        $query = $livewire->getRelationship()->getQuery();
+
+                        if (empty($data['apply_to_all'])) {
+                            $attribute = $data['target_attribute'];
+                            $value = $data['target_value'];
+                            if ($attribute && $value) {
+                                $query->whereJsonContains("options->{$attribute}", $value);
+                            }
+                        }
+
+                        $updated = $query->update([
+                            'sale_price' => $data['bulk_sale_price'],
+                            'sale_start_date' => $data['bulk_start_date'],
+                            'sale_end_date' => $data['bulk_end_date'],
+                        ]);
+
+                        \Filament\Notifications\Notification::make()
+                            ->title("Sucesso")
+                            ->body("Promoção aplicada a {$updated} variantes.")
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -113,9 +198,8 @@ class VariantsRelationManager extends RelationManager
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                     
-                    // Nova ação em massa SUPER OTIMIZADA
-                    Tables\Actions\BulkAction::make('apply_promotion')
-                        ->label('Aplicar Promoção')
+                    Tables\Actions\BulkAction::make('apply_promotion_bulk')
+                        ->label('Aplicar Promoção nas Selecionadas')
                         ->icon('heroicon-m-tag')
                         ->color('warning')
                         ->requiresConfirmation()
@@ -129,7 +213,6 @@ class VariantsRelationManager extends RelationManager
                             DateTimePicker::make('bulk_end_date')->label('Fim')->native(false),
                         ])
                         ->action(function (Collection $records, array $data): void {
-                            // Atualiza diretamente no banco de dados as linhas selecionadas na tabela
                             foreach ($records as $record) {
                                 $record->update([
                                     'sale_price' => $data['bulk_sale_price'],
