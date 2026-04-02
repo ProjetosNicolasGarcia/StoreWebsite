@@ -23,6 +23,7 @@
                                 'profile.index' => 'Meus Dados',
                                 'profile.orders' => 'Meus Pedidos',
                                 'profile.addresses' => 'Endereços',
+                                'profile.favorites' => 'Favoritos', // <-- NOVA ABA ADICIONADA AQUI
                             ];
                         @endphp
 

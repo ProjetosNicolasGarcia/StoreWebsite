@@ -39,6 +39,12 @@ class Product extends Model
     // RELACIONAMENTOS
     // =========================================================================
 
+
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class);
+    }
+    
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class);

@@ -1,4 +1,4 @@
-<?php
+ <?php
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
@@ -10,7 +10,8 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\StoreAuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WebhookController;
-use App\Http\Controllers\OrderController; // <-- NOVO CONTROLLER ADICIONADO AQUI
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\FavoriteController; 
 
 // =========================================================================
 // ROTAS PÚBLICAS (Home, Loja, Carrinho)
@@ -148,6 +149,8 @@ Route::post('/fale-conosco', function (Request $request) {
     return back()->with('success', 'Sua mensagem foi enviada com sucesso! Responderemos em breve.');
 })->name('pages.contact.send');
 
+Route::post('/favoritos/toggle', [FavoriteController::class, 'toggle'])->name('favorites.toggle');
+
 // =========================================================================
 // AUTENTICAÇÃO (GUEST) - Apenas para visitantes não logados
 // =========================================================================
@@ -196,6 +199,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/enderecos', [ProfileController::class, 'addresses'])->name('profile.addresses');
         Route::post('/enderecos', [ProfileController::class, 'storeAddress'])->name('profile.address.store');
         Route::delete('/enderecos/{id}', [ProfileController::class, 'destroyAddress'])->name('profile.address.delete');
+        Route::get('/favoritos', [ProfileController::class, 'favorites'])->name('profile.favorites'); // <-- NOVA ROTA
     });
 });
 

@@ -201,4 +201,18 @@ class ProfileController extends Controller
 
         return Redirect::back()->with('error', 'Houve um erro ao tentar desativar sua conta.');
     }
+
+    public function favorites()
+    {
+        // Busca os produtos favoritados pelo usuário logado com Eager Loading nas variantes para performance
+        $products = auth()->user()->favorites()
+            ->with(['product.variants', 'product.categories'])
+            ->latest()
+            ->get()
+            ->pluck('product')
+            ->filter(); // Remove nulos caso algum produto tenha sido apagado
+
+        return view('profile.favorites', compact('products'));
+    }
+    
 }

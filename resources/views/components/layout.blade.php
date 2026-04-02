@@ -330,5 +330,21 @@
         @endif
     </script>
     @livewireScripts
+
+    <div x-data="{ show: false, message: '', type: 'success' }"
+         @show-toast.window="message = $event.detail.message; type = $event.detail.type || 'success'; show = true; setTimeout(() => show = false, 3000)"
+         class="fixed bottom-5 right-5 z-[9999] transition-all duration-300 transform pointer-events-none"
+         x-show="show"
+         x-transition:enter="ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-4"
+         style="display: none;">
+        <div class="bg-gray-900 text-white px-6 py-3 shadow-2xl flex items-center gap-3 border-l-4" :class="type === 'error' ? 'border-red-500' : 'border-green-500'">
+            <span x-text="message" class="text-xs font-bold uppercase tracking-widest"></span>
+        </div>
+    </div>
 </body>
 </html>

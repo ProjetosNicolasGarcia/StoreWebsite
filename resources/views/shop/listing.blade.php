@@ -1,3 +1,8 @@
+@php
+    // Query de Alta Performance (Executa APENAS 1 vez por página e não dentro de cada loop)
+    $userFavoriteIds = auth()->check() ? auth()->user()->favorites()->pluck('product_id')->toArray() : [];
+@endphp
+
 <x-layout>
     {{-- PADDING DRASTICAMENTE REDUZIDO PARA pt-8 (O layout.blade.php já cuida de afastar do header fixo) --}}
     <div class="container mx-auto px-4 pt-8 pb-8 text-left">
@@ -14,7 +19,46 @@
                          x-data="{ 
                               currentImage: '{{ Storage::url($product->image_url) }}', 
                               originalImage: '{{ Storage::url($product->image_url) }}',
-                              hovering: false 
+                              hovering: false,
+                              isFavorite: {{ in_array($product->id, $userFavoriteIds ?? []) ? 'true' : 'false' }},
+                              async toggleFav() {
+                                  // 1. Invoca a sidebar de Login caso seja Visitante
+                                  if (!{{ auth()->check() ? 'true' : 'false' }}) {
+                                      window.dispatchEvent(new CustomEvent('open-auth-slider')); 
+                                      return;
+                                  }
+                                  
+                                  // 2. Optimistic UI: Inverte a cor do coração imediatamente
+                                  let previous = this.isFavorite;
+                                  this.isFavorite = !this.isFavorite;
+                                  
+                                  try {
+                                      const token = document.querySelector('meta[name=\'csrf-token\']')?.getAttribute('content') || '{{ csrf_token() }}';
+                                      const res = await fetch('/favoritos/toggle', {
+                                          method: 'POST',
+                                          headers: { 
+                                              'Content-Type': 'application/json', 
+                                              'X-CSRF-TOKEN': token, 
+                                              'Accept': 'application/json' 
+                                          },
+                                          body: JSON.stringify({ product_id: {{ $product->id }} })
+                                      });
+                                      
+                                      if (!res.ok) throw new Error();
+                                      
+                                      const data = await res.json();
+                                      
+                                      if(data.success) {
+                                          window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: data.message } }));
+                                      } else { 
+                                          throw new Error(); 
+                                      }
+                                  } catch(e) {
+                                      // Reverte a cor caso caia a internet ou o servidor falhe
+                                      this.isFavorite = previous;
+                                      window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: 'Erro ao salvar favorito.', type: 'error' } }));
+                                  }
+                              }
                           }"
                          @mouseenter="hovering = true"
                          @mouseleave="hovering = false">
@@ -22,13 +66,14 @@
                         {{-- CAIXA DA IMAGEM: Borda clara (border-gray-200) forçando o quadrado (aspect-ratio: 1/1) --}}
                         <div class="relative w-full border border-gray-200 mb-4 bg-white overflow-hidden" style="aspect-ratio: 1 / 1;">
                             
-                            {{-- BOTÃO DE FAVORITAR --}}
+                            {{-- BOTÃO DE FAVORITAR OTIMIZADO --}}
                             <button type="button" 
-                                    class="absolute z-30 text-gray-400 hover:text-red-500 transition-colors duration-300 opacity-0 group-hover:opacity-100 focus:outline-none bg-transparent border-none p-0 m-0 cursor-pointer"
+                                    class="absolute z-30 transition-colors duration-300 focus:outline-none bg-transparent border-none p-0 m-0 cursor-pointer pointer-events-auto"
+                                    :class="isFavorite ? 'text-red-600 opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500'"
                                     style="top: 0.75rem; right: 0.75rem;"
-                                    aria-label="Adicionar aos favoritos"
-                                    @click.stop.prevent="alert('Adicionado aos favoritos!')">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 hover:scale-110 transition-transform">
+                                    aria-label="Favoritos"
+                                    @click.stop.prevent="toggleFav()">
+                                <svg xmlns="http://www.w3.org/2000/svg" :fill="isFavorite ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 hover:scale-110 transition-transform">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                                 </svg>
                             </button>

@@ -1,3 +1,8 @@
+@php
+    // Query de Alta Performance (Executa APENAS 1 vez por página e não dentro de cada loop)
+    $userFavoriteIds = auth()->check() ? auth()->user()->favorites()->pluck('product_id')->toArray() : [];
+@endphp
+
 <x-layout>
     {{-- 1. CARROSSEL PRINCIPAL (HERO) --}}
     @if($heroBanners->count() > 0)
@@ -64,20 +69,16 @@
             <div class="absolute bottom-6 md:bottom-10 left-0 w-full z-30 px-6 sm:px-12 flex items-center justify-center">
                 <div class="flex gap-3 items-center w-full max-w-5xl">
                     @foreach($heroBanners as $index => $banner)
-                        {{-- O Fundo da Linha (Agora mais grosso, mais claro e com sombra para contraste perfeito) --}}
                         <button 
                             @click="goTo({{ $index }})"
                             type="button"
                             class="flex-1 h-1.5 sm:h-2 bg-white/40 backdrop-blur-sm rounded-full overflow-hidden focus:outline-none cursor-pointer relative group shadow-[0_2px_4px_rgba(0,0,0,0.5)] border border-white/10"
                             aria-label="Ir para banner {{ $index + 1 }}"
                         >
-                            {{-- O Preenchimento (Branco Intenso) que anima a largura (width) --}}
                             <div 
                                 class="absolute top-0 left-0 h-full bg-white transition-all ease-linear shadow-[0_0_8px_rgba(255,255,255,0.8)]"
                                 :style="activeSlide === {{ $index }} ? 'width: 100%; transition-duration: ' + interval + 'ms;' : 'width: 0%; transition-duration: 0ms;'"
                             ></div>
-                            
-                            {{-- Efeito visual leve ao passar o mouse --}}
                             <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-30 transition-opacity"></div>
                         </button>
                     @endforeach
@@ -99,7 +100,46 @@
                      x-data="{ 
                           currentImage: '{{ Storage::url($product->image_url) }}', 
                           originalImage: '{{ Storage::url($product->image_url) }}',
-                          hovering: false 
+                          hovering: false,
+                          isFavorite: {{ in_array($product->id, $userFavoriteIds ?? []) ? 'true' : 'false' }},
+                          async toggleFav() {
+                              // 1. Invoca a sidebar de Login caso seja Visitante
+                              if (!{{ auth()->check() ? 'true' : 'false' }}) {
+                                  window.dispatchEvent(new CustomEvent('open-auth-slider')); 
+                                  return;
+                              }
+                              
+                              // 2. Optimistic UI: Inverte a cor do coração imediatamente
+                              let previous = this.isFavorite;
+                              this.isFavorite = !this.isFavorite;
+                              
+                              try {
+                                  const token = document.querySelector('meta[name=\'csrf-token\']')?.getAttribute('content') || '{{ csrf_token() }}';
+                                  const res = await fetch('/favoritos/toggle', {
+                                      method: 'POST',
+                                      headers: { 
+                                          'Content-Type': 'application/json', 
+                                          'X-CSRF-TOKEN': token, 
+                                          'Accept': 'application/json' 
+                                      },
+                                      body: JSON.stringify({ product_id: {{ $product->id }} })
+                                  });
+                                  
+                                  if (!res.ok) throw new Error();
+                                  
+                                  const data = await res.json();
+                                  
+                                  if(data.success) {
+                                      window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: data.message } }));
+                                  } else { 
+                                      throw new Error(); 
+                                  }
+                              } catch(e) {
+                                  // Reverte a cor caso caia a internet ou o servidor falhe
+                                  this.isFavorite = previous;
+                                  window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: 'Erro ao salvar favorito.', type: 'error' } }));
+                              }
+                          }
                       }"
                      @mouseenter="hovering = true"
                      @mouseleave="hovering = false">
@@ -107,13 +147,14 @@
                     {{-- CAIXA DA IMAGEM --}}
                     <div class="relative w-full border border-gray-200 mb-4 bg-white overflow-hidden" style="aspect-ratio: 1 / 1;">
                         
-                        {{-- BOTÃO DE FAVORITAR --}}
+                        {{-- BOTÃO DE FAVORITAR OTIMIZADO --}}
                         <button type="button" 
-                                class="absolute z-30 text-gray-400 hover:text-red-500 transition-colors duration-300 opacity-0 group-hover:opacity-100 focus:outline-none bg-transparent border-none p-0 m-0 cursor-pointer"
+                                class="absolute z-30 transition-colors duration-300 focus:outline-none bg-transparent border-none p-0 m-0 cursor-pointer pointer-events-auto"
+                                :class="isFavorite ? 'text-red-600 opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500'"
                                 style="top: 0.75rem; right: 0.75rem;"
-                                aria-label="Adicionar aos favoritos"
-                                @click.stop.prevent="alert('Adicionado aos favoritos!')">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 hover:scale-110 transition-transform">
+                                aria-label="Favoritos"
+                                @click.stop.prevent="toggleFav()">
+                            <svg xmlns="http://www.w3.org/2000/svg" :fill="isFavorite ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 hover:scale-110 transition-transform">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                             </svg>
                         </button>
@@ -277,7 +318,46 @@
                              x-data="{ 
                                   currentImage: '{{ Storage::url($product->image_url) }}', 
                                   originalImage: '{{ Storage::url($product->image_url) }}',
-                                  hovering: false 
+                                  hovering: false,
+                                  isFavorite: {{ in_array($product->id, $userFavoriteIds ?? []) ? 'true' : 'false' }},
+                                  async toggleFav() {
+                                      // 1. Invoca a sidebar de Login caso seja Visitante
+                                      if (!{{ auth()->check() ? 'true' : 'false' }}) {
+                                          window.dispatchEvent(new CustomEvent('open-auth-slider')); 
+                                          return;
+                                      }
+                                      
+                                      // 2. Optimistic UI: Inverte a cor do coração imediatamente
+                                      let previous = this.isFavorite;
+                                      this.isFavorite = !this.isFavorite;
+                                      
+                                      try {
+                                          const token = document.querySelector('meta[name=\'csrf-token\']')?.getAttribute('content') || '{{ csrf_token() }}';
+                                          const res = await fetch('/favoritos/toggle', {
+                                              method: 'POST',
+                                              headers: { 
+                                                  'Content-Type': 'application/json', 
+                                                  'X-CSRF-TOKEN': token, 
+                                                  'Accept': 'application/json' 
+                                              },
+                                              body: JSON.stringify({ product_id: {{ $product->id }} })
+                                          });
+                                          
+                                          if (!res.ok) throw new Error();
+                                          
+                                          const data = await res.json();
+                                          
+                                          if(data.success) {
+                                              window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: data.message } }));
+                                          } else { 
+                                              throw new Error(); 
+                                          }
+                                      } catch(e) {
+                                          // Reverte a cor caso caia a internet ou o servidor falhe
+                                          this.isFavorite = previous;
+                                          window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: 'Erro ao salvar favorito.', type: 'error' } }));
+                                      }
+                                  }
                               }"
                              @mouseenter="hovering = true"
                              @mouseleave="hovering = false">
@@ -285,13 +365,14 @@
                             {{-- CAIXA DA IMAGEM --}}
                             <div class="relative w-full border border-gray-200 mb-4 bg-white overflow-hidden" style="aspect-ratio: 1 / 1;">
                                 
-                                {{-- BOTÃO DE FAVORITAR --}}
+                                {{-- BOTÃO DE FAVORITAR OTIMIZADO --}}
                                 <button type="button" 
-                                        class="absolute z-30 text-gray-400 hover:text-red-500 transition-colors duration-300 opacity-0 group-hover:opacity-100 focus:outline-none bg-transparent border-none p-0 m-0 cursor-pointer"
+                                        class="absolute z-30 transition-colors duration-300 focus:outline-none bg-transparent border-none p-0 m-0 cursor-pointer pointer-events-auto"
+                                        :class="isFavorite ? 'text-red-600 opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500'"
                                         style="top: 0.75rem; right: 0.75rem;"
-                                        aria-label="Adicionar aos favoritos"
-                                        @click.stop.prevent="alert('Adicionado aos favoritos!')">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 hover:scale-110 transition-transform">
+                                        aria-label="Favoritos"
+                                        @click.stop.prevent="toggleFav()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" :fill="isFavorite ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 hover:scale-110 transition-transform">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                                     </svg>
                                 </button>
@@ -318,6 +399,7 @@
                                         <form x-data="{ loading: false }" class="m-0 p-0"
                                               @submit.prevent="
                                                   window.dispatchEvent(new CustomEvent('open-cart'));
+                                                  window.dispatchEvent(new CustomEvent('start-cart-loading'));
                                                   loading = true;
                                                   fetch('{{ route('cart.add', $product->id) }}', {
                                                       method: 'POST',
@@ -333,12 +415,14 @@
                                                       if(data.success) {
                                                           Livewire.dispatch('cartUpdated');
                                                       } else {
+                                                          window.dispatchEvent(new CustomEvent('update-cart-count'));
                                                           cartOpen = false;
                                                           alert(data.error || 'Erro ao adicionar ao carrinho');
                                                       }
                                                   })
                                                   .catch(error => {
                                                       loading = false;
+                                                      window.dispatchEvent(new CustomEvent('update-cart-count'));
                                                       cartOpen = false;
                                                       alert('Ocorreu um erro de conexão.');
                                                   });
@@ -371,7 +455,7 @@
                                 <a href="{{ route('shop.product', $product->slug) }}" class="block cursor-pointer">
                                     <h4 class="font-bold text-gray-900 line-clamp-1 hover:underline underline-offset-2">{{ $product->name }}</h4>
                                 </a>
-                                
+
                                 <div class="mt-1 cursor-text">
                                     @if($product->isOnSale())
                                         <div class="flex flex-col items-start justify-center gap-0.5">

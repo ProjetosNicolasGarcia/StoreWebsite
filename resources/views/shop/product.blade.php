@@ -14,6 +14,9 @@
         =================================================================
     --}}
     @php
+        // Query de Alta Performance para os cards relacionados (Executa 1 vez)
+        $userFavoriteIds = auth()->check() ? auth()->user()->favorites()->pluck('product_id')->toArray() : [];
+
         // 1. Imagens
         $parentImages = [];
         if ($product->image_url) $parentImages[] = asset('storage/' . $product->image_url);
@@ -50,7 +53,6 @@
                 $isOnSale = $variant->isOnSale();
                 
                 // [CORREÇÃO DE PERFORMANCE]: Mapeamento direto em vez de $variant->toArray()
-                // Evita que o framework serialize relações inteiras e faça conversões profundas repetidas vezes.
                 $vArray = [
                     'id' => $variant->id,
                     'price' => $variant->price,
@@ -158,7 +160,8 @@
             'colorImages' => $colorImagesFallback,
             'initialVariant' => $bestInitialVariant,
             'initialPromoText' => $initialPromoText,
-            'isInWishlist' => false 
+            // [NOVO] Verifica nativamente se é favorito
+            'isInWishlist' => in_array($product->id, $userFavoriteIds)
         ];
     @endphp
 
@@ -395,10 +398,13 @@
 
                     {{-- Ícones Secundários (Desejos e Compartilhar) --}}
                     <div class="flex gap-2 justify-start mt-4">
+                        {{-- BOTÃO DE FAVORITO DO PRODUTO PRINCIPAL --}}
                         <button @click="toggleWishlist()" class="w-12 h-12 flex items-center justify-center border rounded-none transition-all cursor-pointer" :class="isInWishlist ? 'bg-red-50 border-red-200 text-red-600' : 'border-gray-200 text-gray-500 hover:border-black hover:text-black'">
-                            <svg x-show="isInWishlist" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
-                            <svg x-show="!isInWishlist" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" :fill="isInWishlist ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                            </svg>
                         </button>
+                        
                         <button @click="copyLink()" class="w-12 h-12 flex items-center justify-center border border-gray-200 rounded-none text-gray-500 hover:border-black hover:text-black transition-all cursor-pointer">
                             <svg x-show="!copied" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>
                             <svg x-show="copied" style="display: none;" class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
@@ -472,7 +478,42 @@
                          x-data="{ 
                               currentImage: '{{ Storage::url($related->image_url) }}', 
                               originalImage: '{{ Storage::url($related->image_url) }}',
-                              hovering: false 
+                              hovering: false,
+                              isFavorite: {{ in_array($related->id, $userFavoriteIds ?? []) ? 'true' : 'false' }},
+                              async toggleFav() {
+                                  if (!{{ auth()->check() ? 'true' : 'false' }}) {
+                                      window.dispatchEvent(new CustomEvent('open-auth-slider')); 
+                                      return;
+                                  }
+                                  
+                                  let previous = this.isFavorite;
+                                  this.isFavorite = !this.isFavorite;
+                                  
+                                  try {
+                                      const token = document.querySelector('meta[name=\'csrf-token\']')?.getAttribute('content') || '{{ csrf_token() }}';
+                                      const res = await fetch('/favoritos/toggle', {
+                                          method: 'POST',
+                                          headers: { 
+                                              'Content-Type': 'application/json', 
+                                              'X-CSRF-TOKEN': token, 
+                                              'Accept': 'application/json' 
+                                          },
+                                          body: JSON.stringify({ product_id: {{ $related->id }} })
+                                      });
+                                      
+                                      if (!res.ok) throw new Error();
+                                      
+                                      const data = await res.json();
+                                      if(data.success) {
+                                          window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: data.message } }));
+                                      } else { 
+                                          throw new Error(); 
+                                      }
+                                  } catch(e) {
+                                      this.isFavorite = previous;
+                                      window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: 'Erro ao salvar favorito.', type: 'error' } }));
+                                  }
+                              }
                           }"
                          @mouseenter="hovering = true"
                          @mouseleave="hovering = false">
@@ -480,13 +521,14 @@
                         {{-- CAIXA DA IMAGEM --}}
                         <div class="relative w-full border border-gray-200 mb-4 bg-white overflow-hidden" style="aspect-ratio: 1 / 1;">
                             
-                            {{-- BOTÃO DE FAVORITAR --}}
+                            {{-- BOTÃO DE FAVORITAR (CARDS RELACIONADOS) --}}
                             <button type="button" 
-                                    class="absolute z-30 text-gray-400 hover:text-red-500 transition-colors duration-300 opacity-0 group-hover:opacity-100 focus:outline-none bg-transparent border-none p-0 m-0 cursor-pointer"
+                                    class="absolute z-30 transition-colors duration-300 focus:outline-none bg-transparent border-none p-0 m-0 cursor-pointer pointer-events-auto"
+                                    :class="isFavorite ? 'text-red-600 opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500'"
                                     style="top: 0.75rem; right: 0.75rem;"
-                                    aria-label="Adicionar aos favoritos"
-                                    @click.stop.prevent="alert('Adicionado aos favoritos!')">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 hover:scale-110 transition-transform">
+                                    aria-label="Favoritos"
+                                    @click.stop.prevent="toggleFav()">
+                                <svg xmlns="http://www.w3.org/2000/svg" :fill="isFavorite ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 hover:scale-110 transition-transform">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                                 </svg>
                             </button>
@@ -662,11 +704,38 @@
                     this.updateTimerFromDisplay();
                 },
 
+                // FUNÇÃO PRINCIPAL ATUALIZADA (SEM ALERTS E REDIRECIONAMENTO)
                 async toggleWishlist() {
-                    this.isInWishlist = !this.isInWishlist;
-                    try { } catch (e) {
-                        this.isInWishlist = !this.isInWishlist;
-                        alert('Erro ao adicionar aos favoritos.');
+                    if (!{{ auth()->check() ? 'true' : 'false' }}) {
+                        window.dispatchEvent(new CustomEvent('open-auth-slider'));
+                        return;
+                    }
+                    
+                    const previousState = this.isInWishlist;
+                    this.isInWishlist = !this.isInWishlist; 
+
+                    try {
+                        const response = await fetch('/favoritos/toggle', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ product_id: {{ $product->id }} })
+                        });
+                        
+                        if(!response.ok) throw new Error();
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: data.message } }));
+                        } else {
+                            throw new Error();
+                        }
+                    } catch (e) {
+                        this.isInWishlist = previousState;
+                        window.dispatchEvent(new CustomEvent('show-toast', { detail: { message: 'Erro ao atualizar favoritos.', type: 'error' } }));
                     }
                 },
 
