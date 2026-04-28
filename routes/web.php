@@ -94,9 +94,31 @@ Route::get('/acessibilidade', function () {
     return view('pages.text-page', [
         'title' => 'Declaração de Acessibilidade',
         'content' => '
-            <p>A <strong>Minha Loja</strong> compromete-se a garantir a acessibilidade digital para pessoas com deficiência.</p>
-            <h3 class="text-xl font-bold text-black mt-8 mb-2">Feedback</h3>
-            <p>E-mail: acessibilidade@minhaloja.com.br</p>
+            <p>A <strong>Minha Loja</strong> adota diretrizes operacionais para promover a acessibilidade digital em sua plataforma. O objetivo é remover barreiras técnicas e garantir que usuários com diferentes necessidades possam navegar, compreender e interagir com o conteúdo de forma autônoma e irrestrita.</p>
+            
+            <h3 class="text-xl font-bold text-black mt-8 mb-2">Solução Tecnológica: UserWay</h3>
+            <p>Para viabilizar a adequação da interface em tempo real, implementamos o widget de acessibilidade da <strong>UserWay</strong>. Esta ferramenta atua como uma camada de tecnologia assistiva sobreposta ao código do site, permitindo que os usuários realizem ajustes personalizados de usabilidade na interface de acordo com suas necessidades individuais.</p>
+
+            <h3 class="text-xl font-bold text-black mt-8 mb-2">Ferramentas Disponíveis</h3>
+            <p>Através do painel do widget, os usuários têm acesso imediato aos seguintes recursos de modificação estrutural e visual:</p>
+            <ul class="list-disc pl-6 mt-4 mb-4 space-y-2">
+                <li><strong>Ajustes de Texto e Leitura:</strong> Redimensionamento do tamanho da fonte, modificação do espaçamento entre letras e linhas, alinhamento de texto e conversão para uma fonte otimizada para usuários com dislexia.</li>
+                <li><strong>Ajustes de Contraste e Cores:</strong> Inversão completa de cores, ativação de contraste escuro, ativação de contraste claro e dessaturação geral (escala de cinza).</li>
+                <li><strong>Foco e Navegação:</strong> Realce explícito de links e botões clicáveis, ampliação do cursor do mouse, máscara de leitura (foco visual restrito) e guia de leitura (linha horizontal de acompanhamento).</li>
+                <li><strong>Controle de Movimento:</strong> Interrupção e bloqueio de animações ou elementos em movimento na interface para prevenção de gatilhos visuais e manutenção do foco.</li>
+            </ul>
+
+            <h3 class="text-xl font-bold text-black mt-8 mb-2">Instruções de Uso</h3>
+            <ol class="list-decimal pl-6 mt-4 mb-4 space-y-2">
+                <li><strong>Localização:</strong> O ícone de acessibilidade (representado pelo símbolo universal da figura humana) encontra-se fixado no canto inferior direito da tela.</li>
+                <li><strong>Ativação:</strong> Clique no ícone ou acione o atalho de teclado <code>Ctrl + U</code> (no Windows) / <code>Cmd + U</code> (no Mac) para expandir o menu do painel de controle.</li>
+                <li><strong>Aplicação:</strong> Selecione e clique nas ferramentas desejadas. O sistema permite a combinação de múltiplas funções simultaneamente (exemplo: Texto Maior + Contraste Escuro).</li>
+                <li><strong>Desativação:</strong> Para reverter a interface ao estado gráfico original, utilize a opção "Redefinir todas as configurações" presente no próprio painel do widget.</li>
+            </ol>
+
+            <h3 class="text-xl font-bold text-black mt-8 mb-2">Feedback e Suporte</h3>
+            <p>A conformidade com as diretrizes de acessibilidade é um processo de aprimoramento contínuo. Caso identifique falhas estruturais que a ferramenta não seja capaz de suprir, ou encontre dificuldades de navegação em páginas específicas, reporte através do canal técnico dedicado.</p>
+            <p class="mt-2"><strong>E-mail:</strong> acessibilidade@minhaloja.com.br</p>
         '
     ]);
 })->name('pages.accessibility');

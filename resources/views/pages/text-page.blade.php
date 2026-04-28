@@ -8,10 +8,10 @@
         <div class="grid grid-cols-1 md:grid-cols-12 gap-16 max-w-7xl mx-auto">
             
             {{-- 1. MENU LATERAL DE NAVEGAÇÃO LEGAL --}}
-            <aside class="md:col-span-4">
+            <aside class="md:col-span-4" aria-label="Menu Institucional">
                 <div class="sticky top-40 space-y-2">
                     
-                    <nav class="flex flex-col space-y-4">
+                    <nav class="flex flex-col space-y-4" aria-label="Navegação de páginas legais e de suporte">
                         @php
                             // Identifica a rota atual para aplicar estilos de "ativo" no menu
                             $currentRoute = Route::currentRouteName();
@@ -28,7 +28,8 @@
                         {{-- Renderização Dinâmica dos Links --}}
                         @foreach($links as $route => $label)
                             <a href="{{ route($route) }}" 
-                               class="text-xl transition-all duration-200 pl-4 border-l-4
+                               @if($currentRoute === $route) aria-current="page" @endif
+                               class="text-xl transition-all duration-200 pl-4 border-l-4 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2
                                       {{ $currentRoute === $route 
                                          ? 'border-black font-black text-black' 
                                          : 'border-transparent font-medium text-gray-400 hover:text-gray-900 hover:border-gray-200' 
@@ -42,10 +43,10 @@
             </aside>
 
             {{-- 2. ÁREA DE CONTEÚDO TEXTUAL --}}
-            <div class="md:col-span-8">
+            <div class="md:col-span-8" role="region" aria-labelledby="document-title">
                 
                 {{-- Título Principal do Documento --}}
-                <h1 class="text-3xl font-black text-gray-900 uppercase tracking-tight mb-10">
+                <h1 id="document-title" class="text-3xl font-black text-gray-900 uppercase tracking-tight mb-10">
                     {{ $title }}
                 </h1>
 

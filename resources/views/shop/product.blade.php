@@ -176,33 +176,35 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16 items-start max-w-7xl mx-auto">
             
             {{-- COLUNA 1: IMAGENS (Estilo quadrado, borda limpa) --}}
-            <div class="space-y-4">
+            <div class="space-y-4" aria-label="Galeria de imagens do produto" role="region">
                 <div class="relative w-full group border border-gray-200 bg-white overflow-hidden" style="aspect-ratio: 1 / 1;">
                     <div class="absolute inset-0 flex items-center justify-center p-8">
                         <img :src="currentImage" class="w-full h-full object-contain transition-all duration-300" alt="{{ $product->name }}">
                     </div>
                     
                     {{-- Setas da Galeria --}}
-                    <button x-show="galleryImages.length > 1" @click="prevImage()" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white hover:bg-black hover:text-white text-black p-3 rounded-none shadow-sm border border-gray-200 transition-all opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 z-10 cursor-pointer">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                    <button x-show="galleryImages.length > 1" @click="prevImage()" aria-label="Ver imagem anterior" class="absolute left-4 top-1/2 -translate-y-1/2 bg-white hover:bg-black hover:text-white text-black p-3 rounded-none shadow-sm border border-gray-200 transition-all opacity-0 group-hover:opacity-100 translate-x-[-10px] group-hover:translate-x-0 z-10 cursor-pointer">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                     </button>
-                    <button x-show="galleryImages.length > 1" @click="nextImage()" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white hover:bg-black hover:text-white text-black p-3 rounded-none shadow-sm border border-gray-200 transition-all opacity-0 group-hover:opacity-100 translate-x-[10px] group-hover:translate-x-0 z-10 cursor-pointer">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                    <button x-show="galleryImages.length > 1" @click="nextImage()" aria-label="Ver próxima imagem" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white hover:bg-black hover:text-white text-black p-3 rounded-none shadow-sm border border-gray-200 transition-all opacity-0 group-hover:opacity-100 translate-x-[10px] group-hover:translate-x-0 z-10 cursor-pointer">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                     </button>
                     
                     {{-- Indicador numérico --}}
-                    <div x-show="galleryImages.length > 1" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black px-3 py-1 text-white text-xs font-bold tracking-widest z-10">
-                        <span x-text="galleryImages.indexOf(currentImage) + 1"></span> / <span x-text="galleryImages.length"></span>
+                    <div x-show="galleryImages.length > 1" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black px-3 py-1 text-white text-xs font-bold tracking-widest z-10" aria-live="polite">
+                        <span aria-label="Imagem atual" x-text="galleryImages.indexOf(currentImage) + 1"></span> / <span aria-label="Total de imagens" x-text="galleryImages.length"></span>
                     </div>
                 </div>
                 
                 {{-- Miniaturas da Galeria (Quadradas, sem arredondamento) --}}
-                <div class="flex flex-wrap gap-2" x-show="galleryImages.length > 1">
+                <div class="flex flex-wrap gap-2" x-show="galleryImages.length > 1" aria-label="Miniaturas do produto">
                     <template x-for="(image, index) in galleryImages" :key="index">
                         <button @click="currentImage = image" 
+                                :aria-label="'Selecionar miniatura ' + (index + 1)"
+                                :aria-pressed="currentImage === image ? 'true' : 'false'"
                                 class="w-16 h-16 rounded-none overflow-hidden border bg-white flex items-center justify-center transition-all duration-200 cursor-pointer" 
                                 :class="currentImage === image ? 'border-black ring-1 ring-black' : 'border-gray-200 hover:border-gray-400 opacity-70 hover:opacity-100'">
-                            <img :src="image" class="w-full h-full object-contain p-1">
+                            <img :src="image" class="w-full h-full object-contain p-1" alt="">
                         </button>
                     </template>
                 </div>
@@ -222,37 +224,37 @@
                     <h1 class="text-4xl md:text-5xl font-black text-black uppercase tracking-tighter leading-none mb-4">{{ $product->name }}</h1>
                     
                     <div class="flex items-center space-x-2">
-                        <div class="flex text-black scale-75 origin-left">
+                        <div class="flex text-black scale-75 origin-left" aria-hidden="true">
                             @for($i=0; $i<5; $i++) 
                                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg> 
                             @endfor
                         </div>
-                        <span class="text-xs text-gray-500 font-bold uppercase tracking-widest">({{ $product->reviews_count ?? 0 }} avaliações)</span>
+                        <span class="text-xs text-gray-500 font-bold uppercase tracking-widest" aria-label="{{ $product->reviews_count ?? 0 }} avaliações de clientes">({{ $product->reviews_count ?? 0 }} avaliações)</span>
                     </div>
                 </div>
                 
                 {{-- BLOCO DE PREÇO / OFERTA --}}
-                <div>
+                <div aria-live="polite">
                     <template x-if="displayVariant">
                         <div>
                             <template x-if="displayVariant.is_on_sale">
                                 <div class="flex flex-col">
                                     <div class="flex items-center gap-3 mb-1">
                                         <span class="text-4xl font-black text-red-600">R$ <span x-text="displayVariant.formatted_sale_price"></span></span>
-                                        <span class="bg-red-100 text-red-800 border border-red-200 text-[10px] font-bold px-2 py-1 uppercase tracking-widest">-<span x-text="displayVariant.discount_percentage"></span>% OFF</span>
+                                        <span class="bg-red-100 text-red-800 border border-red-200 text-[10px] font-bold px-2 py-1 uppercase tracking-widest" aria-label="Desconto de"><span x-text="displayVariant.discount_percentage"></span>% OFF</span>
                                     </div>
                                     
                                     <div class="flex items-center gap-2 mb-2">
-                                        <span class="text-xs text-gray-500 font-bold uppercase tracking-wider">De:</span>
-                                        <span class="text-sm text-gray-400 line-through font-medium">R$ <span x-text="displayVariant.formatted_price"></span></span>
+                                        <span class="text-xs text-gray-500 font-bold uppercase tracking-wider" aria-hidden="true">De:</span>
+                                        <span class="text-sm text-gray-400 line-through font-medium" aria-label="Preço original">R$ <span x-text="displayVariant.formatted_price"></span></span>
                                     </div>
 
                                     <div x-show="timerDisplay" class="flex items-center gap-2 text-red-700 bg-red-50 px-3 py-2 border border-red-100 w-fit mt-1">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg aria-hidden="true" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         <span class="text-xs font-bold uppercase tracking-wide">Expira em:</span>
-                                        <span class="text-sm font-black tracking-widest" x-text="timerDisplay"></span>
+                                        <span class="text-sm font-black tracking-widest" x-text="timerDisplay" aria-live="timer"></span>
                                     </div>
                                 </div>
                             </template>
@@ -267,7 +269,7 @@
                             {{-- MENSAGEM PERSISTENTE --}}
                             <template x-if="promoText">
                                 <p class="text-[10px] text-red-600 font-bold mt-2 flex items-center gap-1.5 pt-2 uppercase tracking-wide">
-                                    <svg class="w-3.5 h-3.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <svg aria-hidden="true" class="w-3.5 h-3.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                                     </svg>
                                     <span x-text="promoText"></span>
@@ -280,20 +282,22 @@
                 {{-- SELETORES DE VARIANTE (Quadrados, Bordas Fortes) --}}
                 <div class="space-y-4 max-w-md">
                     @foreach($optionsMap as $optionName => $optionValues)
-                        <div>
+                        <div role="radiogroup" aria-label="Selecione a opção para {{ $optionName }}">
                             <h3 class="text-xs font-bold text-gray-900 uppercase tracking-widest mb-2">{{ $optionName }}</h3>
                             <div class="flex flex-wrap gap-2">
                                 @foreach($optionValues as $value) 
                                     <button @click="selectOption('{{ $optionName }}', '{{ $value }}')" 
-                                            class="px-4 py-2 border rounded-none transition-all text-xs font-bold uppercase tracking-wide min-w-[3rem] relative group cursor-pointer" 
+                                            role="radio"
+                                            :aria-checked="selectedOptions['{{ $optionName }}'] === '{{ $value }}' ? 'true' : 'false'"
+                                            class="px-4 py-2 border rounded-none transition-all text-xs font-bold uppercase tracking-wide min-w-[3rem] relative group cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black" 
                                             :class="selectedOptions['{{ $optionName }}'] === '{{ $value }}' ? 'border-black bg-black text-white' : 'border-gray-200 bg-white text-gray-700 hover:border-black hover:text-black'">
                                         
                                         {{ $value }}
 
                                         <template x-if="variants.some(v => v.options['{{ $optionName }}'] === '{{ $value }}' && v.is_on_sale)">
-                                            <span class="absolute -top-1.5 -right-1.5 flex h-3 w-3 z-10">
-                                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                                <span class="relative inline-flex rounded-full h-3 w-3 bg-red-600 border-2 border-white"></span>
+                                            <span class="absolute -top-1.5 -right-1.5 flex h-3 w-3 z-10" aria-label="Em oferta">
+                                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" aria-hidden="true"></span>
+                                                <span class="relative inline-flex rounded-full h-3 w-3 bg-red-600 border-2 border-white" aria-hidden="true"></span>
                                             </span>
                                         </template>
                                     </button> 
@@ -309,11 +313,12 @@
                         @csrf <input type="hidden" name="variant_id" :value="cartVariant ? cartVariant.id : ''">
                         
                         <button type="submit" 
+                                aria-label="Adicionar produto selecionado ao carrinho"
                                 :disabled="loading || (cartVariant && cartVariant.stock <= 0)"
-                                class="w-full flex justify-center items-center h-14 border rounded-none text-sm font-black transition-all duration-200 focus:outline-none uppercase tracking-widest transform active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer" 
+                                class="w-full flex justify-center items-center h-14 border rounded-none text-sm font-black transition-all duration-200 focus:outline-none uppercase tracking-widest transform active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer focus:ring-2 focus:ring-offset-2 focus:ring-black" 
                                 :class="getButtonClass()">
                             <span x-show="!loading" x-text="getButtonLabel()"></span>
-                            <span x-show="loading" class="flex items-center gap-2" style="display: none;">
+                            <span x-show="loading" class="flex items-center gap-2" style="display: none;" aria-hidden="true">
                                 <svg class="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -322,9 +327,11 @@
                             </span>
                         </button>
                     </form>
-                    <div x-show="showError" x-transition class="text-xs text-red-600 font-bold flex items-center gap-1 pl-1" style="display: none;">
-                        <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                        <span x-text="errorMessage"></span>
+                    <div aria-live="assertive">
+                        <div x-show="showError" x-transition class="text-xs text-red-600 font-bold flex items-center gap-1 pl-1 mt-1" style="display: none;">
+                            <svg aria-hidden="true" class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                            <span x-text="errorMessage"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -365,49 +372,58 @@
                             } 
                         }">
                         
-                        <div class="flex gap-2 mb-2">
-                            <input type="text" x-model="zipCode" @keydown.enter.prevent="calculate()" @input="$el.value = $el.value.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2')" maxlength="9" placeholder="00000-000" class="w-full h-12 px-3 rounded-none border border-gray-300 bg-white text-sm text-gray-900 focus:border-black focus:ring-0">
+                        <div class="flex gap-2 mb-2" aria-label="Calcular frete e prazo de entrega">
+                            <input aria-label="Digite seu CEP com 8 números" type="text" x-model="zipCode" @keydown.enter.prevent="calculate()" @input="$el.value = $el.value.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2')" maxlength="9" placeholder="00000-000" class="w-full h-12 px-3 rounded-none border border-gray-300 bg-white text-sm text-gray-900 focus:border-black focus:ring-0">
                             
-                            <button @click="calculate()" :disabled="loading" class="h-12 px-6 border border-black rounded-none bg-black text-white text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all disabled:opacity-50 flex items-center justify-center min-w-[100px] cursor-pointer">
+                            <button @click="calculate()" aria-label="Calcular opções de frete" :disabled="loading" class="h-12 px-6 border border-black rounded-none bg-black text-white text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all disabled:opacity-50 flex items-center justify-center min-w-[100px] cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black">
                                 <span x-show="!loading">Calcular</span>
-                                <span x-show="loading" style="display: none;">
+                                <span x-show="loading" style="display: none;" aria-hidden="true">
                                     <svg class="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 </span>
                             </button>
                         </div>
                         
-                        {{-- Exibição de Erro --}}
-                        <div x-show="error" style="display: none;" class="text-xs font-bold text-red-600 mt-2 flex items-center gap-1">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            <span x-text="error"></span>
-                        </div>
-                        
-                        {{-- Lista de Resultados --}}
-                        <div x-show="result" style="display: none;" class="mt-4 space-y-3 bg-gray-50 border border-gray-200 p-4">
-                            <template x-for="option in result" :key="option.name">
-                                <div class="flex justify-between items-center text-sm">
-                                    <div class="flex flex-col">
-                                        <span class="font-bold text-gray-900 uppercase tracking-widest text-[10px]" x-text="option.name"></span>
-                                        <span class="text-[10px] text-gray-500 uppercase tracking-wide">Entrega em até <span x-text="option.days"></span> dias úteis</span>
+                        <div aria-live="polite">
+                            {{-- Exibição de Erro --}}
+                            <div x-show="error" style="display: none;" class="text-xs font-bold text-red-600 mt-2 flex items-center gap-1">
+                                <svg aria-hidden="true" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span x-text="error"></span>
+                            </div>
+                            
+                            {{-- Lista de Resultados --}}
+                            <div x-show="result" style="display: none;" class="mt-4 space-y-3 bg-gray-50 border border-gray-200 p-4" aria-label="Opções de entrega disponíveis">
+                                <template x-for="option in result" :key="option.name">
+                                    <div class="flex justify-between items-center text-sm">
+                                        <div class="flex flex-col">
+                                            <span class="font-bold text-gray-900 uppercase tracking-widest text-[10px]" x-text="option.name"></span>
+                                            <span class="text-[10px] text-gray-500 uppercase tracking-wide">Entrega em até <span x-text="option.days"></span> dias úteis</span>
+                                        </div>
+                                        <span class="font-black text-gray-900" aria-label="Preço do frete">R$ <span x-text="new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(option.price)"></span></span>
                                     </div>
-                                    <span class="font-black text-gray-900">R$ <span x-text="new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(option.price)"></span></span>
-                                </div>
-                            </template>
+                                </template>
+                            </div>
                         </div>
                     </div>
 
                     {{-- Ícones Secundários (Desejos e Compartilhar) --}}
                     <div class="flex gap-2 justify-start mt-4">
                         {{-- BOTÃO DE FAVORITO DO PRODUTO PRINCIPAL --}}
-                        <button @click="toggleWishlist()" class="w-12 h-12 flex items-center justify-center border rounded-none transition-all cursor-pointer" :class="isInWishlist ? 'bg-red-50 border-red-200 text-red-600' : 'border-gray-200 text-gray-500 hover:border-black hover:text-black'">
-                            <svg xmlns="http://www.w3.org/2000/svg" :fill="isInWishlist ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <button @click="toggleWishlist()" 
+                                aria-label="Favoritar produto principal"
+                                :aria-pressed="isInWishlist.toString()"
+                                class="w-12 h-12 flex items-center justify-center border rounded-none transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black" 
+                                :class="isInWishlist ? 'bg-red-50 border-red-200 text-red-600' : 'border-gray-200 text-gray-500 hover:border-black hover:text-black'">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" :fill="isInWishlist ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                             </svg>
                         </button>
                         
-                        <button @click="copyLink()" class="w-12 h-12 flex items-center justify-center border border-gray-200 rounded-none text-gray-500 hover:border-black hover:text-black transition-all cursor-pointer">
-                            <svg x-show="!copied" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>
-                            <svg x-show="copied" style="display: none;" class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        <button @click="copyLink()" 
+                                :aria-label="copied ? 'Link copiado para a área de transferência' : 'Compartilhar link deste produto'"
+                                class="w-12 h-12 flex items-center justify-center border border-gray-200 rounded-none text-gray-500 hover:border-black hover:text-black transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black">
+                            <svg aria-hidden="true" x-show="!copied" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" /></svg>
+                            <svg aria-hidden="true" x-show="copied" style="display: none;" class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                            <span aria-live="polite" class="sr-only" x-text="copied ? 'Copiado!' : ''"></span>
                         </button>
                     </div>
                 </div>
@@ -417,19 +433,25 @@
         {{-- RESTO DA PÁGINA (ACORDEONS) --}}
         <div class="border-t border-gray-200 mt-16 max-w-4xl mx-auto">
             <div x-data="{ open: true }" class="border-b border-gray-200">
-                <button @click="open = !open" class="flex justify-between items-center w-full py-6 text-left focus:outline-none group cursor-pointer">
+                <button @click="open = !open" 
+                        aria-controls="accordion-desc" 
+                        :aria-expanded="open.toString()" 
+                        class="flex justify-between items-center w-full py-6 text-left focus:outline-none focus:ring-2 focus:ring-black group cursor-pointer">
                     <span class="text-xl font-bold text-gray-900 uppercase tracking-wide group-hover:text-gray-600 transition">Descrição</span>
-                    <span x-text="open ? '-' : '+'" class="text-3xl font-light text-gray-400 group-hover:text-black transition"></span>
+                    <span aria-hidden="true" x-text="open ? '-' : '+'" class="text-3xl font-light text-gray-400 group-hover:text-black transition"></span>
                 </button>
-                <div x-show="open" class="pb-8 prose text-gray-600 max-w-none">{!! $product->description !!}</div>
+                <div id="accordion-desc" x-show="open" class="pb-8 prose text-gray-600 max-w-none" role="region" aria-label="Detalhes da descrição">{!! $product->description !!}</div>
             </div>
             
             <div x-data="{ open: false }" class="border-b border-gray-200">
-                <button @click="open = !open" class="flex justify-between items-center w-full py-6 text-left focus:outline-none group cursor-pointer">
+                <button @click="open = !open" 
+                        aria-controls="accordion-char" 
+                        :aria-expanded="open.toString()" 
+                        class="flex justify-between items-center w-full py-6 text-left focus:outline-none focus:ring-2 focus:ring-black group cursor-pointer">
                     <span class="text-xl font-bold text-gray-900 uppercase tracking-wide group-hover:text-gray-600 transition">Características</span>
-                    <span x-text="open ? '-' : '+'" class="text-3xl font-light text-gray-400 group-hover:text-black transition"></span>
+                    <span aria-hidden="true" x-text="open ? '-' : '+'" class="text-3xl font-light text-gray-400 group-hover:text-black transition"></span>
                 </button>
-                <div x-show="open" x-transition class="pb-8 text-gray-600">
+                <div id="accordion-char" x-show="open" x-transition class="pb-8 text-gray-600" role="region" aria-label="Tabela de características">
                     @if(!empty($product->characteristics) && is_array($product->characteristics))
                         <dl>
                             @foreach($product->characteristics as $key => $value) 
@@ -446,11 +468,14 @@
             </div>
             
             <div x-data="{ open: false }" class="border-b border-gray-200">
-                <button @click="open = !open" class="flex justify-between items-center w-full py-6 text-left focus:outline-none group cursor-pointer">
+                <button @click="open = !open" 
+                        aria-controls="accordion-reviews" 
+                        :aria-expanded="open.toString()" 
+                        class="flex justify-between items-center w-full py-6 text-left focus:outline-none focus:ring-2 focus:ring-black group cursor-pointer">
                     <span class="text-xl font-bold text-gray-900 uppercase tracking-wide group-hover:text-gray-600 transition">Avaliações</span>
-                    <span x-text="open ? '-' : '+'" class="text-3xl font-light text-gray-400 group-hover:text-black transition"></span>
+                    <span aria-hidden="true" x-text="open ? '-' : '+'" class="text-3xl font-light text-gray-400 group-hover:text-black transition"></span>
                 </button>
-                <div x-show="open" x-transition class="pb-8 text-gray-600">
+                <div id="accordion-reviews" x-show="open" x-transition class="pb-8 text-gray-600" role="region" aria-label="Comentários de clientes">
                     @if($product->reviews && $product->reviews->count() > 0)
                         @foreach($product->reviews as $review) 
                             <div class="mb-6 border border-gray-100 p-4 last:border-0">
@@ -458,7 +483,7 @@
                                     <p class="font-bold text-gray-900 uppercase tracking-widest text-xs">{{ $review->user->name ?? 'Cliente' }}</p>
                                     <span class="text-xs text-gray-400">{{ $review->created_at->format('d/m/Y') }}</span>
                                 </div>
-                                <div class="flex text-yellow-500 mb-2">@for($i=0; $i<$review->rating; $i++) ★ @endfor</div>
+                                <div class="flex text-yellow-500 mb-2" aria-label="Avaliação: {{ $review->rating }} de 5">@for($i=0; $i<$review->rating; $i++) <span aria-hidden="true">★</span> @endfor</div>
                                 <p class="text-sm leading-relaxed">{{ $review->content }}</p>
                             </div> 
                         @endforeach 
@@ -470,8 +495,8 @@
         </div>
 
         {{-- VOCÊ TAMBÉM PODE GOSTAR (Com o Novo Layout Quadrado e Borda) --}}
-        <div class="mt-24 pb-24">
-            <h2 class="text-2xl font-black uppercase tracking-widest mb-10 text-center">Você também pode gostar</h2>
+        <div class="mt-24 pb-24" aria-labelledby="related-products-title">
+            <h2 id="related-products-title" class="text-2xl font-black uppercase tracking-widest mb-10 text-center">Você também pode gostar</h2>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
                 @foreach($relatedProducts as $related)
                     <div class="block group relative"
@@ -526,17 +551,18 @@
                                     class="absolute z-30 transition-colors duration-300 focus:outline-none bg-transparent border-none p-0 m-0 cursor-pointer pointer-events-auto"
                                     :class="isFavorite ? 'text-red-600 opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500'"
                                     style="top: 0.75rem; right: 0.75rem;"
-                                    aria-label="Favoritos"
+                                    aria-label="Favoritar {{ $related->name }}"
+                                    :aria-pressed="isFavorite.toString()"
                                     @click.stop.prevent="toggleFav()">
-                                <svg xmlns="http://www.w3.org/2000/svg" :fill="isFavorite ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 hover:scale-110 transition-transform">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" :fill="isFavorite ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 hover:scale-110 transition-transform">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                                 </svg>
                             </button>
 
-                            <a href="{{ route('shop.product', $related->slug) }}" class="absolute inset-0 block z-0 cursor-pointer">
+                            <a href="{{ route('shop.product', $related->slug) }}" class="absolute inset-0 block z-0 cursor-pointer" aria-label="Ver detalhes de {{ $related->name }}">
                                 {{-- ETIQUETA "NOVO" --}}
                                 @if($related->created_at->diffInDays(now()) < 30)
-                                    <div class="absolute top-3 left-3 bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest z-10 shadow-sm pointer-events-none">
+                                    <div class="absolute top-3 left-3 bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest z-10 shadow-sm pointer-events-none" aria-hidden="true">
                                         Novo
                                     </div>
                                 @endif
@@ -555,7 +581,8 @@
 
                                 @if($variantCount > 1)
                                     <a href="{{ route('shop.product', $related->slug) }}" 
-                                       class="w-full block bg-black text-white border-t border-gray-200 py-3 text-center uppercase font-bold text-xs tracking-widest hover:bg-white hover:text-black transition-colors duration-300 cursor-pointer">
+                                       class="w-full block bg-black text-white border-t border-gray-200 py-3 text-center uppercase font-bold text-xs tracking-widest hover:bg-white hover:text-black transition-colors duration-300 cursor-pointer"
+                                       aria-label="Ver opções de {{ $related->name }} para adicionar ao carrinho">
                                         ADICIONAR AO CARRINHO
                                     </a>
                                 @elseif($variantCount === 1)
@@ -594,15 +621,16 @@
                                         <input type="hidden" name="variant_id" value="{{ $related->variants->first()->id }}">
                                         <button type="submit" 
                                                 :disabled="loading"
-                                                class="w-full bg-black text-white border-t border-gray-200 py-3 uppercase font-bold text-xs tracking-widest hover:bg-white hover:text-black transition-colors duration-300 flex items-center justify-center cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed">
+                                                class="w-full bg-black text-white border-t border-gray-200 py-3 uppercase font-bold text-xs tracking-widest hover:bg-white hover:text-black transition-colors duration-300 flex items-center justify-center cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
+                                                aria-label="Adicionar {{ $related->name }} ao carrinho">
                                             <span x-show="!loading">Adicionar ao Carrinho</span>
-                                            <span x-show="loading" class="flex items-center gap-2" style="display: none;">
+                                            <span x-show="loading" class="flex items-center gap-2" style="display: none;" aria-hidden="true">
                                                 <svg class="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                             </span>
                                         </button>
                                     </form>
                                 @else
-                                    <div class="w-full bg-gray-100 border-t border-gray-200 text-gray-400 py-3 uppercase font-bold text-xs tracking-widest flex items-center justify-center">
+                                    <div class="w-full bg-gray-100 border-t border-gray-200 text-gray-400 py-3 uppercase font-bold text-xs tracking-widest flex items-center justify-center" aria-disabled="true">
                                         Indisponível
                                     </div>
                                 @endif
@@ -615,21 +643,21 @@
                                 <p class="text-xs text-gray-500 uppercase tracking-widest">{{ $related->categories->first()->name }}</p>
                             @endif
                             
-                            <a href="{{ route('shop.product', $related->slug) }}" class="block cursor-pointer">
+                            <a href="{{ route('shop.product', $related->slug) }}" class="block cursor-pointer" aria-hidden="true" tabindex="-1">
                                 <h4 class="font-bold text-gray-900 line-clamp-1">{{ $related->name }}</h4>
                             </a>
 
-                            <div class="mt-1">
+                            <div class="mt-1 cursor-text">
                                 @if($related->isOnSale())
                                     <div class="flex flex-col items-start justify-center gap-0.5">
                                         <span class="font-bold text-red-600 text-lg leading-tight">
                                             R$ {{ number_format($related->sale_price, 2, ',', '.') }}
                                         </span>
                                         <div class="flex items-center gap-2">
-                                            <span class="text-xs text-gray-400 line-through">
+                                            <span class="text-xs text-gray-400 line-through" aria-label="Preço original">
                                                 R$ {{ number_format($related->base_price, 2, ',', '.') }}
                                             </span>
-                                            <span class="bg-red-100 text-red-800 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                                            <span class="bg-red-100 text-red-800 text-[10px] font-bold px-1.5 py-0.5 rounded" aria-label="Desconto">
                                                 -{{ $related->discount_percentage }}%
                                             </span>
                                         </div>
@@ -641,14 +669,18 @@
 
                             {{-- VARIANTES (MINIATURAS) --}}
                             @if($related->variants->whereNotNull('image')->count() > 0)
-                                <div class="flex justify-start gap-2 pt-2 flex-wrap">
+                                <div class="flex justify-start gap-2 pt-2 flex-wrap" aria-label="Variantes de produto">
                                     @foreach($related->visual_variants as $variant)
                                         <div @mouseenter="currentImage = '{{ Storage::url($variant->image) }}'"
                                              @mouseleave="currentImage = originalImage"
                                              @click.stop.prevent="window.location.href = '{{ route('shop.product', $related->slug) }}?variant={{ $variant->id }}'"
+                                             @keydown.enter="window.location.href = '{{ route('shop.product', $related->slug) }}?variant={{ $variant->id }}'"
+                                             role="link" 
+                                             tabindex="0"
+                                             aria-label="Visualizar variante do produto"
                                              class="w-8 h-8 rounded-none border border-gray-300 shadow-sm overflow-hidden cursor-pointer bg-white hover:border-black transition-all flex items-center justify-center">
                                             <img src="{{ Storage::url($variant->image) }}" 
-                                                 class="w-full h-full object-contain p-0.5" 
+                                                 class="w-full h-full object-contain p-0.5 pointer-events-none" 
                                                  loading="lazy" 
                                                  alt="Variante">
                                         </div>

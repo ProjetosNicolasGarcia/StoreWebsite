@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Order;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class PaymentService
 {
@@ -26,13 +27,15 @@ class PaymentService
         $cleanCpf = preg_replace('/\D/', '', $cpf);
 
         $payload = [
-            'transaction_amount' => (float) $order->total_amount,
+            'transaction_amount' => round((float) $order->total_amount, 2),
             'description' => "Pedido #" . str_pad($order->id, 6, '0', STR_PAD_LEFT),
             'payment_method_id' => 'pix',
             'payer' => [
                 'email' => $email,
                 'first_name' => $firstName,
-                'last_name' => $lastName,
+                'last_name' => trim($lastName) === '' ? 'Sobrenome' : $lastName,
+                // ATENÇÃO: A chave 'entity_type' foi RIGOROSAMENTE REMOVIDA daqui, 
+                // pois o endpoint /payments para PIX a rejeita com erro 500 interno.
                 'identification' => [
                     'type' => 'CPF',
                     'number' => $cleanCpf
@@ -40,26 +43,36 @@ class PaymentService
             ]
         ];
 
-        // Chamada à API com Timeout e Idempotency Key (Evita duplicidade em caso de timeout)
-        $response = Http::withToken($this->accessToken)
-            ->withHeaders(['X-Idempotency-Key' => (string) Str::uuid()])
-            ->timeout(15)
-            ->post("{$this->baseUrl}/payments", $payload);
+        try {
+            $response = Http::withToken($this->accessToken)
+                ->withHeaders(['X-Idempotency-Key' => (string) Str::uuid()])
+                ->timeout(15)
+                ->post("{$this->baseUrl}/payments", $payload);
 
-        if ($response->successful()) {
-            $data = $response->json();
-            return [
-                'success' => true,
-                'payment_id' => $data['id'],
-                'qr_code' => $data['point_of_interaction']['transaction_data']['qr_code'] ?? null,
-                'qr_code_base64' => $data['point_of_interaction']['transaction_data']['qr_code_base64'] ?? null,
-            ];
+            if ($response->successful()) {
+                $data = $response->json();
+                return [
+                    'success' => true,
+                    'payment_id' => $data['id'],
+                    'qr_code' => $data['point_of_interaction']['transaction_data']['qr_code'] ?? null,
+                    'qr_code_base64' => $data['point_of_interaction']['transaction_data']['qr_code_base64'] ?? null,
+                ];
+            }
+
+            $errorData = $response->json();
+            $errorMessage = $errorData['message'] ?? 'Erro Genérico HTTP ' . $response->status();
+            
+            if (isset($errorData['message']) && $errorData['message'] === 'internal_error') {
+                $errorMessage = "Mercado Pago (PIX): Falha na geração. Verifique se os dados do cliente (CPF/E-mail) são válidos ou se a conta vendedora possui chave PIX cadastrada.";
+            }
+            
+            Log::error('Erro MercadoPago PIX', ['payload' => $payload, 'response' => $errorData]);
+
+            return ['success' => false, 'message' => $errorMessage];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Falha de comunicação: ' . $e->getMessage()];
         }
-
-        return [
-            'success' => false,
-            'message' => $response->json('message') ?? 'Erro desconhecido ao comunicar com o gateway de pagamento.'
-        ];
     }
 
     /**
@@ -78,13 +91,12 @@ class PaymentService
         $payload = [
             'transaction_amount' => round((float) $order->total_amount, 2),
             'description' => "Pedido #" . str_pad($order->id, 6, '0', STR_PAD_LEFT),
-            // 'bolbradesco' é o ID clássico. 'pec' é Lotérica, que também gera boleto.
             'payment_method_id' => 'bolbradesco', 
             'payer' => [
                 'email' => $email,
                 'first_name' => $firstName,
                 'last_name' => trim($lastName) === '' ? 'Sobrenome' : $lastName,
-                'entity_type' => 'individual', // Parâmetro extra para evitar bloqueio 500
+                'entity_type' => 'individual', // Mantido APENAS para o boleto (exigência da API)
                 'identification' => [
                     'type' => 'CPF',
                     'number' => $cleanCpf
@@ -102,7 +114,7 @@ class PaymentService
 
         try {
             $response = Http::withToken($this->accessToken)
-                ->withHeaders(['X-Idempotency-Key' => (string) \Illuminate\Support\Str::uuid()])
+                ->withHeaders(['X-Idempotency-Key' => (string) Str::uuid()])
                 ->timeout(20)
                 ->post("{$this->baseUrl}/payments", $payload);
 
@@ -117,9 +129,7 @@ class PaymentService
 
             $errorData = $response->json();
             $errorMessage = $errorData['message'] ?? 'Erro Genérico HTTP ' . $response->status();
-            
-            // Log do erro real no terminal para podermos auditar
-            \Illuminate\Support\Facades\Log::error('Erro MercadoPago Boleto', ['payload' => $payload, 'response' => $errorData]);
+            Log::error('Erro MercadoPago Boleto', ['payload' => $payload, 'response' => $errorData]);
 
             return ['success' => false, 'message' => $errorMessage];
 
@@ -137,14 +147,15 @@ class PaymentService
 
         $payload = [
             'transaction_amount' => round((float) $order->total_amount, 2),
-            'token' => $token, // Token gerado com segurança no frontend
+            'token' => $token, 
             'description' => "Pedido #" . str_pad($order->id, 6, '0', STR_PAD_LEFT),
             'installments' => $installments,
             'payment_method_id' => $paymentMethodId,
             'payer' => [
                 'email' => $email,
                 'first_name' => $firstName,
-                'last_name' => $lastName,
+                'last_name' => trim($lastName) === '' ? 'Sobrenome' : $lastName,
+                'entity_type' => 'individual',
                 'identification' => [
                     'type' => 'CPF',
                     'number' => $cleanCpf
@@ -152,14 +163,13 @@ class PaymentService
             ]
         ];
 
-        // Se a bandeira exigir identificação do banco emissor (ex: algumas variações da Master/Visa)
         if ($issuerId) {
             $payload['issuer_id'] = $issuerId;
         }
 
         try {
             $response = Http::withToken($this->accessToken)
-                ->withHeaders(['X-Idempotency-Key' => (string) \Illuminate\Support\Str::uuid()])
+                ->withHeaders(['X-Idempotency-Key' => (string) Str::uuid()])
                 ->timeout(20)
                 ->post("{$this->baseUrl}/payments", $payload);
 
@@ -168,12 +178,12 @@ class PaymentService
                 return [
                     'success' => true,
                     'payment_id' => $data['id'],
-                    'status' => $data['status'], // Valores comuns: 'approved', 'in_process', 'rejected'
+                    'status' => $data['status'], 
                 ];
             }
 
             $errorData = $response->json();
-            \Illuminate\Support\Facades\Log::error('Erro MercadoPago Credit Card', ['payload' => $payload, 'response' => $errorData]);
+            Log::error('Erro MercadoPago Credit Card', ['payload' => $payload, 'response' => $errorData]);
             
             return ['success' => false, 'message' => $errorData['message'] ?? 'Pagamento recusado pela operadora. Verifique os dados.'];
 
@@ -192,7 +202,7 @@ class PaymentService
             $data = $response->json();
             return [
                 'success' => true,
-                'status' => $data['status'], // Valores comuns: 'approved', 'pending', 'cancelled', 'rejected'
+                'status' => $data['status'], 
             ];
         }
 

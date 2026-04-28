@@ -3,10 +3,10 @@
         <div class="container mx-auto px-4 max-w-7xl">
             
           {{-- Título Alinhado à Esquerda --}}
-            <div class="flex items-center gap-4 mb-8">
+            <div class="flex items-center gap-4 mb-8" role="status" aria-live="polite">
                 @if(in_array($order->payment_method, ['pix', 'boleto']))
                     {{-- Ícone de Alerta/Atenção para pagamento pendente (Quadrado) --}}
-                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-none bg-yellow-100 flex-shrink-0">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-none bg-yellow-100 flex-shrink-0" aria-hidden="true">
                         <svg class="w-7 h-7 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     </div>
                     <div>
@@ -15,7 +15,7 @@
                     </div>
                 @else
                     {{-- Ícone de Sucesso para pagamento imediato (Cartão) (Quadrado) --}}
-                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-none bg-green-100 flex-shrink-0">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-none bg-green-100 flex-shrink-0" aria-hidden="true">
                         <svg class="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                     </div>
                     <div>
@@ -31,9 +31,9 @@
                 <div class="w-full lg:w-2/3 space-y-6">
                     
                     {{-- Sessão 1: Código do Pedido --}}
-                    <section class="bg-white p-6 rounded-none border border-gray-200">
-                        <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
-                            <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm">1</span> 
+                    <section class="bg-white p-6 rounded-none border border-gray-200" aria-labelledby="order-number-title">
+                        <h2 id="order-number-title" class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
+                            <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">1</span> 
                             Número do Pedido
                         </h2>
                         <div class="bg-gray-50 p-4 rounded-none border border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -49,9 +49,9 @@
                     </section>
 
                     {{-- Sessão 2: Pagamento --}}
-                    <section class="bg-white p-6 rounded-none border border-gray-200">
-                        <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
-                            <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm">2</span> 
+                    <section class="bg-white p-6 rounded-none border border-gray-200" aria-labelledby="payment-title">
+                        <h2 id="payment-title" class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
+                            <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">2</span> 
                             Pagamento
                         </h2>
                         
@@ -60,23 +60,24 @@
                                 <p class="text-sm text-gray-600 mb-6">Escaneie o QR Code abaixo pelo aplicativo do seu banco ou copie o código PIX.</p>
                                 
                                 <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6" x-data="{ copyText: '{{ $order->pix_qr_code }}', copied: false }">
-                                    <div class="w-48 h-48 bg-gray-50 border border-gray-200 flex items-center justify-center rounded-none overflow-hidden flex-shrink-0">
+                                    <div class="w-48 h-48 bg-gray-50 border border-gray-200 flex items-center justify-center rounded-none overflow-hidden flex-shrink-0" aria-hidden="true">
                                         @if($order->pix_qr_code_base64)
-                                            <img src="data:image/jpeg;base64,{{ $order->pix_qr_code_base64 }}" alt="QR Code PIX" class="w-full h-full object-contain">
+                                            <img src="data:image/jpeg;base64,{{ $order->pix_qr_code_base64 }}" alt="QR Code PIX para leitura no aplicativo" class="w-full h-full object-contain">
                                         @else
                                             <span class="text-xs text-gray-400">QR Code indisponível</span>
                                         @endif
                                     </div>
                                     
                                     <div class="w-full">
-                                        <label class="block text-xs font-bold text-gray-900 mb-2 uppercase tracking-widest">Código PIX (Copia e Cola)</label>
+                                        <label class="block text-xs font-bold text-gray-900 mb-2 uppercase tracking-widest" id="pix-label">Código PIX (Copia e Cola)</label>
                                         <div class="flex shadow-none rounded-none w-full flex-col sm:flex-row">
-                                            <input type="text" readonly x-model="copyText" class="flex-1 block w-full rounded-none text-sm border border-gray-300 sm:border-r-0 bg-gray-50 text-gray-700 px-4 py-3 focus:ring-0 outline-none text-left">
+                                            <input type="text" readonly x-model="copyText" aria-labelledby="pix-label" aria-readonly="true" class="flex-1 block w-full rounded-none text-sm border border-gray-300 sm:border-r-0 bg-gray-50 text-gray-700 px-4 py-3 focus:ring-0 outline-none text-left">
                                             <button type="button" 
                                                     @click="navigator.clipboard.writeText(copyText); copied = true; setTimeout(() => copied = false, 2500)" 
+                                                    :aria-label="copied ? 'Código PIX copiado' : 'Copiar código PIX'"
                                                     class="relative w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border text-sm font-bold rounded-none transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 uppercase tracking-widest cursor-pointer"
                                                     :class="copied ? 'bg-white text-green-600 border-green-600 hover:bg-green-50' : 'bg-green-600 text-white border-green-600 hover:bg-white hover:text-green-600 focus:ring-green-600'">
-                                                <span x-text="copied ? 'Copiado!' : 'Copiar'"></span>
+                                                <span x-text="copied ? 'Copiado!' : 'Copiar'" aria-live="polite"></span>
                                             </button>
                                         </div>
                                         <p class="text-xs text-gray-500 mt-3 uppercase tracking-wide">O pagamento será compensado automaticamente em instantes.</p>
@@ -89,14 +90,14 @@
                                         <p class="text-xs text-gray-500 uppercase tracking-widest font-bold">Vencimento</p>
                                         <p class="text-lg font-bold text-gray-900">{{ now()->addDays(3)->format('d/m/Y') }}</p>
                                     </div>
-                                   <a href="{{ $order->boleto_url }}" target="_blank" rel="noopener noreferrer" class="inline-flex justify-center items-center px-8 py-3 border border-green-600 text-sm font-bold rounded-none text-white bg-green-600 hover:bg-white hover:text-green-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 w-full sm:w-auto uppercase tracking-widest cursor-pointer">
+                                   <a href="{{ $order->boleto_url }}" target="_blank" rel="noopener noreferrer" aria-label="Imprimir ou Baixar Boleto (abrirá em nova aba)" class="inline-flex justify-center items-center px-8 py-3 border border-green-600 text-sm font-bold rounded-none text-white bg-green-600 hover:bg-white hover:text-green-600 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 w-full sm:w-auto uppercase tracking-widest cursor-pointer">
                                         Imprimir / Baixar Boleto
                                     </a>
                                 </div>
                             @endif
                         @else
                             <div class="bg-gray-50 p-4 rounded-none border border-gray-200 flex items-center gap-4">
-                                <div class="bg-white p-3 rounded-none border border-gray-200 flex-shrink-0">
+                                <div class="bg-white p-3 rounded-none border border-gray-200 flex-shrink-0" aria-hidden="true">
                                     <svg class="w-6 h-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
                                 </div>
                                 <div>
@@ -108,9 +109,9 @@
                     </section>
 
                     {{-- Sessão 3: Informações do Cliente --}}
-                    <section class="bg-white p-6 rounded-none border border-gray-200">
-                        <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
-                            <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm">3</span> 
+                    <section class="bg-white p-6 rounded-none border border-gray-200" aria-labelledby="customer-info-title">
+                        <h2 id="customer-info-title" class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
+                            <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">3</span> 
                             Informações do Cliente
                         </h2>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-4">
@@ -134,9 +135,9 @@
                     </section>
 
                     {{-- Sessão 4: Endereço de Entrega & Frete --}}
-                    <section class="bg-white p-6 rounded-none border border-gray-200">
-                        <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
-                            <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm">4</span> 
+                    <section class="bg-white p-6 rounded-none border border-gray-200" aria-labelledby="shipping-title">
+                        <h2 id="shipping-title" class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
+                            <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">4</span> 
                             Entrega e Frete
                         </h2>
                         
@@ -174,7 +175,7 @@
 
                     {{-- Botão de Ação Inferior (Desktop) - Oculto em ecrãs pequenos --}}
                     <div class="pt-2 hidden lg:block">
-                        <a href="{{ route('profile.orders') }}" class="w-full inline-flex justify-center items-center py-4 border border-black rounded-none text-base font-bold uppercase tracking-widest text-white bg-black hover:bg-white hover:text-black transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black cursor-pointer">
+                        <a href="{{ route('profile.orders') }}" aria-label="Acessar página com seu histórico de pedidos" class="w-full inline-flex justify-center items-center py-4 border border-black rounded-none text-base font-bold uppercase tracking-widest text-white bg-black hover:bg-white hover:text-black transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black cursor-pointer">
                             Ver Todos os Pedidos
                         </a>
                     </div>
@@ -182,7 +183,7 @@
                 </div>
 
                {{-- COLUNA DIREITA: Resumo do Pedido --}}
-                <div class="w-full lg:w-1/3">
+                <div class="w-full lg:w-1/3" role="complementary" aria-label="Resumo e valores do pedido">
                     <div class="bg-white p-6 rounded-none border border-gray-200 sticky top-24 relative">
                         <h2 class="text-xl font-bold text-gray-900 mb-6 uppercase tracking-tight">Resumo da Compra</h2>
                         
@@ -236,7 +237,7 @@
 
                                 <div class="flex gap-4">
                                     <div class="w-16 h-20 bg-gray-50 rounded-none overflow-hidden flex-shrink-0 border border-gray-200 flex items-center justify-center">
-                                        <img src="{{ Storage::url($img) }}" alt="{{ $item->product_name }}" class="w-full h-full object-cover">
+                                        <img src="{{ Storage::url($img) }}" alt="Imagem do item {{ $item->product->name ?? $item->product_name }}" class="w-full h-full object-cover">
                                     </div>
                                     <div class="flex-1 flex flex-col justify-between py-1">
                                         <div>
@@ -250,16 +251,16 @@
                                                 </div>
                                             @endif
                                             
-                                            <p class="text-[10px] uppercase tracking-widest font-bold text-gray-500 mt-1">Qtd: {{ $item->quantity }}</p>
+                                            <p class="text-[10px] uppercase tracking-widest font-bold text-gray-500 mt-1" aria-label="Quantidade comprada: {{ $item->quantity }}">Qtd: {{ $item->quantity }}</p>
                                         </div>
                                        
                                     </div>
                                     <div class="mt-2 text-right">
-                                        <p class="font-bold text-sm text-gray-900">
+                                        <p class="font-bold text-sm text-gray-900" aria-label="Preço total do item">
                                             R$ {{ number_format($item->unit_price * $item->quantity, 2, ',', '.') }}
                                         </p>
                                         @if($item->quantity > 1)
-                                            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
+                                            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5" aria-label="Preço unitário">
                                                 (R$ {{ number_format($item->unit_price, 2, ',', '.') }} un.)
                                             </p>
                                         @endif
@@ -324,7 +325,7 @@
 
             {{-- Botão de Ação Inferior (Mobile) - Exibido no fim da página em ecrãs pequenos --}}
             <div class="mt-8 block lg:hidden">
-                <a href="{{ route('profile.orders') }}" class="w-full inline-flex justify-center items-center py-4 border border-black rounded-none text-base font-bold uppercase tracking-widest text-white bg-black hover:bg-white hover:text-black transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black cursor-pointer">
+                <a href="{{ route('profile.orders') }}" aria-label="Acessar página com seu histórico de pedidos" class="w-full inline-flex justify-center items-center py-4 border border-black rounded-none text-base font-bold uppercase tracking-widest text-white bg-black hover:bg-white hover:text-black transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black cursor-pointer">
                     Ver Todos os Pedidos
                 </a>
             </div>

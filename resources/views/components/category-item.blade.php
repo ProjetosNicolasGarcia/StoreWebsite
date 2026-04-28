@@ -8,7 +8,8 @@
         
         {{-- [UX FIX] Adicionado cursor-pointer na tag 'a' --}}
         <a href="{{ route('shop.category', $category->slug) }}" 
-           class="flex-1 font-bold text-gray-900 uppercase text-base lg:text-sm tracking-wide transition-all duration-200 hover:underline underline-offset-4 cursor-pointer">
+           aria-label="Ver produtos da categoria {{ $category->name }}"
+           class="flex-1 font-bold text-gray-900 uppercase text-base lg:text-sm tracking-wide transition-all duration-200 hover:underline underline-offset-4 cursor-pointer focus:outline-none focus:ring-2 focus:ring-black">
             {{ $category->name }}
         </a>
   
@@ -16,9 +17,12 @@
             {{-- [UX FIX] Adicionado cursor-pointer e hover:scale-110 --}}
             <button @click="expanded = !expanded" 
                     type="button"
-                    class="w-10 h-10 lg:w-8 lg:h-8 flex items-center justify-center ml-2 text-gray-400 hover:text-black hover:bg-gray-200 rounded-full transition-all duration-200 focus:outline-none flex-shrink-0 cursor-pointer hover:scale-110"
+                    aria-label="Subcategorias de {{ $category->name }}"
+                    :aria-expanded="expanded.toString()"
+                    aria-controls="cat-menu-{{ $category->id }}"
+                    class="w-10 h-10 lg:w-8 lg:h-8 flex items-center justify-center ml-2 text-gray-400 hover:text-black hover:bg-gray-200 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-black flex-shrink-0 cursor-pointer hover:scale-110"
                     :class="expanded ? 'rotate-180 bg-gray-100 text-black' : ''">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-4 lg:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-4 lg:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
@@ -27,11 +31,12 @@
 
     {{-- Container dos Filhos (Recursivo) --}}
     @if($category->children->isNotEmpty())
-        <div x-show="expanded" 
+        <div id="cat-menu-{{ $category->id }}"
+             x-show="expanded" 
              x-collapse 
              style="display: none;">
             
-            <ul class="flex flex-col border-t border-gray-200 bg-white">
+            <ul aria-label="Subcategorias de {{ $category->name }}" class="flex flex-col border-t border-gray-200 bg-white">
                 @foreach($category->children as $child)
                     <x-category-item :category="$child" :level="$level + 1" />
                 @endforeach

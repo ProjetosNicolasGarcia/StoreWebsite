@@ -401,3 +401,4 @@ class StoreAuthController extends Controller
         return redirect()->route('profile.index')->with('status', 'Perfil completado com sucesso!');
     }
 }
+

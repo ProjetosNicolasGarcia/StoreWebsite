@@ -1,16 +1,17 @@
 <x-layout>
     {{-- Changed: Replaced bg-gray-50 with bg-white to remove the grey background --}}
-    <div class="min-h-screen flex items-center justify-center bg-white py-12 px-4 sm:px-6 lg:px-8">
+    <div class="min-h-screen flex items-center justify-center bg-white py-12 px-4 sm:px-6 lg:px-8" role="main" aria-labelledby="complete-profile-title">
         
         <div class="max-w-md w-full space-y-8 bg-white p-10 rounded-none shadow-sm border border-gray-100">
             <div>
-                <h2 class="mt-6 text-center text-3xl font-black text-gray-900 uppercase tracking-tight">Finalizar Cadastro</h2>
+                <h2 id="complete-profile-title" class="mt-6 text-center text-3xl font-black text-gray-900 uppercase tracking-tight">Finalizar Cadastro</h2>
                 <p class="mt-2 text-center text-sm text-gray-600">
                     Olá, {{ Auth::user()->name }}! Para processar seus pedidos, precisamos de algumas informações adicionais obrigatórias.
                 </p>
             </div>
 
             <form class="mt-8 space-y-5" action="{{ route('auth.update-profile') }}" method="POST"
+                  aria-labelledby="complete-profile-title"
                   x-data="{
                       cpf: '{{ old('cpf') }}',
                       phone: '{{ old('phone') }}',
@@ -33,34 +34,40 @@
                 <div class="space-y-4">
                     <div>
                         <label for="cpf" class="block text-sm font-bold text-gray-700 mb-1">CPF</label>
-                        <input id="cpf" name="cpf" type="text" required 
+                        <input id="cpf" name="cpf" type="text" required aria-required="true"
                                x-model="cpf" @input="cpf = formatCPF($el.value)" maxlength="14"
+                               aria-invalid="{{ $errors->has('cpf') ? 'true' : 'false' }}"
+                               aria-describedby="{{ $errors->has('cpf') ? 'cpf-error' : '' }}"
                                class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm" 
                                placeholder="000.000.000-00">
-                        @error('cpf') <p class="text-red-500 text-xs mt-1 font-bold">{{ $message }}</p> @enderror
+                        @error('cpf') <p id="cpf-error" role="alert" class="text-red-500 text-xs mt-1 font-bold">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
                         <label for="phone" class="block text-sm font-bold text-gray-700 mb-1">Celular / WhatsApp</label>
-                        <input id="phone" name="phone" type="text" required 
+                        <input id="phone" name="phone" type="text" required aria-required="true"
                                x-model="phone" @input="phone = formatPhone($el.value)" maxlength="15"
+                               aria-invalid="{{ $errors->has('phone') ? 'true' : 'false' }}"
+                               aria-describedby="{{ $errors->has('phone') ? 'phone-error' : '' }}"
                                class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm" 
                                placeholder="(11) 99999-9999">
-                        @error('phone') <p class="text-red-500 text-xs mt-1 font-bold">{{ $message }}</p> @enderror
+                        @error('phone') <p id="phone-error" role="alert" class="text-red-500 text-xs mt-1 font-bold">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
                         <label for="birth_date" class="block text-sm font-bold text-gray-700 mb-1">Data de Nascimento</label>
-                        <input id="birth_date" name="birth_date" type="date" required 
+                        <input id="birth_date" name="birth_date" type="date" required aria-required="true"
                                max="{{ date('Y-m-d', strtotime('-18 years')) }}"
                                value="{{ old('birth_date') }}"
+                               aria-invalid="{{ $errors->has('birth_date') ? 'true' : 'false' }}"
+                               aria-describedby="{{ $errors->has('birth_date') ? 'birth_date-error' : '' }}"
                                class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
-                        @error('birth_date') <p class="text-red-500 text-xs mt-1 font-bold">{{ $message }}</p> @enderror
+                        @error('birth_date') <p id="birth_date-error" role="alert" class="text-red-500 text-xs mt-1 font-bold">{{ $message }}</p> @enderror
                     </div>
                 </div>
 
                 <div class="pt-2">
-                    <button type="submit" class="w-full h-12 flex justify-center items-center px-4 border border-black rounded-none text-base font-bold text-white bg-black hover:bg-white hover:text-black transition-all duration-200 cursor-pointer uppercase tracking-wide">
+                    <button type="submit" aria-label="Salvar informações e continuar cadastro" class="w-full h-12 flex justify-center items-center px-4 border border-black rounded-none text-base font-bold text-white bg-black hover:bg-white hover:text-black transition-all duration-200 cursor-pointer uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2">
                         Salvar e Continuar
                     </button>
                 </div>
@@ -68,7 +75,7 @@
             
             <form action="{{ route('logout') }}" method="POST" class="mt-4">
                 @csrf
-                <button type="submit" class="w-full flex justify-center items-center py-2 text-sm font-bold text-red-600 hover:text-red-800 hover:underline transition-colors cursor-pointer">
+                <button type="submit" aria-label="Cancelar preenchimento e sair da conta" class="w-full flex justify-center items-center py-2 text-sm font-bold text-red-600 hover:text-red-800 hover:underline transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-600 rounded">
                     Cancelar e Sair
                 </button>
             </form>

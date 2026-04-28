@@ -15,7 +15,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.13.8/dist/cdn.min.js" integrity="sha256-yA1tVqQv5xP7+pWf9hGgT7gK8L8j4y8q3qHwXwW1Z3A=" crossorigin="anonymous"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/axios@1.8/dist/axios.min.js" crossorigin="anonymous"></script>
 
-   <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cutive+Mono&display=swap">
@@ -24,6 +24,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @livewireStyles
+
+    <script async defer src="https://cdn.userway.org/widget.js" data-account="mbXL48YJpc"></script>
 </head>
 
 <body class="bg-white text-gray-900 font-sans antialiased" 
@@ -37,13 +39,14 @@
              x-show="show" 
              x-transition.opacity
              x-init="setTimeout(() => show = false, 5000)"
-             class="fixed top-5 left-1/2 transform -translate-x-1/2 z-[100] bg-black text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3">
+             class="fixed top-5 left-1/2 transform -translate-x-1/2 z-[100] bg-black text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3"
+             role="alert" aria-live="assertive">
             
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
             </svg>
             <span class="font-medium text-sm">{{ session('status') }}</span>
-            <button @click="show = false" class="ml-2 text-gray-400 hover:text-white focus:outline-none">&times;</button>
+            <button @click="show = false" class="ml-2 text-gray-400 hover:text-white focus:outline-none" aria-label="Fechar aviso">&times;</button>
         </div>
     @endif
 
@@ -54,7 +57,7 @@
             : 'fixed top-0 w-full z-50 transition-all duration-300 bg-white text-gray-900 shadow-md py-4';
     @endphp
 
-    <header id="main-header" class="{{ $headerClasses }}"
+    <header id="main-header" class="{{ $headerClasses }}" role="banner"
         x-data="{ 
             mobileMenuOpen: false, 
             scrolled: {{ $isHome ? 'false' : 'true' }},
@@ -81,20 +84,16 @@
                 
                 {{-- ESQUERDA --}}
                 <div class="flex items-center justify-start gap-4">
-                    
-                    {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
-                    <button @click="mobileMenuOpen = !mobileMenuOpen" type="button" class="lg:hidden p-2 -ml-2 mr-1 focus:outline-none z-20 transition-all duration-200 hover:scale-110 cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'" aria-label="Abrir menu mobile">
-                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" type="button" class="lg:hidden p-2 -ml-2 mr-1 focus:outline-none z-20 transition-all duration-200 hover:scale-110 cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'" aria-label="Abrir menu mobile" :aria-expanded="mobileMenuOpen.toString()" aria-controls="mobile-menu">
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                     </button>
 
                     <div class="hidden lg:flex items-center gap-6">
-                        {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
-                        <button @click="categoryMenuOpen = true" type="button" class="flex items-center gap-2 font-bold tracking-wide transition-all duration-200 hover:underline underline-offset-4 cursor-pointer group focus:outline-none" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
+                        <button @click="categoryMenuOpen = true" type="button" class="flex items-center gap-2 font-bold tracking-wide transition-all duration-200 hover:underline underline-offset-4 cursor-pointer group focus:outline-none" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'" aria-label="Abrir menu de produtos" :aria-expanded="categoryMenuOpen.toString()" aria-controls="category-menu">
                             <span>PRODUTOS</span>
                         </button>
 
-                        <nav class="flex space-x-6 items-center">
-                            {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
+                        <nav class="flex space-x-6 items-center" aria-label="Navegação principal">
                             <a href="{{ route('shop.offers') }}" class="font-medium tracking-wide transition-all duration-200 hover:underline underline-offset-4 cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">OFERTAS</a>
                             <a href="#" class="font-medium tracking-wide transition-all duration-200 hover:underline underline-offset-4 cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">SOBRE NÓS</a>
                         </nav>
@@ -102,32 +101,26 @@
                 </div>
 
                 {{-- CENTRO --}}
-                {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
-                <a href="{{ route('home') }}" id="header-logo" class="justify-self-center text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight lg:tracking-widest uppercase transition-all duration-200 hover:scale-105 cursor-pointer whitespace-nowrap z-10 text-center" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">NOME DA LOJA</a>
+                <a href="{{ route('home') }}" id="header-logo" class="justify-self-center text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight lg:tracking-widest uppercase transition-all duration-200 hover:scale-105 cursor-pointer whitespace-nowrap z-10 text-center" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'" aria-label="Página inicial - Nome da Loja">NOME DA LOJA</a>
 
                 {{-- DIREITA --}}
                 <div class="flex items-center justify-end space-x-2 sm:space-x-4 lg:space-x-6 header-icons z-20">
-                    
-                    {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
-                    <button type="button" aria-label="Buscar produtos" @click="searchOpen = true; $nextTick(() => $refs.searchInputDesktop.focus())" class="transition-all duration-200 hover:scale-110 p-1 focus:outline-none cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <button type="button" aria-label="Buscar produtos" :aria-expanded="searchOpen.toString()" aria-controls="search-container" @click="searchOpen = true; $nextTick(() => $refs.searchInputDesktop.focus())" class="transition-all duration-200 hover:scale-110 p-1 focus:outline-none cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </button>
 
                     @auth
-                        {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
-                        <a href="{{ route('profile.index') }}" aria-label="Perfil" class="transition-all duration-200 hover:scale-110 p-1 flex items-center gap-1 focus:outline-none cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        <a href="{{ route('profile.index') }}" aria-label="Acessar Perfil de Usuário" class="transition-all duration-200 hover:scale-110 p-1 flex items-center gap-1 focus:outline-none cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                         </a>
                     @else
-                        {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
-                        <button type="button" aria-label="Login" @click="$dispatch('open-auth-slider')" class="transition-all duration-200 hover:scale-110 p-1 focus:outline-none cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        <button type="button" aria-label="Login e Cadastro" aria-haspopup="dialog" @click="$dispatch('open-auth-slider')" class="transition-all duration-200 hover:scale-110 p-1 focus:outline-none cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                         </button>
                     @endauth
 
-                    {{-- [COLOR FIX] Trava explicitamente as cores do hover --}}
-                    <button type="button" aria-label="Carrinho" @click="cartOpen = true" class="transition-all duration-200 hover:scale-110 relative p-1 focus:outline-none cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                    <button type="button" aria-label="Abrir Carrinho de Compras" :aria-expanded="cartOpen.toString()" aria-controls="cart-sidebar" @click="cartOpen = true" class="transition-all duration-200 hover:scale-110 relative p-1 focus:outline-none cursor-pointer" :class="scrolled ? 'text-gray-900 hover:text-gray-900' : 'text-white hover:text-white'">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                         
                         <span x-data="{ count: {{ isset($globalCartItems) ? $globalCartItems->count() : 0 }} }"
                               @update-cart-count.window="count = $event.detail.count !== undefined ? $event.detail.count : 0"
@@ -135,6 +128,7 @@
                               x-text="count"
                               x-cloak
                               x-transition
+                              aria-hidden="true"
                               class="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] lg:text-xs font-bold rounded-full h-4 w-4 lg:h-5 lg:w-5 flex items-center justify-center">
                         </span>
                     </button>
@@ -143,19 +137,19 @@
         </div>
 
         {{-- BUSCA --}}
-        <div x-cloak x-show="searchOpen" x-transition class="fixed top-0 left-0 w-full z-50 bg-white flex items-center justify-center px-4 shadow-md h-18">
+        <div id="search-container" x-cloak x-show="searchOpen" x-transition class="fixed top-0 left-0 w-full z-50 bg-white flex items-center justify-center px-4 shadow-md h-18" role="dialog" aria-modal="true" aria-label="Caixa de busca de produtos">
             <div class="container mx-auto max-w-4xl relative w-full">
-                <form action="{{ route('shop.search') }}" method="GET" class="w-full flex items-center">
-                    <svg class="h-8 w-8 text-gray-900 mr-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    <input x-ref="searchInputDesktop" type="text" name="q" x-model="query" @input.debounce.300ms="fetchSuggestions()" placeholder="O que você está procurando?" class="w-full bg-transparent border-none text-gray-900 text-2xl font-medium focus:ring-0 focus:outline-none h-16" autocomplete="off">
-                    <button type="button" @click="searchOpen = false; query = ''; suggestions = []" class="ml-4 text-gray-500 hover:text-black transition p-2"><svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                <form action="{{ route('shop.search') }}" method="GET" class="w-full flex items-center" role="search">
+                    <svg class="h-8 w-8 text-gray-900 mr-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <input x-ref="searchInputDesktop" type="text" name="q" x-model="query" @input.debounce.300ms="fetchSuggestions()" aria-label="O que você está procurando?" placeholder="O que você está procurando?" class="w-full bg-transparent border-none text-gray-900 text-2xl font-medium focus:ring-0 focus:outline-none h-16" autocomplete="off">
+                    <button type="button" @click="searchOpen = false; query = ''; suggestions = []" class="ml-4 text-gray-500 hover:text-black transition p-2" aria-label="Fechar busca"><svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
                     
-                    <div x-cloak x-show="suggestions.length > 0" @click.outside="suggestions = []" class="absolute top-full left-0 right-0 mt-4 bg-white border-t border-gray-100 shadow-xl rounded-b-lg overflow-hidden z-50">
+                    <div x-cloak x-show="suggestions.length > 0" @click.outside="suggestions = []" class="absolute top-full left-0 right-0 mt-4 bg-white border-t border-gray-100 shadow-xl rounded-b-lg overflow-hidden z-50" aria-live="polite">
                         <ul>
                             <template x-for="product in suggestions" :key="product.id">
                                 <li>
-                                    <a :href="'/product/' + product.slug" class="flex items-center p-4 hover:bg-gray-50 transition border-b border-gray-50 last:border-0 group">
-                                        <div class="h-12 w-12 flex-shrink-0 bg-gray-100 rounded overflow-hidden mr-4 border border-gray-200">
+                                    <a :href="'/product/' + product.slug" class="flex items-center p-4 hover:bg-gray-50 transition border-b border-gray-50 last:border-0 group" :aria-label="'Ver produto: ' + product.name">
+                                        <div class="h-12 w-12 flex-shrink-0 bg-gray-100 rounded overflow-hidden mr-4 border border-gray-200" aria-hidden="true">
                                             <img :src="'/storage/' + product.image_url" :alt="product.name" loading="lazy" decoding="async" class="h-full w-full object-cover">
                                         </div>
                                         <div class="flex flex-col">
@@ -188,19 +182,19 @@
         </div>
 
         {{-- MOBILE MENU --}}
-        <div x-cloak x-show="mobileMenuOpen" class="relative z-50 lg:hidden">
-            <div class="fixed inset-0 bg-black/50 transition-opacity" @click="mobileMenuOpen = false"></div>
+        <div id="mobile-menu" x-cloak x-show="mobileMenuOpen" class="relative z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu Mobile Principal">
+            <div class="fixed inset-0 bg-black/50 transition-opacity" @click="mobileMenuOpen = false" aria-hidden="true"></div>
             
             <div class="fixed inset-y-0 left-0 w-full sm:w-[350px] bg-white !text-gray-900 shadow-xl overflow-y-auto transform transition-transform duration-300">
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-8">
                         <span class="text-xl font-bold uppercase tracking-widest !text-black">Menu</span>
-                        <button @click="mobileMenuOpen = false" class="focus:outline-none"><svg class="h-6 w-6 text-gray-900 hover:text-black transition" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                        <button @click="mobileMenuOpen = false" class="focus:outline-none" aria-label="Fechar menu mobile"><svg class="h-6 w-6 text-gray-900 hover:text-black transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
                     </div>
-                    <nav class="flex flex-col space-y-6">
-                        <button @click="mobileMenuOpen = false; categoryMenuOpen = true" class="w-full text-left font-bold uppercase tracking-wide text-lg !text-black border-b border-gray-100 pb-2 flex justify-between items-center hover:underline underline-offset-4 transition-all">
+                    <nav class="flex flex-col space-y-6" aria-label="Navegação mobile principal">
+                        <button @click="mobileMenuOpen = false; categoryMenuOpen = true" class="w-full text-left font-bold uppercase tracking-wide text-lg !text-black border-b border-gray-100 pb-2 flex justify-between items-center hover:underline underline-offset-4 transition-all" aria-expanded="false" aria-controls="category-menu">
                             PRODUTOS
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                         </button>
                         <a href="{{ route('shop.offers') }}" class="font-bold uppercase tracking-wide text-lg !text-black border-b border-gray-100 pb-2 hover:underline underline-offset-4 transition-all cursor-pointer">Ofertas</a>
                         <a href="#" class="font-bold uppercase tracking-wide text-lg !text-black border-b border-gray-100 pb-2 hover:underline underline-offset-4 transition-all cursor-pointer">Sobre Nós</a>
@@ -210,7 +204,7 @@
         </div>
     </header>
 
-    <main class="{{ $isHome ? '' : 'pt-20 md:pt-24' }}">
+    <main class="{{ $isHome ? '' : 'pt-20 md:pt-24' }}" role="main">
         {{ $slot }}
     </main>
 
@@ -218,83 +212,87 @@
     <div x-cloak x-show="categoryMenuOpen" 
          x-transition.opacity 
          class="fixed inset-0 bg-black/50 z-[60] backdrop-blur-sm" 
-         @click="categoryMenuOpen = false"></div>
+         @click="categoryMenuOpen = false"
+         aria-hidden="true"></div>
 
-    <div x-cloak x-show="categoryMenuOpen" 
+    <div id="category-menu" x-cloak x-show="categoryMenuOpen" 
          x-transition:enter="transition ease-out duration-300 transform" 
          x-transition:enter-start="-translate-x-full" 
          x-transition:enter-end="translate-x-0" 
          x-transition:leave="transition ease-in duration-300 transform" 
          x-transition:leave-start="translate-x-0" 
          x-transition:leave-end="-translate-x-full" 
-         class="fixed inset-y-0 left-0 w-full sm:w-[350px] bg-white z-[70] shadow-2xl flex flex-col h-full overflow-hidden">
+         class="fixed inset-y-0 left-0 w-full sm:w-[350px] bg-white z-[70] shadow-2xl flex flex-col h-full overflow-hidden"
+         role="dialog" aria-modal="true" aria-label="Menu de Categorias de Produtos">
 
         <div class="px-6 py-6 lg:py-5 border-b border-gray-100 flex items-center justify-between bg-white text-black">
             <div class="flex items-center gap-2">
                 <h2 class="text-xl lg:text-lg font-bold uppercase tracking-widest">PRODUTOS</h2>
             </div>
-            <button @click="categoryMenuOpen = false" class="text-black hover:text-gray-600 transition focus:outline-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            <button @click="categoryMenuOpen = false" class="text-black hover:text-gray-600 transition focus:outline-none" aria-label="Fechar menu de categorias">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 lg:h-6 lg:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </div>
 
         <div class="flex-1 overflow-y-auto">
             @if(isset($globalCategories) && $globalCategories->count() > 0)
-                <ul class="flex flex-col">
+                <ul class="flex flex-col" aria-label="Lista de categorias">
                     @foreach($globalCategories as $category)
                         <x-category-item :category="$category" />
                     @endforeach
                 </ul>
             @else
-                <div class="p-8 text-center text-gray-500 italic">
+                <div class="p-8 text-center text-gray-500 italic" role="status">
                     Nenhuma categoria encontrada.
                 </div>
             @endif
         </div>
     </div>
 
-    <div x-cloak x-show="cartOpen" x-transition.opacity class="fixed inset-0 bg-black/50 z-[60] backdrop-blur-sm" @click="cartOpen = false"></div>
+    <div x-cloak x-show="cartOpen" x-transition.opacity class="fixed inset-0 bg-black/50 z-[60] backdrop-blur-sm" @click="cartOpen = false" aria-hidden="true"></div>
 
-    @livewire('cart-sidebar')
+    <div id="cart-sidebar">
+        @livewire('cart-sidebar')
+    </div>
 
-    <footer class="bg-[#080808] text-gray-300 py-16 mt-20 text-sm border-t border-[#080808]">
+    <footer class="bg-[#080808] text-gray-300 py-16 mt-20 text-sm border-t border-[#080808]" role="contentinfo">
         <div class="container mx-auto px-8 grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div>
-                <h4 class="text-white font-bold uppercase mb-6 tracking-wider">Sobre a Loja</h4>
-                <ul class="space-y-3">
+                <h4 class="text-white font-bold uppercase mb-6 tracking-wider" id="footer-sobre">Sobre a Loja</h4>
+                <ul class="space-y-3" aria-labelledby="footer-sobre">
                     <li><a href="#" class="hover:text-white transition">Nossa história</a></li>
                 </ul>
             </div>
             <div>
-                <h4 class="text-white font-bold uppercase mb-6 tracking-wider">Ajuda</h4>
-                <ul class="space-y-3">
+                <h4 class="text-white font-bold uppercase mb-6 tracking-wider" id="footer-ajuda">Ajuda</h4>
+                <ul class="space-y-3" aria-labelledby="footer-ajuda">
                     <li><a href="{{ route('pages.faq') }}" class="hover:text-white transition">Dúvidas Gerais (FAQ)</a></li>
                     <li><a href="{{ route('pages.contact') }}" class="hover:text-white transition">Fale Conosco</a></li>
                 </ul>
             </div>
             <div>
-                <h4 class="text-white font-bold uppercase mb-6 tracking-wider">Siga-nos</h4>
-                 <div class="flex space-x-5">
-                    <a href="https://www.instagram.com/" class="text-white hover:text-pink-500 transition transform hover:-translate-y-1" title="Instagram">
+                <h4 class="text-white font-bold uppercase mb-6 tracking-wider" id="footer-social">Siga-nos</h4>
+                 <div class="flex space-x-5" aria-labelledby="footer-social">
+                    <a href="https://www.instagram.com/" class="text-white hover:text-pink-500 transition transform hover:-translate-y-1" aria-label="Acessar nosso perfil no Instagram" title="Instagram">
                         <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.324a4.162 4.162 0 1 1 0-8.324 4.162 4.162 0 0 1 0 8.324zm6.406-11.845a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z" /></svg>
                     </a>
                     
-                    <a href="https://x.com/" class="text-white hover:text-white transition transform hover:-translate-y-1" title="X (Twitter)">
-                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    <a href="https://x.com/" class="text-white hover:text-white transition transform hover:-translate-y-1" aria-label="Acessar nosso perfil no X (Twitter)" title="X (Twitter)">
+                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                     </a>
 
-                    <a href="https://www.youtube.com/@" class="text-white hover:text-red-500 transition transform hover:-translate-y-1" title="YouTube">
-                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                    <a href="https://www.youtube.com/@" class="text-white hover:text-red-500 transition transform hover:-translate-y-1" aria-label="Acessar nosso canal no YouTube" title="YouTube">
+                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
                     </a>
 
-                    <a href="https://www.tiktok.com/@" class="text-white hover:text-white transition transform hover:-translate-y-1" title="TikTok">
-                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
+                    <a href="https://www.tiktok.com/@" class="text-white hover:text-white transition transform hover:-translate-y-1" aria-label="Acessar nosso perfil no TikTok" title="TikTok">
+                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
                     </a>
                 </div>
             </div>
             <div>
-                <h4 class="text-white font-bold uppercase mb-6 tracking-wider">Informações Legais</h4>
-                <ul class="space-y-3">
+                <h4 class="text-white font-bold uppercase mb-6 tracking-wider" id="footer-legal">Informações Legais</h4>
+                <ul class="space-y-3" aria-labelledby="footer-legal">
                     <li><a href="{{ route('pages.terms') }}" class="hover:text-white transition">Termos de Uso</a></li>
                     <li><a href="{{ route('pages.privacy') }}" class="hover:text-white transition">Política de Privacidade</a></li>
                     <li><a href="{{ route('pages.cookies') }}" class="hover:text-white transition">Política de cookies</a></li>
@@ -341,10 +339,12 @@
          x-transition:leave="ease-in duration-200"
          x-transition:leave-start="opacity-100 translate-y-0"
          x-transition:leave-end="opacity-0 translate-y-4"
-         style="display: none;">
+         style="display: none;"
+         role="status" aria-live="polite">
         <div class="bg-gray-900 text-white px-6 py-3 shadow-2xl flex items-center gap-3 border-l-4" :class="type === 'error' ? 'border-red-500' : 'border-green-500'">
             <span x-text="message" class="text-xs font-bold uppercase tracking-widest"></span>
         </div>
     </div>
+
 </body>
 </html>

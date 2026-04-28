@@ -89,24 +89,30 @@
         
         {{-- Cabeçalho da Seção e Controle do Formulário --}}
         <div class="flex justify-between items-center mb-8">
-            <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tight">Endereços</h2>
+            <h2 id="addresses-heading" class="text-2xl font-black text-gray-900 uppercase tracking-tight">Endereços</h2>
             
             <button @click="showForm = !showForm" 
-                    class="h-10 px-6 border border-black rounded-none text-sm font-bold transition-all duration-200 uppercase tracking-widest cursor-pointer"
+                    aria-controls="new-address-form"
+                    :aria-expanded="showForm.toString()"
+                    aria-label="Alternar formulário de novo endereço"
+                    class="h-10 px-6 border border-black rounded-none text-sm font-bold transition-all duration-200 uppercase tracking-widest cursor-pointer focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2"
                     :class="showForm ? 'bg-white text-black' : 'bg-black text-white hover:bg-white hover:text-black'">
                 <span x-text="showForm ? 'CANCELAR' : '+ NOVO ENDEREÇO'"></span>
             </button>
         </div>
 
         {{-- Formulário de Cadastro: Exibido condicionalmente via Alpine.js --}}
-        <div x-show="showForm" x-transition.opacity class="bg-white p-6 rounded-none mb-10 border border-gray-200 shadow-sm">
-            <h3 class="font-bold text-lg mb-6 text-gray-900 flex items-center gap-2 uppercase tracking-wide">
+        <div id="new-address-form" x-show="showForm" x-transition.opacity class="bg-white p-6 rounded-none mb-10 border border-gray-200 shadow-sm" role="region" aria-labelledby="form-heading">
+            <h3 id="form-heading" class="font-bold text-lg mb-6 text-gray-900 flex items-center gap-2 uppercase tracking-wide">
                 Novo Endereço
                 {{-- Indicador de carregamento (CEP) --}}
-                <svg x-show="loadingAddress" class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="display: none;">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <div aria-live="polite">
+                    <svg aria-hidden="true" x-show="loadingAddress" class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="display: none;">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-show="loadingAddress" class="sr-only">Buscando endereço...</span>
+                </div>
             </h3>
             
             <form action="{{ route('profile.address.store') }}" method="POST">
@@ -115,49 +121,54 @@
                     
                     {{-- Campo: CEP --}}
                     <div class="md:col-span-4">
-                        <label class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">CEP</label>
-                        <input type="text" name="zip_code" 
+                        <label for="zip_code" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">CEP</label>
+                        <input type="text" id="zip_code" name="zip_code" 
                                x-model="form.zip_code"
                                @input="form.zip_code = formatCEP($el.value); fetchAddress()"
                                maxlength="9"
                                placeholder="00000-000"
+                               aria-required="true"
                                class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     </div>
 
                     {{-- Campo: Logradouro (Rua) --}}
                     <div class="md:col-span-8">
-                        <label class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Rua / Avenida</label>
-                        <input type="text" name="street" x-model="form.street"
+                        <label for="street" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Rua / Avenida</label>
+                        <input type="text" id="street" name="street" x-model="form.street"
+                               aria-required="true"
                                class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     </div>
 
                     {{-- Campo: Número --}}
                     <div class="md:col-span-3">
-                        <label class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Número</label>
+                        <label for="numberInput" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Número</label>
                         <input type="text" name="number" id="numberInput"
                                x-model="form.number"
                                @input="form.number = onlyNumbers($el.value)"
+                               aria-required="true"
                                class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     </div>
 
                     {{-- Campo: Complemento --}}
                     <div class="md:col-span-5">
-                        <label class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Complemento</label>
-                        <input type="text" name="complement" x-model="form.complement"
+                        <label for="complement" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Complemento</label>
+                        <input type="text" id="complement" name="complement" x-model="form.complement"
                                class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     </div>
 
                     {{-- Campo: Bairro --}}
                     <div class="md:col-span-4">
-                        <label class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Bairro</label>
-                        <input type="text" name="neighborhood" x-model="form.neighborhood"
+                        <label for="neighborhood" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Bairro</label>
+                        <input type="text" id="neighborhood" name="neighborhood" x-model="form.neighborhood"
+                               aria-required="true"
                                class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     </div>
 
                     {{-- Seleção de Estado (UF) --}}
                     <div class="md:col-span-4">
-                        <label class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Estado</label>
-                        <select name="state" x-model="form.state" @change="fetchCities()"
+                        <label for="state" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Estado</label>
+                        <select id="state" name="state" x-model="form.state" @change="fetchCities()"
+                                aria-required="true"
                                 class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all uppercase appearance-none cursor-pointer">
                             <option value="" disabled selected>Selecione...</option>
                             <option value="AC">Acre</option>
@@ -192,9 +203,11 @@
 
                     {{-- Seleção de Cidade: Alimentada dinamicamente pela API do IBGE --}}
                     <div class="md:col-span-8 relative">
-                        <label class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Cidade</label>
+                        <label for="city" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Cidade</label>
                         
-                        <select name="city" x-model="form.city" :disabled="!form.state || loadingCities"
+                        <select id="city" name="city" x-model="form.city" :disabled="!form.state || loadingCities"
+                                aria-required="true"
+                                :aria-busy="loadingCities.toString()"
                                 class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all appearance-none disabled:bg-white disabled:text-gray-400 cursor-pointer">
                             <option value="" disabled selected>Selecione a cidade...</option>
                             <template x-for="cityOption in cities" :key="cityOption.id">
@@ -203,18 +216,21 @@
                         </select>
 
                         {{-- Spinner de carregamento das cidades --}}
-                        <div x-show="loadingCities" class="absolute right-4 top-10" style="display: none;">
-                            <svg class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+                        <div aria-live="polite">
+                            <div x-show="loadingCities" class="absolute right-4 top-10" style="display: none;">
+                                <svg aria-hidden="true" class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
+                            <span x-show="loadingCities" class="sr-only">Carregando lista de cidades...</span>
                         </div>
                     </div>
 
                 </div>
 
                 <div class="mt-8 flex justify-end">
-                    <button type="submit" class="h-12 px-8 border border-black rounded-none text-base font-bold text-white bg-black hover:bg-white hover:text-black transition-all duration-200 cursor-pointer uppercase tracking-widest">
+                    <button type="submit" aria-label="Salvar novo endereço" class="h-12 px-8 border border-black rounded-none text-base font-bold text-white bg-black hover:bg-white hover:text-black transition-all duration-200 cursor-pointer uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2">
                         SALVAR ENDEREÇO
                     </button>
                 </div>
@@ -223,23 +239,25 @@
 
         {{-- Exibição da Lista de Endereços Cadastrados --}}
         @if($addresses->count() > 0)
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" aria-label="Lista de endereços salvos" role="region">
                 @foreach($addresses as $address)
                     <div class="border border-gray-200 rounded-none p-6 hover:shadow-md transition-shadow relative bg-white group">
-                        <div class="pr-8">
+                        <address class="pr-8 not-italic">
                             <p class="font-black text-lg text-gray-900 mb-1 uppercase">{{ $address->street }}, {{ $address->number }}</p>
-                            <p class="text-sm text-gray-600 uppercase">{{ $address->complement }}</p>
+                            @if(!empty($address->complement))
+                                <p class="text-sm text-gray-600 uppercase">{{ $address->complement }}</p>
+                            @endif
                             <p class="text-sm text-gray-600 uppercase">{{ $address->neighborhood }}</p>
                             <p class="text-sm text-gray-600 font-medium mt-2 uppercase">{{ $address->city }} - {{ $address->state }}</p>
-                            <p class="text-xs text-gray-400 mt-1 font-mono tracking-wide">{{ $address->zip_code }}</p>
-                        </div>
+                            <p class="text-xs text-gray-400 mt-1 font-mono tracking-wide" aria-label="CEP {{ $address->zip_code }}">{{ $address->zip_code }}</p>
+                        </address>
                         
                         {{-- Botão de Exclusão com Confirmação Nativa --}}
                         <form action="{{ route('profile.address.delete', $address->id) }}" method="POST" class="absolute top-6 right-6" onsubmit="return confirm('Tem certeza que deseja remover este endereço?');">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="text-gray-300 hover:text-red-600 transition-colors p-1 cursor-pointer" title="Excluir">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <button type="submit" class="text-gray-300 hover:text-red-600 transition-colors p-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-600 rounded" title="Excluir" aria-label="Excluir endereço: {{ $address->street }}, {{ $address->number }}">
+                                <svg aria-hidden="true" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                 </svg>
                             </button>
@@ -249,7 +267,7 @@
             </div>
         @else
             {{-- Estado Vazio (Empty State) --}}
-            <div class="text-center py-12 bg-white rounded-none border border-dashed border-gray-300">
+            <div class="text-center py-12 bg-white rounded-none border border-dashed border-gray-300" role="status" aria-live="polite">
                 <p class="text-gray-500 italic">Você ainda não cadastrou nenhum endereço.</p>
             </div>
         @endif

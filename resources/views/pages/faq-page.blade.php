@@ -56,11 +56,12 @@
             {{-- 1. MENU LATERAL (Sticky): Segue o usuário durante a rolagem --}}
             <aside class="md:col-span-4 hidden md:block">
                 <div class="sticky top-40 space-y-2">
-                    <nav class="flex flex-col space-y-4">
+                    <nav class="flex flex-col space-y-4" aria-label="Navegação rápida por categorias de dúvidas">
                         @foreach($faqTopics as $topic)
                             <button 
                                 @click.prevent="scrollTo('{{ $topic['slug'] }}')"
-                                class="text-xl text-left w-full transition-all duration-300 pl-4 border-l-4"
+                                :aria-current="activeSection === '{{ $topic['slug'] }}' ? 'true' : 'false'"
+                                class="text-xl text-left w-full transition-all duration-300 pl-4 border-l-4 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2"
                                 :class="activeSection === '{{ $topic['slug'] }}' 
                                     ? 'border-black font-black text-black scale-105 origin-left' 
                                     : 'border-transparent font-medium text-gray-400 hover:text-gray-900 hover:border-gray-200'">
@@ -83,11 +84,11 @@
                     @foreach($faqTopics as $topic)
                         
                         {{-- Seção de Categoria: Identificada pelo slug para o ScrollSpy --}}
-                        <section id="{{ $topic['slug'] }}" class="relative">
+                        <section id="{{ $topic['slug'] }}" class="relative" aria-labelledby="heading-{{ $topic['slug'] }}">
                             
-                            <h2 class="text-2xl font-bold text-gray-900 mb-8 border-b border-gray-100 pb-4 flex items-center">
+                            <h2 id="heading-{{ $topic['slug'] }}" class="text-2xl font-bold text-gray-900 mb-8 border-b border-gray-100 pb-4 flex items-center">
                                 {{-- Indicador Visual: Barra preta que aparece quando a seção está ativa --}}
-                                <span class="w-2 h-8 bg-black mr-4 rounded-none" {{-- Removed rounded-full to match squared style --}}
+                                <span aria-hidden="true" class="w-2 h-8 bg-black mr-4 rounded-none" 
                                       x-show="activeSection === '{{ $topic['slug'] }}'" 
                                       x-transition.opacity.duration.500ms></span>
                                 {{ $topic['title'] }}
@@ -95,14 +96,20 @@
 
                             {{-- Listagem de Perguntas (Accordions) --}}
                             <div class="space-y-4">
-                                @foreach($topic['questions'] as $item)
-                                    {{-- Changed: Replaced rounded-lg with rounded-none for brutalist style --}}
+                                @foreach($topic['questions'] as $index => $item)
+                                    @php
+                                        // Cria um ID único para associar o botão do acordeão ao seu painel
+                                        $accordionId = $topic['slug'] . '-q-' . $index;
+                                    @endphp
                                     <div x-data="{ open: false }" class="border border-gray-200 rounded-none bg-white overflow-hidden group hover:border-black transition-colors">
                                         
                                         {{-- Botão Toggle da Pergunta --}}
-                                        <button @click="open = !open" class="w-full flex justify-between items-center p-6 text-left focus:outline-none">
+                                        <button @click="open = !open" 
+                                                :aria-expanded="open.toString()"
+                                                aria-controls="panel-{{ $accordionId }}"
+                                                class="w-full flex justify-between items-center p-6 text-left focus:outline-none focus:ring-2 focus:ring-black">
                                             <span class="font-bold text-gray-800 text-lg group-hover:text-black">{{ $item['question'] }}</span>
-                                            <span class="transform transition-transform duration-200 text-gray-400 group-hover:text-black" :class="open ? 'rotate-180' : ''">
+                                            <span aria-hidden="true" class="transform transition-transform duration-200 text-gray-400 group-hover:text-black" :class="open ? 'rotate-180' : ''">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                                 </svg>
@@ -111,7 +118,10 @@
 
                                         {{-- Resposta: Expandível via Alpine x-collapse --}}
                                         {{-- Note: Ensure Alpine Collapse plugin is loaded for 'x-collapse' to work smoothly --}}
-                                        <div x-show="open" x-collapse class="bg-white border-t border-gray-100" x-cloak>
+                                        <div id="panel-{{ $accordionId }}" 
+                                             role="region" 
+                                             x-show="open" x-collapse 
+                                             class="bg-white border-t border-gray-100" x-cloak>
                                             <div class="p-6 pt-4 text-gray-600 leading-relaxed">
                                                 {!! $item['answer'] !!}
                                             </div>
@@ -125,7 +135,7 @@
                     @endforeach
                     
                     {{-- Espaçador Final: Garante que o último tópico possa ser ativado no scroll --}}
-                    <div class="h-64"></div>
+                    <div aria-hidden="true" class="h-64"></div>
                 </div>
 
             </div>
