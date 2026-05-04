@@ -9,6 +9,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Category;
 use App\Models\CartItem;
+use App\Observers\CatalogCacheObserver;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\Collection;
+use App\Models\Banner;
+use App\Models\Coupon;
+use App\Models\CategoryProduct;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,7 +26,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Previne erros de performance (N+1) durante o desenvolvimento.
+    
+        
+
+     // Previne erros de performance (N+1) durante o desenvolvimento.
         Model::shouldBeStrict(!app()->isProduction());
 
         View::composer('components.layout', function ($view) {
@@ -74,5 +84,24 @@ class AppServiceProvider extends ServiceProvider
                  ->with('globalCartItems', $cartItems)
                  ->with('globalCartTotal', $cartTotal);
         });
+
+        // =========================================================================
+        // REGISTRO DINÂMICO DE OBSERVERS
+        // =========================================================================
+        $cacheableModels = [
+            Category::class,
+            Product::class,
+            ProductVariant::class,
+            Collection::class,
+            Banner::class,
+            Coupon::class,
+            CategoryProduct::class, // Obriga a invalidação ao alterar relacionamentos N:N
+        ];
+
+        foreach ($cacheableModels as $modelClass) {
+            $modelClass::observe(CatalogCacheObserver::class);
+        }
+        
+        
     }
 }
