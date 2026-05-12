@@ -107,6 +107,29 @@
                             </div>
                         @endif
                     </section>
+                    
+                    {{-- Tratamento e Máscaras para CPF e Telefone --}}
+                    @php
+                        // Formatação de CPF (XXX.XXX.XXX-XX)
+                        $rawCpf = $order->customer_cpf ?? ($order->user->cpf ?? '');
+                        $rawCpf = preg_replace('/\D/', '', $rawCpf);
+                        $formattedCpf = strlen($rawCpf) === 11 
+                            ? preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $rawCpf) 
+                            : ($rawCpf ?: 'Não informado');
+
+                        // Formatação de Telefone: Fixo (XX) XXXX-XXXX ou Celular (XX) XXXXX-XXXX
+                        $rawPhone = $order->customer_phone ?? ($order->user->phone ?? '');
+                        $rawPhone = preg_replace('/\D/', '', $rawPhone);
+                        $formattedPhone = 'Não informado';
+                        
+                        if (strlen($rawPhone) === 11) {
+                            $formattedPhone = preg_replace('/(\d{2})(\d{5})(\d{4})/', '($1) $2-$3', $rawPhone);
+                        } elseif (strlen($rawPhone) === 10) {
+                            $formattedPhone = preg_replace('/(\d{2})(\d{4})(\d{4})/', '($1) $2-$3', $rawPhone);
+                        } elseif ($rawPhone) {
+                            $formattedPhone = $rawPhone;
+                        }
+                    @endphp
 
                     {{-- Sessão 3: Informações do Cliente --}}
                     <section class="bg-white p-6 rounded-none border border-gray-200" aria-labelledby="customer-info-title">
@@ -117,7 +140,9 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-4">
                             <div>
                                 <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Nome</p>
-                                <p class="text-base text-gray-900 font-bold uppercase">{{ $order->user->name }} {{ $order->user->last_name ?? '' }}</p>
+                                <p class="text-base text-gray-900 font-bold uppercase">
+                                    {{ trim(($order->customer_first_name ?? $order->user->name) . ' ' . ($order->customer_last_name ?? ($order->user->last_name ?? ''))) }}
+                                </p>
                             </div>
                             <div>
                                 <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">E-mail</p>
@@ -125,11 +150,13 @@
                             </div>
                             <div>
                                 <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">CPF</p>
-                                <p class="text-base text-gray-900 font-bold">{{ $order->user->cpf ?? 'Não informado' }}</p>
+                                {{-- Variável formatada --}}
+                                <p class="text-base text-gray-900 font-bold">{{ $formattedCpf }}</p>
                             </div>
                             <div>
                                 <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Telefone</p>
-                                <p class="text-base text-gray-900 font-bold">{{ $order->user->phone ?? 'Não informado' }}</p>
+                                {{-- Variável formatada --}}
+                                <p class="text-base text-gray-900 font-bold">{{ $formattedPhone }}</p>
                             </div>
                         </div>
                     </section>

@@ -16,6 +16,9 @@ use App\Models\Collection;
 use App\Models\Banner;
 use App\Models\Coupon;
 use App\Models\CategoryProduct;
+use App\Observers\OrderObserver;
+use App\Models\Order;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
     
+        
         
 
      // Previne erros de performance (N+1) durante o desenvolvimento.
@@ -101,6 +105,8 @@ class AppServiceProvider extends ServiceProvider
         foreach ($cacheableModels as $modelClass) {
             $modelClass::observe(CatalogCacheObserver::class);
         }
+
+         Order::observe(OrderObserver::class);
         
         
     }

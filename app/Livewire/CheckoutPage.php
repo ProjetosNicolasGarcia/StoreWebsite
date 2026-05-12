@@ -9,6 +9,8 @@ use App\Models\Address;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Coupon;
+use App\Models\Product;        // 🛠️ NOVO: Importado para checagem de estoque
+use App\Models\ProductVariant; // 🛠️ NOVO: Importado para checagem de estoque
 use App\Services\ShippingService; 
 use App\Services\PaymentService;
 use Illuminate\Support\Facades\Auth;
@@ -44,6 +46,13 @@ class CheckoutPage extends Component
         'complement' => '', 'neighborhood' => '', 'city' => '', 'state' => ''
     ];
 
+    public $cardToken;
+    public $installments = 1;
+    public $cardPaymentMethodId;
+    public $cardIssuerId;
+
+    public $deviceId;
+
     protected ShippingService $shippingService;
     protected PaymentService $paymentService;
 
@@ -56,7 +65,7 @@ class CheckoutPage extends Component
     #[Computed]
     public function cartItems()
     {
-        $items = CartItem::with(['product', 'variant'])
+        $items = CartItem::with(['product.variants', 'variant'])
             ->where('user_id', Auth::id())
             ->get();
             
@@ -112,8 +121,6 @@ class CheckoutPage extends Component
 
     public function mount()
     {
-        // [CORREÇÃO DE PERFORMANCE]: Adicionado eager loading para addresses
-        // Evita problema de N+1 bloqueante durante a carga inicial do Livewire
         $user = Auth::user()->fresh(['addresses']);
 
         $this->firstName = $user->name;
@@ -313,7 +320,30 @@ class CheckoutPage extends Component
         $this->total = round(($this->subtotal + $this->shippingPrice) - $this->discount, 2);
     }
 
-   public function placeOrder()
+    private function translateMPError($errorMessage)
+    {
+        $errorLower = strtolower($errorMessage);
+
+        $dictionary = [
+            'security_code_length' => 'Verifique o número de dígitos do código de segurança (CVV).',
+            'invalid_security_code' => 'O código de segurança (CVV) informado é inválido.',
+            'invalid_expiration_date' => 'A data de validade do cartão é inválida.',
+            'invalid_card_number' => 'O número do cartão de crédito é inválido.',
+            'not_result_by_params' => 'Bandeira do cartão ou parcelamento indisponível. Verifique os dados.',
+            'falha ao gerar o pix' => 'Ocorreu um erro interno ao gerar o PIX. Tente novamente em instantes.',
+            'falha ao gerar o boleto' => 'Ocorreu um erro interno ao gerar o Boleto. Tente novamente em instantes.',
+        ];
+
+        foreach ($dictionary as $key => $translation) {
+            if (str_contains($errorLower, $key)) {
+                return $translation;
+            }
+        }
+
+        return $errorMessage;
+    }
+
+    public function placeOrder()
     {
         $this->validate();
 
@@ -334,11 +364,37 @@ class CheckoutPage extends Component
                 $coupon->increment('used_count');
             }
 
+            // 🛠️ NOVO: TRAVAMENTO PESSIMISTA E RESERVA DE ESTOQUE IMEDIATA
+            foreach ($this->cartItems as $item) {
+                $product = Product::where('id', $item->product_id)->lockForUpdate()->first();
+                
+                $variant = null;
+                if ($item->product_variant_id) {
+                    $variant = ProductVariant::where('id', $item->product_variant_id)->lockForUpdate()->first();
+                    $stockAvailable = $variant->quantity;
+                } else {
+                    $stockAvailable = $product->quantity;
+                }
+
+                if ($stockAvailable < $item->quantity) {
+                    throw new \Exception("O produto '{$product->name}' esgotou ou não possui a quantidade solicitada em estoque.");
+                }
+
+                // Deduz o estoque para reservar a unidade e impedir Overselling
+                if ($variant) {
+                    $variant->decrement('quantity', $item->quantity);
+                } else {
+                    $product->decrement('quantity', $item->quantity);
+                }
+            }
+
             $address = null;
             if ($this->useNewAddress || Auth::user()->addresses->isEmpty()) {
                 $address = Auth::user()->addresses()->create($this->newAddress);
             } else {
-                $address = Address::find($this->selectedAddressId);
+                $address = Address::where('id', $this->selectedAddressId)
+                                  ->where('user_id', Auth::id())
+                                  ->firstOrFail();
             }
             
             $shippingMethodName = 'Desconhecido';
@@ -361,6 +417,11 @@ class CheckoutPage extends Component
                 'discount' => $this->discount,    
                 'payment_method' => $this->paymentMethod, 
                 'address_json' => $address ? $address->toArray() : [], 
+
+                'customer_first_name' => $this->firstName,
+                'customer_last_name' => $this->lastName,
+                'customer_cpf' => preg_replace('/\D/', '', $this->cpf),
+                'customer_phone' => preg_replace('/\D/', '', $this->phone),
             ]);
 
             foreach ($this->cartItems as $item) {
@@ -406,7 +467,7 @@ class CheckoutPage extends Component
                     'pix_qr_code' => $paymentResult['qr_code'],
                     'pix_qr_code_base64' => $paymentResult['qr_code_base64'],
                 ]);
-            }  elseif ($this->paymentMethod === 'boleto') {
+            } elseif ($this->paymentMethod === 'boleto') {
                 $paymentResult = $this->paymentService->createBoletoPayment(
                     $order, $this->cpf, $this->firstName, $this->lastName, Auth::user()->email, $address->toArray()
                 );
@@ -419,10 +480,106 @@ class CheckoutPage extends Component
                     'payment_id' => $paymentResult['payment_id'],
                     'boleto_url' => $paymentResult['boleto_url'],
                 ]);
+            } elseif ($this->paymentMethod === 'credit_card') {
+                
+                if (empty($this->cardToken)) {
+                    throw new \Exception("Os dados do cartão de crédito não puderam ser verificados ou a tokenização falhou.");
+                }
+
+                $paymentResult = $this->paymentService->createCreditCardPayment(
+                    $order, 
+                    $this->cpf, 
+                    $this->firstName, 
+                    $this->lastName, 
+                    Auth::user()->email, 
+                    $this->cardToken,
+                    (int) $this->installments, 
+                    $this->cardPaymentMethodId, 
+                    $this->cardIssuerId,
+                    $this->deviceId
+                );
+
+                if (!$paymentResult['success']) {
+                    $this->cardToken = null;
+                    throw new \Exception($paymentResult['message']);
+                }
+
+                $order->update([
+                    'payment_id' => $paymentResult['payment_id'],
+                    'status'     => ($paymentResult['status'] === 'approved') ? Order::STATUS_PAID : Order::STATUS_PENDING,
+                ]);
             }
 
             CartItem::where('user_id', Auth::id())->delete();
-            DB::commit();
+            
+            DB::commit(); // Commita as transações e libera as linhas do banco de dados
+
+            // 🛠️ NOVO: DISPARO DA FILA DE DEVOLUÇÃO DE ESTOQUE (TTL)
+            // Lembre-se de criar essa Job no terminal: php artisan make:job ReleaseUnpaidStock
+            if ($this->paymentMethod === 'pix') {
+                if (class_exists(\App\Jobs\ReleaseUnpaidStock::class)) {
+                    \App\Jobs\ReleaseUnpaidStock::dispatch($order->id)->delay(now()->addSeconds(30));
+                }
+            } elseif ($this->paymentMethod === 'boleto') {
+                if (class_exists(\App\Jobs\ReleaseUnpaidStock::class)) {
+                    \App\Jobs\ReleaseUnpaidStock::dispatch($order->id)->delay(now()->addDays(3));
+                }
+            }
+
+            // Simulação de E-mail
+            $itensDoPedido = "";
+            foreach ($this->cartItems as $item) {
+                $nomeItem = $item->product->name ?? 'Produto Indisponível';
+                
+                $detalhesVariante = "";
+                if ($item->variant && is_array($item->variant->options)) {
+                    $opcoes = [];
+                    foreach ($item->variant->options as $key => $value) {
+                        $opcoes[] = "{$key}: {$value}";
+                    }
+                    if (count($opcoes) > 0) {
+                        $detalhesVariante = " (" . implode(", ", $opcoes) . ")";
+                    }
+                }
+                
+                $itensDoPedido .= "   - {$item->quantity}x {$nomeItem}{$detalhesVariante}\n";
+            }
+
+            $enderecoFormatado = "Endereço não disponível.";
+            if ($address) {
+                $complemento = !empty($address->complement) ? " - " . $address->complement : "";
+                $enderecoFormatado = "{$address->street}, {$address->number}{$complemento}\n            Bairro: {$address->neighborhood}\n            {$address->city} - {$address->state}\n            CEP: {$address->zip_code}";
+            }
+
+            $emailSimulado = "
+            ====================================================================
+            📧 SIMULAÇÃO DE DISPARO DE E-MAIL DE CONFIRMAÇÃO 📧
+            ====================================================================
+            PARA: " . Auth::user()->email . "
+            ASSUNTO: Pedido Recebido #" . str_pad($order->id, 6, '0', STR_PAD_LEFT) . " - Minha Loja
+            --------------------------------------------------------------------
+            Olá, {$this->firstName}! 
+            
+            Recebemos o seu pedido e ele já está sendo processado.
+            
+            🛍️ PRODUTOS ADQUIRIDOS:
+            {$itensDoPedido}
+            
+            📍 LOCAL DE ENTREGA:
+            {$enderecoFormatado}
+            
+            📦 RESUMO FINANCEIRO:
+            Método de Pagamento: " . strtoupper($this->paymentMethod) . "
+            Método de Entrega: {$shippingMethodName}
+            Custo do Frete: R$ " . number_format($this->shippingPrice, 2, ',', '.') . "
+            Total Pago: R$ " . number_format($this->total, 2, ',', '.') . "
+            
+            Agradecemos a preferência!
+            Equipe Minha Loja
+            ====================================================================
+            ";
+
+            \Illuminate\Support\Facades\Log::info($emailSimulado);
 
             $this->dispatch('cart-updated');
 
@@ -430,13 +587,35 @@ class CheckoutPage extends Component
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Illuminate\Support\Facades\Log::error('Falha no Checkout: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            session()->flash('error', 'Ocorreu um erro ao processar seu pedido. Tente novamente.');
+            
+            $mensagemDeErro = $e->getMessage();
+            \Illuminate\Support\Facades\Log::error('FALHA_PLACE_ORDER', [
+                'motivo' => $mensagemDeErro,
+                'arquivo' => $e->getFile(),
+                'linha' => $e->getLine()
+            ]);
+            
+            if (method_exists($this, 'translateMPError')) {
+                try {
+                    $mensagemAmigavel = $this->translateMPError($mensagemDeErro);
+                } catch (\Throwable $th) {
+                    $mensagemAmigavel = 'Ocorreu um erro na requisição. Verifique seus dados.';
+                }
+            } else {
+                $mensagemAmigavel = $mensagemDeErro;
+            }
+
+            session()->flash('error', $mensagemAmigavel);
         }
     }
 
     public function render()
     {
         return view('livewire.checkout-page')->layout('components.layout', ['title' => 'Checkout Seguro']);
+    }
+
+    public function injectFrontEndError($message)
+    {
+        session()->flash('error', $this->translateMPError($message));
     }
 }

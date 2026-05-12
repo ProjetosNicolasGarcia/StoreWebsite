@@ -5,14 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Minha Loja - @yield('title', 'Home')</title>
-
+    
     @stack('head')
     
+    <script src="https://www.mercadopago.com/v2/security.js" view="checkout" data-navigate-track="true"></script>
+
     <style>
         [x-cloak] { display: none !important; }
     </style>
 
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.13.8/dist/cdn.min.js" integrity="sha256-yA1tVqQv5xP7+pWf9hGgT7gK8L8j4y8q3qHwXwW1Z3A=" crossorigin="anonymous"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/axios@1.8/dist/axios.min.js" crossorigin="anonymous"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,8 +24,7 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    @livewireStyles
-
+    {{-- Script de Acessibilidade --}}
     <script async defer src="https://cdn.userway.org/widget.js" data-account="mbXL48YJpc"></script>
 </head>
 
@@ -300,9 +300,20 @@
                 </ul>
             </div>
         </div>
-        <div class="container mx-auto px-8 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-300">
-            <p>&copy; {{ date('Y') }} Minha Loja. Todos os direitos reservados.</p>
+
+    <div class="container mx-auto px-8 pt-8 flex flex-col items-start text-xs gap-6">
+        
+        <div class="flex flex-wrap items-center justify-start gap-3" aria-label="Métodos de pagamento aceitos">
+            <img src="{{ asset('images/mercado-pago.png') }}" alt="Processado por Mercado Pago" class="h-8 bg-white p-1.5 rounded-sm object-contain" title="Mercado Pago">
+            <img src="https://www.svgrepo.com/show/362033/visa.svg" alt="Visa" class="h-8 bg-white p-1.5 rounded-sm object-contain">
+            <img src="https://www.svgrepo.com/show/355117/mastercard.svg" alt="Mastercard" class="h-8 bg-white p-1.5 rounded-sm object-contain">
+            <img src="https://www.svgrepo.com/show/328152/elo.svg" alt="Elo" class="h-8 bg-white p-1.5 rounded-sm object-contain">
+            <img src="https://www.svgrepo.com/show/328129/amex.svg" alt="Amex" class="h-8 bg-white p-1.5 rounded-sm object-contain">
+            <img src="https://www.svgrepo.com/show/500416/pix.svg" alt="Pix" class="h-8 bg-white p-1.5 rounded-sm object-contain">
         </div>
+
+        <p class="text-left">&copy; {{ date('Y') }} Minha Loja. Todos os direitos reservados.</p>
+    </div>
     </footer>
 
     <x-auth-slider />
@@ -327,7 +338,6 @@
             });
         @endif
     </script>
-    @livewireScripts
 
     <div x-data="{ show: false, message: '', type: 'success' }"
          @show-toast.window="message = $event.detail.message; type = $event.detail.type || 'success'; show = true; setTimeout(() => show = false, 3000)"
@@ -345,6 +355,5 @@
             <span x-text="message" class="text-xs font-bold uppercase tracking-widest"></span>
         </div>
     </div>
-
 </body>
 </html>

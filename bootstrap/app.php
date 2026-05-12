@@ -1,3 +1,4 @@
+
 <?php
 
 use Illuminate\Foundation\Application;
@@ -22,7 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureProfileIsComplete::class,
         ]);
 
-        // EXCEÇÃO DO CSRF PARA O WEBHOOK DO MERCADO PAGO AQUI
+        // ✅ novo: Exceção do CSRF para o Webhook do Mercado Pago
         $middleware->validateCsrfTokens(except: [
             'webhooks/mercadopago',
         ]);

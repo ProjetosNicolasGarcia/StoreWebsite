@@ -28,18 +28,22 @@ class SecurityHeaders
             
             // Prevents MIME-sniffing
             $response->header('X-Content-Type-Options', 'nosniff');
+
+            // Enforces HTTPS (Apenas em Produção)
+            if (app()->environment('production')) {
+                $response->header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+            }
             
-            // Enforces HTTPS
-            $response->header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-            
-            // CSP Ajustado: Adicionado 'blob:' no script-src para permitir a execução do código .wasm da Unity WebGL
+            // CSP Ajustado: 
+            // 1. Incluído o domínio .com do Mercado Pago no script-src, connect-src e frame-src
+            // 2. Removidos os domínios do VLibras, mantendo apenas a estrutura do UserWay
             $csp = "default-src 'self'; " .
-                   "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://*.userway.org https://vlibras.gov.br https://*.vlibras.gov.br https://sdk.mercadopago.com; " .
-                   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.bunny.net https://*.userway.org https://vlibras.gov.br https://*.vlibras.gov.br; " .
-                   "font-src 'self' https://fonts.gstatic.com https://fonts.bunny.net data: https://*.vlibras.gov.br https://*.userway.org; " .
+                   "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://*.userway.org https://sdk.mercadopago.com https://*.mercadopago.com https://*.mercadopago.com.br https://*.mlstatic.com; " .
+                   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.bunny.net https://*.userway.org; " .
+                   "font-src 'self' https://fonts.gstatic.com https://fonts.bunny.net data: https://*.userway.org; " .
                    "img-src 'self' data: blob: https: http:; " .
-                   "connect-src 'self' https://*.userway.org https://cdn.jsdelivr.net https://vlibras.gov.br https://*.vlibras.gov.br wss: https://api.mercadopago.com; " .
-                   "frame-src 'self' https://*.userway.org https://*.mercadopago.com https://www.youtube.com; " .
+                   "connect-src 'self' https://*.userway.org https://cdn.jsdelivr.net wss: https://api.mercadopago.com https://*.mercadopago.com https://*.mercadopago.com.br https://*.mlstatic.com https://*.mercadolibre.com; " .
+                   "frame-src 'self' https://*.userway.org https://*.mercadopago.com https://*.mercadopago.com.br https://*.mlstatic.com https://*.mercadolibre.com https://www.youtube.com; " .
                    "worker-src 'self' blob:; " .
                    "form-action 'self'; " .
                    "frame-ancestors 'self';";

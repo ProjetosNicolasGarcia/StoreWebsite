@@ -37,6 +37,10 @@ protected $fillable = [
         'pix_qr_code_base64', 
         'boleto_url',
         'address_json',
+        'customer_first_name',
+        'customer_last_name',
+        'customer_cpf',
+        'customer_phone',
     ];
 
     /**

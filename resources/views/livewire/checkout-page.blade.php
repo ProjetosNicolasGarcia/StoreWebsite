@@ -1,60 +1,98 @@
 <div class="min-h-screen pt-32 pb-10"
-     x-data="{
-         formatCEP(value) { 
-             let v = value.replace(/\D/g, ''); 
-             v = v.replace(/^(\d{5})(\d)/, '$1-$2'); 
-             return v.substring(0, 9); 
-         },
-         formatCPF(value) { return value.replace(/\D/g, '').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})/, '$1-$2').replace(/(-\d{2})\d+?$/, '$1'); },
-         formatPhone(value) { let v = value.replace(/\D/g, ''); v = v.replace(/^(\d{2})(\d)/, '($1) $2'); v = v.replace(/(\d)(\d{4})$/, '$1-$2'); return v.substring(0, 15); },
-         formatCardNumber(value) { let v = value.replace(/\D/g, ''); v = v.replace(/(\d{4})/g, '$1 ').trim(); return v.substring(0, 19); },
-         formatCardExpiry(value) { let v = value.replace(/\D/g, ''); if (v.length >= 2) { return v.substring(0, 2) + '/' + v.substring(2, 4); } return v; }
-     }">
-     
+    x-data="{
+        formatCEP(value) {
+            let v = value.replace(/\D/g, '');
+            v = v.replace(/^(\d{5})(\d)/, '$1-$2');
+            return v.substring(0, 9);
+        },
+        formatCPF(value) {
+            return value
+                .replace(/\D/g, '')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+                .replace(/(-\d{2})\d+?$/, '$1');
+        },
+        formatPhone(value) {
+            let v = value.replace(/\D/g, '');
+            v = v.replace(/^(\d{2})(\d)/, '($1) $2');
+            v = v.replace(/(\d)(\d{4})$/, '$1-$2');
+            return v.substring(0, 15);
+        }
+    }">
+
     <div class="container mx-auto px-4 max-w-7xl">
-        <h1 id="checkout-title" class="text-3xl font-black uppercase tracking-tight text-gray-900 mb-8">Finalizar Compra</h1>
 
-        @if (session()->has('error'))
-            <div class="bg-white border border-red-500 text-red-700 px-4 py-3 rounded-none relative mb-6" role="alert" aria-live="assertive">
-                <span class="block sm:inline font-bold uppercase tracking-widest text-xs">{{ session('error') }}</span>
-            </div>
-        @endif
+        <h1 id="checkout-title" class="text-3xl font-black uppercase tracking-tight text-gray-900 mb-8">
+            Finalizar Compra
+        </h1>
 
-        <form x-data="paymentManager()" @submit.prevent="submitOrder" class="flex flex-col lg:flex-row gap-8 relative" aria-labelledby="checkout-title">
-            
+        <form
+            x-data="paymentManager()"
+            @submit.prevent="submitOrder"
+            class="flex flex-col lg:flex-row gap-8 relative"
+            aria-labelledby="checkout-title">
+
             {{-- COLUNA ESQUERDA --}}
             <div class="order-2 lg:order-1 w-full lg:w-2/3 space-y-6">
-                
-                <section class="bg-white p-6 rounded-none border border-gray-200" role="region" aria-labelledby="step-1-title">
+
+                {{-- STEP 1: Identificação --}}
+                <section
+                    class="bg-white p-6 rounded-none border border-gray-200"
+                    role="region"
+                    aria-labelledby="step-1-title">
+
                     <h2 id="step-1-title" class="text-lg font-black text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
-                        <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">1</span> 
+                        <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">1</span>
                         Identificação
                     </h2>
+
                     <div class="bg-white p-4 rounded-none border border-gray-200">
                         <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">Comprando como:</p>
-                        <p class="font-bold text-gray-900">{{ Auth::user()->name }} <span class="text-gray-500 font-normal">({{ Auth::user()->email }})</span></p>
+                        <p class="font-bold text-gray-900">
+                            {{ Auth::user()->name }}
+                            <span class="text-gray-500 font-normal">({{ Auth::user()->email }})</span>
+                        </p>
                     </div>
                 </section>
 
-                <section class="bg-white p-6 rounded-none border border-gray-200 relative" role="region" aria-labelledby="step-2-title">
-                    <div wire:loading wire:target="selectedAddressId, useNewAddress" class="absolute inset-0 z-10 bg-white/50 backdrop-blur-[1px] rounded-none" aria-hidden="true"></div>
+                {{-- STEP 2: Endereço de Entrega --}}
+                <section
+                    class="bg-white p-6 rounded-none border border-gray-200 relative"
+                    role="region"
+                    aria-labelledby="step-2-title">
+
+                    <div
+                        wire:loading
+                        wire:target="selectedAddressId, useNewAddress"
+                        class="absolute inset-0 z-10 bg-white/50 backdrop-blur-[1px] rounded-none"
+                        aria-hidden="true">
+                    </div>
+
                     <h2 id="step-2-title" class="text-lg font-black text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
-                        <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">2</span> 
+                        <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">2</span>
                         Endereço de Entrega
                     </h2>
-                    
+
                     @if(Auth::user()->addresses->isNotEmpty())
                         <div class="space-y-3 mb-4" role="radiogroup" aria-label="Selecione um endereço cadastrado">
+
                             @foreach(Auth::user()->addresses as $addr)
-                                <label :class="addrId == {{ $addr->id }} && !newAddr ? 'border-black bg-white ring-1 ring-black' : 'border-gray-200 hover:border-black bg-white'" 
-                                       class="flex items-start p-4 border rounded-none cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-black">
-                                    
-                                    <input type="radio" name="address_group" value="{{ $addr->id }}" 
-                                           @click="addrId = {{ $addr->id }}; newAddr = false"
-                                           :checked="addrId == {{ $addr->id }} && !newAddr"
-                                           aria-label="{{ $addr->street }}, {{ $addr->number }}"
-                                           class="mt-1 text-black focus:ring-black cursor-pointer">
-                                    
+                                <label
+                                    :class="addrId == {{ $addr->id }} && !newAddr
+                                        ? 'border-black bg-white ring-1 ring-black'
+                                        : 'border-gray-200 hover:border-black bg-white'"
+                                    class="flex items-start p-4 border rounded-none cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-black">
+
+                                    <input
+                                        type="radio"
+                                        name="address_group"
+                                        value="{{ $addr->id }}"
+                                        @click="addrId = {{ $addr->id }}; newAddr = false"
+                                        :checked="addrId == {{ $addr->id }} && !newAddr"
+                                        aria-label="{{ $addr->street }}, {{ $addr->number }}"
+                                        class="mt-1 text-black focus:ring-black cursor-pointer">
+
                                     <div class="ml-3">
                                         <p class="font-bold text-gray-900 uppercase">{{ $addr->street }}, {{ $addr->number }}</p>
                                         <p class="text-sm text-gray-600 uppercase">{{ $addr->neighborhood }} - {{ $addr->city }}/{{ $addr->state }}</p>
@@ -62,84 +100,174 @@
                                     </div>
                                 </label>
                             @endforeach
-                            
-                            <label :class="newAddr ? 'border-black bg-white ring-1 ring-black' : 'border-gray-200 hover:border-black bg-white'" 
-                                   class="flex items-center p-4 border rounded-none cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-black">
-                                
-                                <input type="radio" name="address_group" value="new" 
-                                       @click="newAddr = true; addrId = null"
-                                       :checked="newAddr"
-                                       class="text-black focus:ring-black cursor-pointer">
-                                
-                                <span class="ml-3 font-bold text-gray-900 uppercase tracking-wide">Entregar em outro endereço</span>
+
+                            <label
+                                :class="newAddr
+                                    ? 'border-black bg-white ring-1 ring-black'
+                                    : 'border-gray-200 hover:border-black bg-white'"
+                                class="flex items-center p-4 border rounded-none cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-black">
+
+                                <input
+                                    type="radio"
+                                    name="address_group"
+                                    value="new"
+                                    @click="newAddr = true; addrId = null"
+                                    :checked="newAddr"
+                                    class="text-black focus:ring-black cursor-pointer">
+
+                                <span class="ml-3 font-bold text-gray-900 uppercase tracking-wide">
+                                    Entregar em outro endereço
+                                </span>
                             </label>
                         </div>
                     @endif
 
-                    <div x-show="newAddr || {{ Auth::user()->addresses->isEmpty() ? 'true' : 'false' }}" 
-                         x-transition style="display: none;" 
-                         id="new-address-fields"
-                         class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                    <div
+                        x-show="newAddr || {{ Auth::user()->addresses->isEmpty() ? 'true' : 'false' }}"
+                        x-cloak
+                        x-transition
+                        id="new-address-fields"
+                        class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+
                         <div class="col-span-1 md:col-span-2">
                             <label for="checkout-cep" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">CEP</label>
-                            <input id="checkout-cep" type="text" wire:model.live.debounce.500ms="newAddress.zip_code" x-on:input="$el.value = formatCEP($el.value)" maxlength="9" aria-required="true" class="appearance-none rounded-none block w-full px-3 py-3 border {{ $errors->has('newAddress.zip_code') ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-black focus:border-black' }} bg-white placeholder-gray-400 text-gray-900 focus:outline-none sm:text-sm" placeholder="00000-000">
-                            @error('newAddress.zip_code') <span class="text-red-500 text-xs font-bold mt-1 block" role="alert">{{ $message }}</span> @enderror
+                            <input
+                                id="checkout-cep"
+                                type="text"
+                                wire:model.live.debounce.500ms="newAddress.zip_code"
+                                x-on:input="$el.value = formatCEP($el.value)"
+                                maxlength="9"
+                                aria-required="true"
+                                class="appearance-none rounded-none block w-full px-3 py-3 border
+                                    {{ $errors->has('newAddress.zip_code') ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-black focus:border-black' }}
+                                    bg-white placeholder-gray-400 text-gray-900 focus:outline-none sm:text-sm"
+                                placeholder="00000-000">
+                            @error('newAddress.zip_code')
+                                <span class="text-red-500 text-xs font-bold mt-1 block" role="alert">{{ $message }}</span>
+                            @enderror
                         </div>
+
                         <div class="col-span-1 md:col-span-2">
                             <label for="checkout-rua" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Rua / Avenida</label>
-                            <input id="checkout-rua" type="text" wire:model="newAddress.street" aria-required="true" class="appearance-none rounded-none block w-full px-3 py-3 border {{ $errors->has('newAddress.street') ? 'border-red-500' : 'border-gray-300' }} bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                            <input
+                                id="checkout-rua"
+                                type="text"
+                                wire:model="newAddress.street"
+                                aria-required="true"
+                                class="appearance-none rounded-none block w-full px-3 py-3 border
+                                    {{ $errors->has('newAddress.street') ? 'border-red-500' : 'border-gray-300' }}
+                                    bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
                         </div>
+
                         <div>
                             <label for="checkout-numero" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Número</label>
-                            <input id="checkout-numero" type="text" wire:model="newAddress.number" aria-required="true" class="appearance-none rounded-none block w-full px-3 py-3 border {{ $errors->has('newAddress.number') ? 'border-red-500' : 'border-gray-300' }} bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                            <input
+                                id="checkout-numero"
+                                type="text"
+                                wire:model="newAddress.number"
+                                aria-required="true"
+                                class="appearance-none rounded-none block w-full px-3 py-3 border
+                                    {{ $errors->has('newAddress.number') ? 'border-red-500' : 'border-gray-300' }}
+                                    bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
                         </div>
+
                         <div>
                             <label for="checkout-complemento" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Complemento</label>
-                            <input id="checkout-complemento" type="text" wire:model="newAddress.complement" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm" placeholder="Apto, Bloco">
+                            <input
+                                id="checkout-complemento"
+                                type="text"
+                                wire:model="newAddress.complement"
+                                class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm"
+                                placeholder="Apto, Bloco">
                         </div>
+
                         <div>
                             <label for="checkout-bairro" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Bairro</label>
-                            <input id="checkout-bairro" type="text" wire:model="newAddress.neighborhood" aria-required="true" class="appearance-none rounded-none block w-full px-3 py-3 border {{ $errors->has('newAddress.neighborhood') ? 'border-red-500' : 'border-gray-300' }} bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                            <input
+                                id="checkout-bairro"
+                                type="text"
+                                wire:model="newAddress.neighborhood"
+                                aria-required="true"
+                                class="appearance-none rounded-none block w-full px-3 py-3 border
+                                    {{ $errors->has('newAddress.neighborhood') ? 'border-red-500' : 'border-gray-300' }}
+                                    bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
                         </div>
+
                         <div>
                             <label for="checkout-cidade" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Cidade</label>
-                            <input id="checkout-cidade" type="text" wire:model="newAddress.city" aria-required="true" class="appearance-none rounded-none block w-full px-3 py-3 border {{ $errors->has('newAddress.city') ? 'border-red-500' : 'border-gray-300' }} bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                            <input
+                                id="checkout-cidade"
+                                type="text"
+                                wire:model="newAddress.city"
+                                aria-required="true"
+                                class="appearance-none rounded-none block w-full px-3 py-3 border
+                                    {{ $errors->has('newAddress.city') ? 'border-red-500' : 'border-gray-300' }}
+                                    bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
                         </div>
+
                         <div class="col-span-1 md:col-span-2">
                             <label for="checkout-uf" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Estado (UF)</label>
-                            <input id="checkout-uf" type="text" wire:model="newAddress.state" aria-required="true" maxlength="2" class="appearance-none rounded-none block w-full px-3 py-3 border {{ $errors->has('newAddress.state') ? 'border-red-500' : 'border-gray-300' }} bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm uppercase" placeholder="SP">
+                            <input
+                                id="checkout-uf"
+                                type="text"
+                                wire:model="newAddress.state"
+                                aria-required="true"
+                                maxlength="2"
+                                class="appearance-none rounded-none block w-full px-3 py-3 border
+                                    {{ $errors->has('newAddress.state') ? 'border-red-500' : 'border-gray-300' }}
+                                    bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm uppercase"
+                                placeholder="SP">
                         </div>
                     </div>
                 </section>
 
-                <section wire:init="loadInitialShipping" class="bg-white p-6 rounded-none border border-gray-200" role="region" aria-labelledby="step-3-title">
+                {{-- STEP 3: Opções de Frete --}}
+                <section
+                    wire:init="loadInitialShipping"
+                    class="bg-white p-6 rounded-none border border-gray-200"
+                    role="region"
+                    aria-labelledby="step-3-title">
+
                     <h2 id="step-3-title" class="text-lg font-black text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
-                        <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">3</span> 
+                        <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">3</span>
                         Opções de Frete
                     </h2>
-                    
+
                     <div class="relative min-h-[100px] w-full" aria-live="polite">
-                        
-                        <div wire:loading.flex wire:target="newAddress.zip_code, selectedAddressId, useNewAddress, loadInitialShipping" 
-                             class="absolute inset-0 z-20 flex-col items-center justify-center text-black bg-white/60">
+
+                        <div
+                            wire:loading.flex
+                            wire:target="newAddress.zip_code, selectedAddressId, useNewAddress, loadInitialShipping"
+                            class="absolute inset-0 z-20 flex-col items-center justify-center text-black bg-white/60">
                             <svg class="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                                 <circle class="opacity-10" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                             <span class="text-[10px] font-bold uppercase tracking-widest text-gray-500">Calculando frete...</span>
                         </div>
-                        
-                        <div wire:loading.class="opacity-20 pointer-events-none blur-[2px]" wire:target="newAddress.zip_code, selectedAddressId, useNewAddress, loadInitialShipping" class="transition-all duration-300 w-full">
+
+                        <div
+                            wire:loading.class="opacity-20 pointer-events-none blur-[2px]"
+                            wire:target="newAddress.zip_code, selectedAddressId, useNewAddress, loadInitialShipping"
+                            class="transition-all duration-300 w-full">
+
                             @if(count($shippingOptions) > 0)
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4" role="radiogroup" aria-label="Selecione o método de envio">
                                     @foreach($shippingOptions as $option)
-                                        <label :class="shipMethod == '{{ $option['id'] }}' ? 'border-black bg-white ring-1 ring-black' : 'border-gray-200 hover:border-black bg-white'" 
-                                               class="flex items-center p-4 border rounded-none cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-black">
-                                            
-                                            <input type="radio" name="shippingMethod" x-model="shipMethod" value="{{ $option['id'] }}" 
-                                                   aria-label="{{ $option['name'] }} por R$ {{ number_format($option['price'], 2, ',', '.') }}"
-                                                   class="text-black focus:ring-black cursor-pointer">
-                                            
+                                        <label
+                                            :class="shipMethod == '{{ $option['id'] }}'
+                                                ? 'border-black bg-white ring-1 ring-black'
+                                                : 'border-gray-200 hover:border-black bg-white'"
+                                            class="flex items-center p-4 border rounded-none cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-black">
+
+                                            <input
+                                                type="radio"
+                                                name="shippingMethod"
+                                                x-model="shipMethod"
+                                                value="{{ $option['id'] }}"
+                                                aria-label="{{ $option['name'] }} por R$ {{ number_format($option['price'], 2, ',', '.') }}"
+                                                class="text-black focus:ring-black cursor-pointer">
+
                                             <div class="ml-3 w-full flex justify-between items-center">
                                                 <div class="pr-2">
                                                     <p class="font-bold text-gray-900 text-sm uppercase">{{ $option['name'] }}</p>
@@ -159,90 +287,180 @@
                             @endif
                         </div>
                     </div>
-                    
-                    @error('shippingMethod') <span class="text-red-500 text-xs font-bold mt-2 block" role="alert">{{ $message }}</span> @enderror
+
+                    @error('shippingMethod')
+                        <span class="text-red-500 text-xs font-bold mt-2 block" role="alert">{{ $message }}</span>
+                    @enderror
                 </section>
 
-                <section class="bg-white p-6 rounded-none border border-gray-200" role="region" aria-labelledby="step-4-title">
+                {{-- STEP 4: Dados Pessoais --}}
+                <section
+                    class="bg-white p-6 rounded-none border border-gray-200"
+                    role="region"
+                    aria-labelledby="step-4-title">
+
                     <h2 id="step-4-title" class="text-lg font-black text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
-                        <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">4</span> 
+                        <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">4</span>
                         Dados Pessoais
                     </h2>
-                    
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-4">
+
                         <div>
                             <label for="checkout-nome" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Nome</label>
-                            <input id="checkout-nome" type="text" wire:model="firstName" aria-required="true" class="appearance-none rounded-none block w-full px-3 py-3 border {{ $errors->has('firstName') ? 'border-red-500' : 'border-gray-300' }} bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
-                            @error('firstName') <span class="text-red-500 text-xs font-bold mt-1 block" role="alert">{{ $message }}</span> @enderror
+                            <input
+                                id="checkout-nome"
+                                type="text"
+                                wire:model="firstName"
+                                aria-required="true"
+                                class="appearance-none rounded-none block w-full px-3 py-3 border
+                                    {{ $errors->has('firstName') ? 'border-red-500' : 'border-gray-300' }}
+                                    bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                            @error('firstName')
+                                <span class="text-red-500 text-xs font-bold mt-1 block" role="alert">{{ $message }}</span>
+                            @enderror
                         </div>
-                        
+
                         <div>
                             <label for="checkout-sobrenome" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Sobrenome</label>
-                            <input id="checkout-sobrenome" type="text" wire:model="lastName" aria-required="true" class="appearance-none rounded-none block w-full px-3 py-3 border {{ $errors->has('lastName') ? 'border-red-500' : 'border-gray-300' }} bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
-                            @error('lastName') <span class="text-red-500 text-xs font-bold mt-1 block" role="alert">{{ $message }}</span> @enderror
+                            <input
+                                id="checkout-sobrenome"
+                                type="text"
+                                wire:model="lastName"
+                                aria-required="true"
+                                class="appearance-none rounded-none block w-full px-3 py-3 border
+                                    {{ $errors->has('lastName') ? 'border-red-500' : 'border-gray-300' }}
+                                    bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                            @error('lastName')
+                                <span class="text-red-500 text-xs font-bold mt-1 block" role="alert">{{ $message }}</span>
+                            @enderror
                         </div>
-                        
+
                         <div>
                             <label for="checkout-cpf" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">CPF</label>
-                            <input id="checkout-cpf" type="text" wire:model="cpf" x-on:input="$el.value = formatCPF($el.value); $wire.set('cpf', $el.value)" maxlength="14" aria-required="true" class="appearance-none rounded-none block w-full px-3 py-3 border {{ $errors->has('cpf') ? 'border-red-500' : 'border-gray-300' }} bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm" placeholder="000.000.000-00">
-                            @error('cpf') <span class="text-red-500 text-xs font-bold mt-1 block" role="alert">{{ $message }}</span> @enderror
+                            <input
+                                id="checkout-cpf"
+                                type="text"
+                                wire:model="cpf"
+                                x-on:input="$el.value = formatCPF($el.value); $wire.set('cpf', $el.value)"
+                                maxlength="14"
+                                aria-required="true"
+                                class="appearance-none rounded-none block w-full px-3 py-3 border
+                                    {{ $errors->has('cpf') ? 'border-red-500' : 'border-gray-300' }}
+                                    bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm"
+                                placeholder="000.000.000-00">
+                            @error('cpf')
+                                <span class="text-red-500 text-xs font-bold mt-1 block" role="alert">{{ $message }}</span>
+                            @enderror
                         </div>
-                        
+
                         <div>
                             <label for="checkout-tel" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Telefone / WhatsApp</label>
-                            <input id="checkout-tel" type="text" wire:model="phone" x-on:input="$el.value = formatPhone($el.value); $wire.set('phone', $el.value)" maxlength="15" aria-required="true" class="appearance-none rounded-none block w-full px-3 py-3 border {{ $errors->has('phone') ? 'border-red-500' : 'border-gray-300' }} bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm" placeholder="(11) 99999-9999">
-                            @error('phone') <span class="text-red-500 text-xs font-bold mt-1 block" role="alert">{{ $message }}</span> @enderror
+                            <input
+                                id="checkout-tel"
+                                type="text"
+                                wire:model="phone"
+                                x-on:input="$el.value = formatPhone($el.value); $wire.set('phone', $el.value)"
+                                maxlength="15"
+                                aria-required="true"
+                                class="appearance-none rounded-none block w-full px-3 py-3 border
+                                    {{ $errors->has('phone') ? 'border-red-500' : 'border-gray-300' }}
+                                    bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm"
+                                placeholder="(11) 99999-9999">
+                            @error('phone')
+                                <span class="text-red-500 text-xs font-bold mt-1 block" role="alert">{{ $message }}</span>
+                            @enderror
                         </div>
                     </div>
                 </section>
 
-                <section class="bg-white p-6 rounded-none border border-gray-200" role="region" aria-labelledby="step-5-title">
+                {{-- STEP 5: Cupom de Desconto --}}
+                <section
+                    class="bg-white p-6 rounded-none border border-gray-200"
+                    role="region"
+                    aria-labelledby="step-5-title">
+
                     <h2 id="step-5-title" class="text-lg font-black text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
-                        <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">5</span> 
+                        <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">5</span>
                         Cupom de Desconto
                     </h2>
+
                     <div class="flex gap-2">
                         <label for="checkout-coupon" class="sr-only">Código do Cupom</label>
-                        <input id="checkout-coupon" type="text" wire:model="couponCode" class="appearance-none rounded-none block w-full px-3 py-3 border {{ $errors->has('couponCode') ? 'border-red-500' : 'border-gray-300' }} bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm uppercase" placeholder="DIGITE SEU CUPOM">
-                        
-                        <button type="button" wire:click="applyCoupon" class="bg-black text-white border border-black px-6 rounded-none font-bold hover:bg-white hover:text-black transition duration-300 text-sm uppercase tracking-widest whitespace-nowrap cursor-pointer focus:outline-none focus:ring-2 focus:ring-black">
+                        <input
+                            id="checkout-coupon"
+                            type="text"
+                            wire:model="couponCode"
+                            class="appearance-none rounded-none block w-full px-3 py-3 border
+                                {{ $errors->has('couponCode') ? 'border-red-500' : 'border-gray-300' }}
+                                bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm uppercase"
+                            placeholder="DIGITE SEU CUPOM">
+
+                        <button
+                            type="button"
+                            wire:click="applyCoupon"
+                            class="bg-black text-white border border-black px-6 rounded-none font-bold hover:bg-white hover:text-black transition duration-300 text-sm uppercase tracking-widest whitespace-nowrap cursor-pointer focus:outline-none focus:ring-2 focus:ring-black">
                             Aplicar
                         </button>
                     </div>
-                    @error('couponCode') 
-                        <p class="text-red-500 text-xs mt-2 font-bold" role="alert">{{ $message }}</p> 
+
+                    @error('couponCode')
+                        <p class="text-red-500 text-xs mt-2 font-bold" role="alert">{{ $message }}</p>
                     @enderror
-                    @if (session()->has('coupon_success')) 
-                        <p class="text-green-600 text-xs mt-2 font-bold uppercase tracking-widest" role="status" aria-live="polite">{{ session('coupon_success') }}</p> 
+
+                    @if(session()->has('coupon_success'))
+                        <p class="text-green-600 text-xs mt-2 font-bold uppercase tracking-widest" role="status" aria-live="polite">
+                            {{ session('coupon_success') }}
+                        </p>
                     @endif
                 </section>
 
-                <section class="bg-white p-6 rounded-none border border-gray-200" role="region" aria-labelledby="step-6-title">
+                {{-- STEP 6: Forma de Pagamento --}}
+                <section
+                    class="bg-white p-6 rounded-none border border-gray-200"
+                    role="region"
+                    aria-labelledby="step-6-title">
+
                     <h2 id="step-6-title" class="text-lg font-black text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
-                        <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">6</span> 
+                        <span class="bg-black text-white rounded-none w-6 h-6 flex items-center justify-center text-sm" aria-hidden="true">6</span>
                         Forma de Pagamento
                     </h2>
-                    
+
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" role="radiogroup" aria-label="Escolha a forma de pagamento">
-                        <label :class="payMethod === 'credit_card' ? 'border-black bg-white ring-1 ring-black' : 'border-gray-200 hover:border-black bg-white'" 
-                               class="flex flex-col items-center justify-center p-4 border rounded-none cursor-pointer transition-colors text-center h-24 focus-within:ring-2 focus-within:ring-black">
-                            <input type="radio" x-model="payMethod" value="credit_card" class="sr-only">
-                            <svg class="w-8 h-8 mb-2 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+
+                        {{-- Cartão de Crédito --}}
+                        <label
+                            :class="payMethod === 'credit_card'
+                                ? 'border-black bg-white ring-1 ring-black'
+                                : 'border-gray-200 hover:border-black bg-white'"
+                            class="flex flex-col items-center justify-center p-4 border rounded-none cursor-pointer transition-colors text-center h-24 focus-within:ring-2 focus-within:ring-black">
+                            <input type="radio" x-model="payMethod" value="credit_card" class="sr-only" name="payMethod">
+                            <svg class="w-8 h-8 mb-2 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
                             <span class="font-bold text-xs uppercase tracking-widest">Cartão de Crédito</span>
                         </label>
-                        
-                        <label :class="payMethod === 'pix' ? 'border-black bg-white ring-1 ring-black' : 'border-gray-200 hover:border-black bg-white'" 
-                               class="flex flex-col items-center justify-center p-4 border rounded-none cursor-pointer transition-colors text-center h-24 focus-within:ring-2 focus-within:ring-black">
-                            <input type="radio" x-model="payMethod" value="pix" class="sr-only">
+
+                        {{-- PIX --}}
+                        <label
+                            :class="payMethod === 'pix'
+                                ? 'border-black bg-white ring-1 ring-black'
+                                : 'border-gray-200 hover:border-black bg-white'"
+                            class="flex flex-col items-center justify-center p-4 border rounded-none cursor-pointer transition-colors text-center h-24 focus-within:ring-2 focus-within:ring-black">
+                            <input type="radio" x-model="payMethod" value="pix" class="sr-only" name="payMethod">
                             <svg class="w-8 h-8 mb-2 text-gray-800" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" aria-hidden="true">
                                 <path d="M306.4 356.5C311.8 351.1 321.1 351.1 326.5 356.5L403.5 433.5C417.7 447.7 436.6 455.5 456.6 455.5L471.7 455.5L374.6 552.6C344.3 582.1 295.1 582.1 264.8 552.6L167.3 455.2L176.6 455.2C196.6 455.2 215.5 447.4 229.7 433.2L306.4 356.5zM326.5 282.9C320.1 288.4 311.9 288.5 306.4 282.9L229.7 206.2C215.5 191.1 196.6 184.2 176.6 184.2L167.3 184.2L264.7 86.8C295.1 56.5 344.3 56.5 374.6 86.8L471.8 183.9L456.6 183.9C436.6 183.9 417.7 191.7 403.5 205.9L326.5 282.9zM176.6 206.7C190.4 206.7 203.1 212.3 213.7 222.1L290.4 298.8C297.6 305.1 307 309.6 316.5 309.6C325.9 309.6 335.3 305.1 342.5 298.8L419.5 221.8C429.3 212.1 442.8 206.5 456.6 206.5L494.3 206.5L552.6 264.8C582.9 295.1 582.9 344.3 552.6 374.6L494.3 432.9L456.6 432.9C442.8 432.9 429.3 427.3 419.5 417.5L342.5 340.5C328.6 326.6 304.3 326.6 290.4 340.6L213.7 417.2C203.1 427 190.4 432.6 176.6 432.6L144.8 432.6L86.8 374.6C56.5 344.3 56.5 295.1 86.8 264.8L144.8 206.7L176.6 206.7z"/>
                             </svg>
                             <span class="font-bold text-xs uppercase tracking-widest">PIX</span>
                         </label>
-                        
-                        <label :class="payMethod === 'boleto' ? 'border-black bg-white ring-1 ring-black' : 'border-gray-200 hover:border-black bg-white'" 
-                               class="flex flex-col items-center justify-center p-4 border rounded-none cursor-pointer transition-colors text-center h-24 focus-within:ring-2 focus-within:ring-black">
-                            <input type="radio" x-model="payMethod" value="boleto" class="sr-only">
+
+                        {{-- Boleto --}}
+                        <label
+                            :class="payMethod === 'boleto'
+                                ? 'border-black bg-white ring-1 ring-black'
+                                : 'border-gray-200 hover:border-black bg-white'"
+                            class="flex flex-col items-center justify-center p-4 border rounded-none cursor-pointer transition-colors text-center h-24 focus-within:ring-2 focus-within:ring-black">
+                            <input type="radio" x-model="payMethod" value="boleto" class="sr-only" name="payMethod">
                             <svg class="w-8 h-8 mb-2 text-gray-800" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M4 6h2v12H4zm3 0h1v12H7zm2 0h3v12H9zm4 0h1v12h-1zm2 0h2v12h-2zm3 0h2v12h-2z"/>
                             </svg>
@@ -251,9 +469,9 @@
                     </div>
 
                     <div class="pt-2 border-t border-gray-200">
-                        
-                        {{-- BLOCO CARTÃO DE CRÉDITO --}}
-                        <div x-show="payMethod === 'credit_card'" style="display: none;" class="mt-6" role="group" aria-label="Dados do Cartão">
+
+                        {{-- Bloco Cartão de Crédito (Secure Fields) --}}
+                        <div x-show="payMethod === 'credit_card'" x-cloak class="mt-6" role="group" aria-label="Dados do Cartão">
 
                             <div class="flex justify-center items-center gap-6 mb-8">
                                 <img src="https://www.svgrepo.com/show/362033/visa.svg" alt="Visa" class="h-8 object-contain">
@@ -263,26 +481,38 @@
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
                                 <div class="col-span-1 md:col-span-2">
-                                    <label for="cc-num" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Número do Cartão</label>
-                                    <input id="cc-num" type="text" x-model="cardNumber" x-on:input="cardNumber = formatCardNumber($event.target.value)" maxlength="19" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 focus:ring-black focus:border-black sm:text-sm" placeholder="0000 0000 0000 0000">
+                                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Número do Cartão</label>
+                                    <div id="form-checkout__cardNumber" wire:ignore class="h-12 w-full border border-gray-300 bg-white px-3 flex items-center"></div>
                                 </div>
+
                                 <div class="col-span-1 md:col-span-2">
                                     <label for="cc-name" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Nome Impresso no Cartão</label>
-                                    <input id="cc-name" type="text" x-model="cardName" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 focus:ring-black focus:border-black sm:text-sm uppercase" placeholder="JOÃO DA SILVA">
+                                    <input
+                                        id="cc-name"
+                                        type="text"
+                                        x-model="cardName"
+                                        class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 focus:ring-black focus:border-black sm:text-sm uppercase"
+                                        placeholder="JOÃO DA SILVA">
                                 </div>
+
                                 <div>
-                                    <label for="cc-exp" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Validade</label>
-                                    <input id="cc-exp" type="text" x-model="cardExpiry" x-on:input="cardExpiry = formatCardExpiry($event.target.value)" maxlength="5" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 focus:ring-black focus:border-black sm:text-sm" placeholder="MM/AA">
+                                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Validade</label>
+                                    <div id="form-checkout__expirationDate" wire:ignore class="h-12 w-full border border-gray-300 bg-white px-3 flex items-center"></div>
                                 </div>
+
                                 <div>
-                                    <label for="cc-cvv" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">CVV</label>
-                                    <input id="cc-cvv" type="text" x-model="cardCvv" maxlength="4" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 focus:ring-black focus:border-black sm:text-sm" placeholder="123">
+                                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">CVV</label>
+                                    <div id="form-checkout__securityCode" wire:ignore class="h-12 w-full border border-gray-300 bg-white px-3 flex items-center"></div>
                                 </div>
-                                
-                                <div class="col-span-1 md:col-span-2 mt-2" x-show="installmentsOptions.length > 0" style="display: none;">
+
+                                <div class="col-span-1 md:col-span-2 mt-2" x-show="installmentsOptions.length > 0" x-cloak>
                                     <label for="cc-inst" class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-widest">Parcelamento</label>
-                                    <select id="cc-inst" x-model="selectedInstallment" class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 bg-white focus:outline-none focus:ring-black focus:border-black sm:text-sm font-bold cursor-pointer">
+                                    <select
+                                        id="cc-inst"
+                                        x-model="selectedInstallment"
+                                        class="appearance-none rounded-none block w-full px-3 py-3 border border-gray-300 bg-white focus:outline-none focus:ring-black focus:border-black sm:text-sm font-bold cursor-pointer">
                                         <template x-for="option in installmentsOptions" :key="option.installments">
                                             <option :value="option.installments" x-text="option.recommended_message"></option>
                                         </template>
@@ -291,41 +521,60 @@
                             </div>
                         </div>
 
-                        {{-- BLOCO PIX --}}
-                        <div x-show="payMethod === 'pix'" style="display: none;" class="mt-4 bg-white p-6 rounded-none border border-gray-200 text-center flex flex-col items-center justify-center" role="status">
+                        {{-- Bloco PIX --}}
+                        <div
+                            x-show="payMethod === 'pix'"
+                            x-cloak
+                            class="mt-4 bg-white p-6 rounded-none border border-gray-200 text-center flex flex-col items-center justify-center"
+                            role="status">
+
                             <div class="bg-white border border-gray-200 p-3 rounded-none mb-3" aria-hidden="true">
                                 <svg class="w-10 h-10 text-gray-900" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor">
                                     <path d="M306.4 356.5C311.8 351.1 321.1 351.1 326.5 356.5L403.5 433.5C417.7 447.7 436.6 455.5 456.6 455.5L471.7 455.5L374.6 552.6C344.3 582.1 295.1 582.1 264.8 552.6L167.3 455.2L176.6 455.2C196.6 455.2 215.5 447.4 229.7 433.2L306.4 356.5zM326.5 282.9C320.1 288.4 311.9 288.5 306.4 282.9L229.7 206.2C215.5 191.1 196.6 184.2 176.6 184.2L167.3 184.2L264.7 86.8C295.1 56.5 344.3 56.5 374.6 86.8L471.8 183.9L456.6 183.9C436.6 183.9 417.7 191.7 403.5 205.9L326.5 282.9zM176.6 206.7C190.4 206.7 203.1 212.3 213.7 222.1L290.4 298.8C297.6 305.1 307 309.6 316.5 309.6C325.9 309.6 335.3 305.1 342.5 298.8L419.5 221.8C429.3 212.1 442.8 206.5 456.6 206.5L494.3 206.5L552.6 264.8C582.9 295.1 582.9 344.3 552.6 374.6L494.3 432.9L456.6 432.9C442.8 432.9 429.3 427.3 419.5 417.5L342.5 340.5C328.6 326.6 304.3 326.6 290.4 340.6L213.7 417.2C203.1 427 190.4 432.6 176.6 432.6L144.8 432.6L86.8 374.6C56.5 344.3 56.5 295.1 86.8 264.8L144.8 206.7L176.6 206.7z"/>
                                 </svg>
                             </div>
                             <h3 class="font-bold text-gray-900 uppercase tracking-widest">Pagamento via PIX</h3>
-                            <p class="text-sm text-gray-600 mt-2 max-w-sm">O código PIX Copia e Cola e o QR Code serão gerados na próxima tela, logo após você finalizar o pedido.</p>
+                            <p class="text-sm text-gray-600 mt-2 max-w-sm">
+                                O código PIX Copia e Cola e o QR Code serão gerados na próxima tela, logo após você finalizar o pedido.
+                            </p>
                         </div>
 
-                        {{-- BLOCO BOLETO --}}
-                        <div x-show="payMethod === 'boleto'" style="display: none;" class="mt-4 bg-white p-6 rounded-none border border-gray-200 text-center flex flex-col items-center justify-center" role="status">
+                        {{-- Bloco Boleto --}}
+                        <div
+                            x-show="payMethod === 'boleto'"
+                            x-cloak
+                            class="mt-4 bg-white p-6 rounded-none border border-gray-200 text-center flex flex-col items-center justify-center"
+                            role="status">
+
                             <div class="bg-white border border-gray-200 p-3 rounded-none mb-3" aria-hidden="true">
                                 <svg class="w-10 h-10 text-gray-900" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M4 6h2v12H4zm3 0h1v12H7zm2 0h3v12H9zm4 0h1v12h-1zm2 0h2v12h-2zm3 0h2v12h-2z"/>
                                 </svg>
                             </div>
                             <h3 class="font-bold text-gray-900 uppercase tracking-widest">Pagamento via Boleto Bancário</h3>
-                            <p class="text-sm text-gray-600 mt-2 max-w-sm">O boleto será gerado e enviado para o seu e-mail assim que o pedido for confirmado. A aprovação pode levar até 3 dias úteis.</p>
+                            <p class="text-sm text-gray-600 mt-2 max-w-sm">
+                                O boleto será gerado e enviado para o seu e-mail assim que o pedido for confirmado. A aprovação pode levar até 3 dias úteis.
+                            </p>
                         </div>
-
                     </div>
                 </section>
 
                 {{-- Resumo Mobile --}}
-                <div class="bg-white p-6 rounded-none border border-gray-200 lg:hidden mb-6" role="complementary" aria-label="Resumo de valores mobile">
+                <div
+                    class="bg-white p-6 rounded-none border border-gray-200 lg:hidden mb-6"
+                    role="complementary"
+                    aria-label="Resumo de valores mobile">
+
                     <div wire:loading wire:target="shippingMethod" class="w-full h-full absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 rounded-none" aria-hidden="true"></div>
+
                     <h3 class="font-bold text-gray-900 mb-4 uppercase tracking-tight text-lg">Total da Compra</h3>
+
                     <div class="space-y-3 relative z-0" aria-live="polite">
                         <div class="flex justify-between text-sm text-gray-600">
                             <span class="uppercase tracking-widest text-xs font-bold">Preço</span>
                             <span class="font-medium text-gray-900">R$ {{ number_format($subtotal + $offerSavings, 2, ',', '.') }}</span>
                         </div>
-                        
+
                         @if($offerSavings > 0.01)
                             <div class="flex justify-between text-sm text-emerald-600 font-bold">
                                 <span class="uppercase tracking-widest text-xs">Desconto de Ofertas</span>
@@ -339,18 +588,21 @@
                                 @if(is_null($shippingMethod) || $shippingMethod === '')
                                     —
                                 @else
-                                    {!! $shippingPrice > 0 ? 'R$ ' . number_format($shippingPrice, 2, ',', '.') : '<span class="text-emerald-600 font-bold uppercase tracking-widest text-xs">Grátis</span>' !!}
+                                    {!! $shippingPrice > 0
+                                        ? 'R$ ' . number_format($shippingPrice, 2, ',', '.')
+                                        : '<span class="text-emerald-600 font-bold uppercase tracking-widest text-xs">Grátis</span>'
+                                    !!}
                                 @endif
                             </span>
                         </div>
-                        
+
                         @if($discount > 0.01)
                             <div class="flex justify-between text-sm text-blue-600 font-bold">
                                 <span class="uppercase tracking-widest text-xs">Desconto <span class="font-bold">{{ $couponDisplay }}</span></span>
                                 <span>- R$ {{ number_format($discount, 2, ',', '.') }}</span>
                             </div>
                         @endif
-                        
+
                         <div class="flex justify-between items-center pt-3 border-t border-gray-200 mt-3">
                             <span class="font-bold text-lg text-gray-900 uppercase tracking-widest">Total</span>
                             <span class="font-black text-2xl text-black">R$ {{ number_format($total, 2, ',', '.') }}</span>
@@ -358,35 +610,46 @@
                     </div>
                 </div>
 
-                <button type="submit" 
-                        :disabled="isProcessing" 
-                        aria-label="Finalizar o meu pedido e realizar pagamento"
-                        class="w-full bg-black text-white border border-black rounded-none py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                @if(session()->has('error'))
+                    <div
+                        class="p-4 mb-2 text-sm text-red-800 rounded-none bg-red-50 border border-red-200"
+                        role="alert"
+                        aria-live="assertive">
+                        <span class="font-bold uppercase tracking-widest">Atenção:</span> {{ session('error') }}
+                    </div>
+                @endif
+
+                <button
+                    type="submit"
+                    :disabled="isProcessing"
+                    aria-label="Finalizar o meu pedido e realizar pagamento"
+                    class="w-full bg-black text-white border border-black rounded-none py-4 font-bold uppercase tracking-widest hover:bg-white hover:text-black transition duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                     <span x-text="isProcessing ? 'Processando...' : 'Finalizar Pedido'"></span>
                 </button>
-
             </div>
 
             {{-- COLUNA DIREITA: Resumo dos Produtos --}}
             <div class="order-1 lg:order-2 w-full lg:w-1/3" role="complementary" aria-label="Resumo do pedido">
                 <div class="bg-white p-6 rounded-none border border-gray-200 sticky top-24 relative">
-                    
+
                     <div wire:loading wire:target="shippingMethod" class="absolute inset-0 z-10 flex items-center justify-center bg-white/50 backdrop-blur-[1px] rounded-none" aria-hidden="true"></div>
 
                     <h2 class="text-xl font-bold text-gray-900 mb-6 uppercase tracking-tight">Resumo do Pedido</h2>
+
                     <div class="space-y-4 mb-6 pr-2 relative z-0">
                         @foreach($this->cartItems as $item)
                             @php
-                                $img = $item->product->image_url; 
+                                $img = $item->product->image_url;
+
                                 if ($item->variant) {
                                     if ($item->variant->image) {
                                         $img = $item->variant->image;
                                     } elseif (!empty($item->variant->images) && isset($item->variant->images[0])) {
                                         $img = $item->variant->images[0];
-                                    } 
-                                    else {
+                                    } else {
                                         $colorOptions = ['Cor', 'Color', 'COR', 'cor', 'color'];
                                         $variantColor = null;
+
                                         if (is_array($item->variant->options)) {
                                             foreach ($colorOptions as $key) {
                                                 if (isset($item->variant->options[$key])) {
@@ -395,10 +658,13 @@
                                                 }
                                             }
                                         }
+
                                         if ($variantColor && $item->product->variants) {
                                             foreach ($item->product->variants as $sibling) {
                                                 if ($sibling->id === $item->variant->id) continue;
+
                                                 $siblingColor = null;
+
                                                 if ($sibling->options) {
                                                     foreach ($colorOptions as $key) {
                                                         if (isset($sibling->options[$key])) {
@@ -407,6 +673,7 @@
                                                         }
                                                     }
                                                 }
+
                                                 if ($siblingColor === $variantColor) {
                                                     if ($sibling->image) {
                                                         $img = $sibling->image;
@@ -423,14 +690,14 @@
                             @endphp
 
                             <div class="flex gap-4">
-                                {{-- Thumbnail quadrada com bg-white --}}
                                 <div class="w-16 h-20 bg-white rounded-none overflow-hidden flex-shrink-0 border border-gray-200 flex items-center justify-center" aria-hidden="true">
                                     <img src="{{ Storage::url($img) }}" alt="" class="w-full h-full object-contain p-1">
                                 </div>
+
                                 <div class="flex-1 flex flex-col justify-between py-1">
                                     <div>
                                         <p class="font-bold text-sm text-gray-900 line-clamp-2 uppercase">{{ $item->product->name }}</p>
-                                        
+
                                         @if($item->variant && is_array($item->variant->options) && count($item->variant->options) > 0)
                                             <div class="flex flex-wrap gap-x-3 text-[10px] uppercase tracking-widest text-gray-500 mt-1">
                                                 @foreach($item->variant->options as $key => $value)
@@ -441,31 +708,33 @@
 
                                         <p class="text-[10px] text-gray-500 mt-1 uppercase tracking-widest font-bold">Qtd: {{ $item->quantity }}</p>
                                     </div>
-                                   @php
-                                    $basePrice = $item->variant ? $item->variant->price : $item->product->base_price;
-                                    $finalUnitPrice = $basePrice;
-                                    $now = now();
-                                    
-                                    if ($item->variant && $item->variant->sale_price > 0 && $item->variant->sale_price < $basePrice) {
-                                        $start = $item->variant->sale_start_date;
-                                        $end = $item->variant->sale_end_date;
-                                        if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
-                                            $finalUnitPrice = $item->variant->sale_price;
+
+                                    @php
+                                        $basePrice     = $item->variant ? $item->variant->price : $item->product->base_price;
+                                        $finalUnitPrice = $basePrice;
+                                        $now           = now();
+
+                                        if ($item->variant && $item->variant->sale_price > 0 && $item->variant->sale_price < $basePrice) {
+                                            $start = $item->variant->sale_start_date;
+                                            $end   = $item->variant->sale_end_date;
+                                            if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
+                                                $finalUnitPrice = $item->variant->sale_price;
+                                            }
+                                        } elseif ($item->product->sale_price > 0 && $item->product->sale_price < $basePrice) {
+                                            $start = $item->product->sale_start_date;
+                                            $end   = $item->product->sale_end_date;
+                                            if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
+                                                $finalUnitPrice = $item->product->sale_price;
+                                            }
                                         }
-                                    } elseif ($item->product->sale_price > 0 && $item->product->sale_price < $basePrice) {
-                                        $start = $item->product->sale_start_date;
-                                        $end = $item->product->sale_end_date;
-                                        if ((!$start || \Carbon\Carbon::parse($start)->lte($now)) && (!$end || \Carbon\Carbon::parse($end)->gte($now))) {
-                                            $finalUnitPrice = $item->product->sale_price;
-                                        }
-                                    }
-                                @endphp
-                                
-                                <div class="mt-2">
-                                    <p class="font-bold text-sm text-gray-900" aria-label="Preço total do item: R$ {{ number_format($finalUnitPrice * $item->quantity, 2, ',', '.') }}">
-                                        R$ {{ number_format($finalUnitPrice * $item->quantity, 2, ',', '.') }}
-                                    </p>
-                                </div>
+                                    @endphp
+
+                                    <div class="mt-2">
+                                        <p class="font-bold text-sm text-gray-900"
+                                           aria-label="Preço total do item: R$ {{ number_format($finalUnitPrice * $item->quantity, 2, ',', '.') }}">
+                                            R$ {{ number_format($finalUnitPrice * $item->quantity, 2, ',', '.') }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         @endforeach
@@ -473,7 +742,7 @@
 
                     <div class="border-t border-gray-200 pt-4 space-y-3" aria-live="polite">
                         <div class="flex justify-between text-sm text-gray-600">
-                            <span class="uppercase tracking-widest text-xs font-bold">Preço </span>
+                            <span class="uppercase tracking-widest text-xs font-bold">Preço</span>
                             <span class="text-gray-900 font-medium">R$ {{ number_format($subtotal + $offerSavings, 2, ',', '.') }}</span>
                         </div>
 
@@ -497,7 +766,10 @@
                                 @if(is_null($shippingMethod) || $shippingMethod === '')
                                     —
                                 @else
-                                    {!! $shippingPrice > 0 ? 'R$ ' . number_format($shippingPrice, 2, ',', '.') : '<span class="text-emerald-600 font-bold uppercase tracking-widest text-xs">Grátis</span>' !!}
+                                    {!! $shippingPrice > 0
+                                        ? 'R$ ' . number_format($shippingPrice, 2, ',', '.')
+                                        : '<span class="text-emerald-600 font-bold uppercase tracking-widest text-xs">Grátis</span>'
+                                    !!}
                                 @endif
                             </span>
                         </div>
@@ -515,22 +787,24 @@
 
     <script src="https://sdk.mercadopago.com/js/v2"></script>
 
-    <script>
-    // 1. Instância protegida FORA do Alpine.js para evitar corrupção por Proxy
-    let mpInstance = null;
+<script>
+    let mpInstance        = null;
+    let cardNumberField   = null;
+    let expirationDateField = null;
+    let securityCodeField = null;
+    let fieldsMounted     = false; 
 
     document.addEventListener('alpine:init', () => {
         Alpine.data('paymentManager', () => ({
             payMethod: @entangle('paymentMethod').live,
             shipMethod: @entangle('shippingMethod').live,
-            addrId: @entangle('selectedAddressId').live,
-            newAddr: @entangle('useNewAddress').live,
+            addrId:    @entangle('selectedAddressId').live,
+            newAddr:   @entangle('useNewAddress').live,
+            orderTotal: @entangle('total'),
 
-            cardNumber: '',
+            currentBin: '', 
+
             cardName: '',
-            cardExpiry: '',
-            cardCvv: '',
-            
             installmentsOptions: [],
             selectedInstallment: 1,
             cardBrand: '',
@@ -539,94 +813,137 @@
             isProcessing: false,
 
             init() {
-                // 2. Inicializa o Mercado Pago na variável protegida
                 const publicKey = '{{ config("services.payment_gateway.public_key", "SUA_PUBLIC_KEY_AQUI") }}';
                 mpInstance = new MercadoPago(publicKey, { locale: 'pt-BR' });
 
-                this.$watch('cardNumber', (value) => {
-                    let bin = value.replace(/\D/g, '').substring(0, 6);
-                    if (bin.length === 6) {
-                        this.fetchInstallments(bin);
-                    } else if (bin.length < 6) {
-                        this.installmentsOptions = [];
-                        this.cardBrand = '';
+                // 🛠️ CORREÇÃO DEFINITIVA: Injeção forçada do script Antifraude
+                // Se o Livewire falhou em executar o script do <head>, o Alpine cria um novo na hora.
+                if (typeof window.MP_DEVICE_SESSION_ID === 'undefined') {
+                    let mpSecurityScript = document.createElement('script');
+                    mpSecurityScript.src = "https://www.mercadopago.com/v2/security.js";
+                    mpSecurityScript.setAttribute('view', 'checkout');
+                    document.body.appendChild(mpSecurityScript);
+                }
+
+                this.$watch('payMethod', (value) => {
+                    if (value === 'credit_card' && !fieldsMounted) {
+                        this.mountSecureFields();
                     }
                 });
+
+                this.$watch('orderTotal', (newTotal) => {
+                    if (this.payMethod === 'credit_card' && this.currentBin) {
+                        this.fetchInstallments(this.currentBin);
+                    }
+                });
+
+                if (this.payMethod === 'credit_card') {
+                    this.mountSecureFields();
+                }
+            },
+
+            mountSecureFields() {
+                setTimeout(() => {
+                    if (fieldsMounted) return;
+
+                    const fields = mpInstance.fields;
+
+                    cardNumberField = fields.create('cardNumber', {
+                        placeholder: 'Número do Cartão',
+                        style: { fontSize: '14px', fontFamily: 'sans-serif' }
+                    }).mount('form-checkout__cardNumber');
+
+                    expirationDateField = fields.create('expirationDate', {
+                        placeholder: 'MM/AA',
+                        style: { fontSize: '14px', fontFamily: 'sans-serif' }
+                    }).mount('form-checkout__expirationDate');
+
+                    securityCodeField = fields.create('securityCode', {
+                        placeholder: 'CVV',
+                        style: { fontSize: '14px', fontFamily: 'sans-serif' }
+                    }).mount('form-checkout__securityCode');
+
+                    cardNumberField.on('binChange', (data) => {
+                        if (data && data.bin) {
+                            this.currentBin = data.bin; 
+                            this.fetchInstallments(data.bin);
+                        } else {
+                            this.currentBin = ''; 
+                            this.installmentsOptions = [];
+                            this.cardBrand = '';
+                        }
+                    });
+
+                    fieldsMounted = true;
+                }, 150);
             },
 
             async fetchInstallments(bin) {
                 try {
-                    let amount = await this.$wire.get('total');
-                    if (!amount || amount <= 0) amount = 1; 
+                    let amount = this.orderTotal; 
+                    if (!amount || amount <= 0) amount = 1;
 
-                    // 3. Usa a variável protegida mpInstance
-                    const response = await mpInstance.getInstallments({ amount: String(amount), bin: bin });
-                    
+                    const response = await mpInstance.getInstallments({ amount: String(amount), bin });
+
                     if (response && response.length > 0 && response[0].payer_costs) {
                         this.installmentsOptions = response[0].payer_costs;
-                        this.paymentMethodId = response[0].payment_method_id;
-                        this.cardBrand = this.paymentMethodId; 
-                        this.issuerId = response[0].issuer ? response[0].issuer.id : null;
-                        this.selectedInstallment = this.installmentsOptions[0].installments;
+                        this.paymentMethodId     = response[0].payment_method_id;
+                        this.cardBrand           = this.paymentMethodId;
+                        this.issuerId            = response[0].issuer ? response[0].issuer.id : null;
+                        
+                        const maxInstallments = this.installmentsOptions.length;
+                        if(this.selectedInstallment > maxInstallments) {
+                            this.selectedInstallment = this.installmentsOptions[0].installments;
+                        }
                     } else {
-                        this.installmentsOptions = [{ installments: 1, recommended_message: "1x (À vista)" }];
+                        this.installmentsOptions = [{ installments: 1, recommended_message: '1x (À vista)' }];
                         this.selectedInstallment = 1;
                     }
                 } catch (error) {
-                    console.error("Erro MP API: Bandeira Inválida ou Falha na Conexão", error);
-                    let fallbackAmount = await this.$wire.get('total') || 0;
-                    this.installmentsOptions = [{ installments: 1, recommended_message: "1x de R$ " + fallbackAmount }];
+                    console.error('Erro MP API:', error);
+                    const fallbackAmount = this.orderTotal || 0;
+                    this.installmentsOptions = [{ installments: 1, recommended_message: '1x de R$ ' + fallbackAmount }];
                     this.selectedInstallment = 1;
                 }
             },
 
             async submitOrder() {
                 if (this.payMethod === 'credit_card') {
-                    if(this.isProcessing) return;
+                    if (this.isProcessing) return;
                     this.isProcessing = true;
 
                     try {
-                        const expiryParts = this.cardExpiry.split('/');
-                        if (expiryParts.length !== 2) throw new Error("A validade deve estar no formato MM/AA.");
+                        const deviceId = window.MP_DEVICE_SESSION_ID || '';
+                        await this.$wire.set('deviceId', deviceId);
 
-                        const month = expiryParts[0].trim();
-                        // Garante que o ano vai sempre no formato de 4 dígitos exigido pelo MP (Ex: 2030)
-                        const year = expiryParts[1].trim().length === 2 ? '20' + expiryParts[1].trim() : expiryParts[1].trim(); 
-                        
-                        const cpfValue = await this.$wire.get('cpf');
-                        if (!cpfValue || cpfValue.trim() === '') {
-                            throw new Error("O CPF do titular na seção de Dados Pessoais não pode estar vazio.");
+                        const rawCpf = document.getElementById('checkout-cpf').value;
+                        const cpfValue = rawCpf.replace(/\D/g, '');
+
+                        if (!cpfValue || cpfValue.trim() === '' || cpfValue.length !== 11) {
+                            throw new Error('O CPF fornecido é inválido. Ele deve conter 11 números.');
                         }
-                        
-                        // 4. Criação do Token isolada
-                        const tokenResponse = await mpInstance.createCardToken({
-                            cardNumber: this.cardNumber.replace(/\D/g, ''),
-                            cardholderName: this.cardName,
-                            cardExpirationMonth: month,
-                            cardExpirationYear: year,
-                            securityCode: this.cardCvv,
+
+                        const tokenResponse = await mpInstance.fields.createCardToken({
+                            cardholderName:     this.cardName,
                             identificationType: 'CPF',
-                            identificationNumber: cpfValue.replace(/\D/g, '')
+                            identificationNumber: cpfValue
                         });
 
                         if (!tokenResponse || !tokenResponse.id) {
-                            throw new Error("Falha interna. O Mercado Pago não gerou o Token.");
+                            throw new Error('Falha interna. O Mercado Pago não gerou o Token.');
                         }
 
-                        // Define propriedades silenciosas para o Back-End Processar
-                        this.$wire.set('cardToken', tokenResponse.id);
-                        this.$wire.set('installments', this.selectedInstallment);
-                        this.$wire.set('cardPaymentMethodId', this.paymentMethodId);
-                        this.$wire.set('cardIssuerId', this.issuerId);
+                        await this.$wire.set('cardToken', tokenResponse.id);
+                        await this.$wire.set('installments', parseInt(this.selectedInstallment));
+                        await this.$wire.set('cardPaymentMethodId', this.paymentMethodId);
+                        await this.$wire.set('cardIssuerId', this.issuerId);
 
-                        // Chama a função final no Livewire
                         await this.$wire.placeOrder();
 
                     } catch (error) {
-                        console.error("Falha na Tokenização:", error);
-                        // Agora o erro exato aparecerá no alerta
-                        const errorMsg = error.message || "Revise os dados informados.";
-                        alert("Não foi possível validar o cartão: " + errorMsg);
+                        console.error('Falha na Tokenização:', error);
+                        const errorMsg = error.message || 'Revise os dados informados e certifique-se de que preencheu todos os campos do cartão.';
+                        this.$wire.call('injectFrontEndError', 'Não foi possível processar: ' + errorMsg);
                     } finally {
                         this.isProcessing = false;
                     }
@@ -641,5 +958,6 @@
             }
         }));
     });
-    </script>
+</script> 
+
 </div>

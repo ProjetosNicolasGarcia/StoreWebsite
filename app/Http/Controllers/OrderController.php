@@ -18,10 +18,11 @@ class OrderController extends Controller
     public function success($orderId)
     {
         // 1. OTIMIZAÇÃO (Eager Loading): Busca o pedido já incluindo o usuário, 
-        // os itens, os produtos e as variantes em apenas 2 queries de banco de dados.
+        // os itens, os produtos, a variante comprada E as variantes gerais do produto.
+        // 🛠️ CORREÇÃO: 'items.product' alterado para 'items.product.variants'
         $order = Order::with([
             'user', 
-            'items.product', 
+            'items.product.variants', 
             'items.variant'
         ])->findOrFail($orderId);
 

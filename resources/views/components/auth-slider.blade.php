@@ -163,6 +163,7 @@
     }"
     @open-auth-slider.window="open = true"
     class="relative z-50"
+    x-cloak
 >
     <div x-show="open" @click="open = false" 
          x-transition.opacity 
