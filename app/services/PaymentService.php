@@ -229,9 +229,9 @@ class PaymentService
             ]
         ];
 
-        if (!empty($deviceId)) {
-            $payload['device_id'] = $deviceId;
-        }
+       # if (!empty($deviceId)) {
+       #     $payload['device_id'] = $deviceId;
+     #   }
 
         if (!empty($issuerId) && $issuerId !== 'null') {
             $payload['issuer_id'] = $issuerId;

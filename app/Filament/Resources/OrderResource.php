@@ -11,6 +11,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Section;
+use Filament\Tables\Actions\Action; // ✅ novo: importação necessária para os botões de ação customizados
+use Filament\Forms\Components\TextInput;
 
 /**
  * Resource responsável pelo gerenciamento de Pedidos (Orders).
@@ -77,19 +79,19 @@ class OrderResource extends Resource
                 // === COLUNA LATERAL (DIREITA - 1/3) ===
                 Group::make()
                     ->schema([
-                        Section::make('Gerenciamento')
+                        Section::make('Gerenciamento Logístico e Fiscal') // ✏️ alterado: Nome mais descritivo
                             ->schema([
                                 // Campo principal de controle de fluxo do pedido
                                 Forms\Components\Select::make('status')
                                     ->label('Status do Pedido')
                                     ->options([
-                                        'pending'    => 'Pendente',
-                                        'paid'       => 'Pago (Aprovado)',
-                                        'processing' => 'Em Processamento',
-                                        'shipped'    => 'Enviado / Em Trânsito',
-                                        'delivered'  => 'Entregue',
-                                        'canceled'   => 'Cancelado',
-                                        'refunded'   => 'Reembolsado',
+                                        'pending'   => 'Pendente',
+                                        'paid'      => 'Pago (Aprovado)',
+                                        'preparing' => 'Em Separação', // ✏️ alterado: substituído 'processing' por 'preparing'
+                                        'shipped'   => 'Enviado / Em Trânsito',
+                                        'delivered' => 'Entregue',
+                                        'canceled'  => 'Cancelado',
+                                        'refunded'  => 'Reembolsado',
                                     ])
                                     ->required()
                                     ->native(false) // Componente UI melhorado
@@ -99,6 +101,16 @@ class OrderResource extends Resource
                                     ->label('Código de Rastreio')
                                     ->placeholder('Ex: AA123456789BR')
                                     ->helperText('Informe este código após despachar o produto.'),
+                                    
+                                // ✅ novos: Campos para Nota Fiscal
+                                Forms\Components\TextInput::make('nf_code')
+                                    ->label('Número da NF')
+                                    ->maxLength(255),
+                                    
+                                Forms\Components\TextInput::make('nf_url')
+                                    ->label('URL da Nota Fiscal (PDF/XML)')
+                                    ->url()
+                                    ->maxLength(65535),
                             ]),
 
                         Section::make('Resumo Financeiro')
@@ -156,18 +168,19 @@ class OrderResource extends Resource
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'pending'    => 'Pendente',
-                        'paid'       => 'Pago',
-                        'processing' => 'Processando',
-                        'shipped'    => 'Enviado',
-                        'delivered'  => 'Entregue',
-                        'canceled'   => 'Cancelado',
-                        'refunded'   => 'Reembolsado',
-                        default      => $state,
+                        'pending'   => 'Pendente',
+                        'paid'      => 'Pago',
+                        'preparing' => 'Em Separação', // ✏️ alterado: ajuste na nomenclatura
+                        'shipped'   => 'Enviado',
+                        'delivered' => 'Entregue',
+                        'canceled'  => 'Cancelado',
+                        'refunded'  => 'Reembolsado',
+                        default     => $state,
                     })
                     ->color(fn (string $state): string => match ($state) {
                         'pending'               => 'gray',
-                        'paid', 'processing'    => 'info',    // Azul
+                        'paid'                  => 'success', // ✏️ alterado: verde para pagamento ok
+                        'preparing'             => 'primary', // ✏️ alterado: azul para separação
                         'shipped'               => 'warning', // Amarelo
                         'delivered'             => 'success', // Verde
                         'canceled', 'refunded'  => 'danger',  // Vermelho
@@ -196,17 +209,47 @@ class OrderResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Filtrar por Status')
                     ->options([
-                        'pending'    => 'Pendente',
-                        'paid'       => 'Pago',
-                        'processing' => 'Em Processamento',
-                        'shipped'    => 'Enviado',
-                        'delivered'  => 'Entregue',
-                        'canceled'   => 'Cancelado',
+                        'pending'   => 'Pendente',
+                        'paid'      => 'Pago',
+                        'preparing' => 'Em Separação', // ✏️ alterado
+                        'shipped'   => 'Enviado',
+                        'delivered' => 'Entregue',
+                        'canceled'  => 'Cancelado',
                     ]),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->label('Gerenciar'), // Termo mais adequado que "Editar" para pedidos
+                    
+                // ✅ novo: Ação rápida para Iniciar Separação
+                Action::make('mark_preparing')
+                    ->label('Separar')
+                    ->icon('heroicon-o-archive-box')
+                    ->color('warning')
+                    ->visible(fn (Order $record) => $record->status === 'paid') // Só aparece se estiver pago
+                    ->action(fn (Order $record) => $record->update(['status' => 'preparing']))
+                    ->requiresConfirmation()
+                    ->modalHeading('Iniciar Separação')
+                    ->modalDescription('Confirmar o início da separação deste pedido? O cliente verá que o pedido está sendo preparado.'),
+
+                // ✅ novo: Ação rápida para Informar Expedição/Rastreio
+                Action::make('mark_shipped')
+                    ->label('Despachar')
+                    ->icon('heroicon-o-truck')
+                    ->color('info')
+                    ->visible(fn (Order $record) => $record->status === 'preparing') // Só aparece se estiver em separação
+                    ->form([
+                        TextInput::make('tracking_code')
+                            ->label('Código de Rastreio')
+                            ->required(),
+                    ])
+                    ->action(function (Order $record, array $data) {
+                        $record->update([
+                            'status' => 'shipped',
+                            'tracking_code' => $data['tracking_code']
+                        ]);
+                    })
+                    ->modalHeading('Informar Expedição e Rastreio'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

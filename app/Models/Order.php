@@ -18,12 +18,13 @@ class Order extends Model
     // Constantes para evitar "Magic Strings" e garantir consistência no código
     const STATUS_PENDING = 'pending';
     const STATUS_PAID = 'paid';
+    const STATUS_PREPARING = 'preparing';
     const STATUS_SHIPPED = 'shipped';
+    const STATUS_DELIVERED = 'delivered';
     const STATUS_CANCELED = 'canceled';
     const STATUS_REFUNDED = 'refunded';
 
-    // FOI ATUALIZADO AQUI: Uso de $fillable em vez de $guarded para maior segurança
-protected $fillable = [
+    protected $fillable = [
         'user_id',
         'coupon_id',
         'status',
@@ -31,6 +32,8 @@ protected $fillable = [
         'shipping_cost',
         'shipping_method', 
         'discount',
+        'promotional_discount', // Adicionado para detalhamento de ofertas
+        'coupon_discount',      // Adicionado para detalhamento de cupons
         'payment_method',
         'payment_id',         
         'pix_qr_code',        
@@ -41,16 +44,22 @@ protected $fillable = [
         'customer_last_name',
         'customer_cpf',
         'customer_phone',
+        'tracking_code', 
+        'nf_code',       
+        'nf_url',
     ];
 
     /**
      * Conversão de tipos (Casting).
-     * [OTIMIZAÇÃO] 'decimal:2' garante precisão matemática para valores monetários.
+     * 'decimal:2' garante precisão matemática para valores monetários.
      * 'datetime' garante que as datas sejam objetos Carbon prontos para formatação.
      */
     protected $casts = [
         'address_json' => 'array',
         'total_price' => 'decimal:2', 
+        'discount' => 'decimal:2',
+        'promotional_discount' => 'decimal:2',
+        'coupon_discount' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'paid_at' => 'datetime', 
@@ -107,8 +116,10 @@ protected $fillable = [
     {
         return match ($this->status) {
             self::STATUS_PENDING => 'Aguardando Pagamento',
-            self::STATUS_PAID => 'Pago',
+            self::STATUS_PAID => 'Pagamento aprovado',
+            self::STATUS_PREPARING => 'Em Separação',
             self::STATUS_SHIPPED => 'Enviado',
+            self::STATUS_DELIVERED => 'Entregue',
             self::STATUS_CANCELED => 'Cancelado',
             self::STATUS_REFUNDED => 'Reembolsado',
             default => 'Desconhecido',
@@ -120,7 +131,9 @@ protected $fillable = [
         return match ($this->status) {
             self::STATUS_PENDING => 'warning',
             self::STATUS_PAID => 'success',
+            self::STATUS_PREPARING => 'primary',
             self::STATUS_SHIPPED => 'info',
+            self::STATUS_DELIVERED => 'success',
             self::STATUS_CANCELED => 'danger',
             default => 'secondary',
         };

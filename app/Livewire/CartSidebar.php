@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use Livewire\Component;
+use Livewire\Attributes\On; // ✅ NOVO: Importação do Atributo de Eventos do Livewire 3
 use App\Models\CartItem;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -41,6 +42,48 @@ class CartSidebar extends Component
                 $item->delete();
             }
         }
+    }
+
+    /**
+     * ✅ NOVO: Método que intercepta o botão "Repetir Compra" do front-end.
+     * Processa a inserção assíncrona dos itens no carrinho.
+     */
+    #[On('reorder-cart')]
+    public function handleReorder($order)
+    {
+        if (!Auth::check()) return; // Trava extra de segurança
+
+        // Busca o pedido garantindo que pertença ao usuário logado
+        $orderRecord = Auth::user()->orders()->with('items')->findOrFail($order);
+        
+        $sessionId = Session::getId();
+        $userId = Auth::id();
+
+        foreach ($orderRecord->items as $orderItem) {
+            $conditions = [
+                'product_id' => $orderItem->product_id,
+                'product_variant_id' => $orderItem->product_variant_id,
+            ];
+
+            if ($userId) {
+                $conditions['user_id'] = $userId;
+            } else {
+                $conditions['session_id'] = $sessionId;
+            }
+
+            // Lógica Upsert: Incrementa se já existir, cria se for novo.
+            $cartItem = CartItem::where($conditions)->first();
+
+            if ($cartItem) {
+                $cartItem->increment('quantity', $orderItem->quantity);
+            } else {
+                CartItem::create(array_merge($conditions, ['quantity' => $orderItem->quantity]));
+            }
+        }
+
+        // Não é necessário retornar nada. O ciclo de vida do Livewire 
+        // chamará a função render() automaticamente após este método finalizar, 
+        // carregando e exibindo os novos itens na tela instantaneamente.
     }
 
     public function render()

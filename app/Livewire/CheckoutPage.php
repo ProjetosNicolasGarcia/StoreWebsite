@@ -9,8 +9,8 @@ use App\Models\Address;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Coupon;
-use App\Models\Product;        // 🛠️ NOVO: Importado para checagem de estoque
-use App\Models\ProductVariant; // 🛠️ NOVO: Importado para checagem de estoque
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\ShippingService; 
 use App\Services\PaymentService;
 use Illuminate\Support\Facades\Auth;
@@ -276,7 +276,7 @@ class CheckoutPage extends Component
         $this->calculateTotals();
     }
 
-   public function calculateTotals()
+    public function calculateTotals()
     {
         $currentSubtotal = 0;
         $fullPriceSubtotal = 0;
@@ -364,7 +364,7 @@ class CheckoutPage extends Component
                 $coupon->increment('used_count');
             }
 
-            // 🛠️ NOVO: TRAVAMENTO PESSIMISTA E RESERVA DE ESTOQUE IMEDIATA
+            // TRAVAMENTO PESSIMISTA E RESERVA DE ESTOQUE IMEDIATA
             foreach ($this->cartItems as $item) {
                 $product = Product::where('id', $item->product_id)->lockForUpdate()->first();
                 
@@ -407,6 +407,7 @@ class CheckoutPage extends Component
                 }
             }
             
+            // 🛠️ ATUALIZADO: MAPEAMENTO DAS NOVAS COLUNAS DE DESCONTO AQUI
             $order = Order::create([
                 'user_id' => Auth::id(),
                 'coupon_id' => $this->appliedCouponId,
@@ -414,7 +415,9 @@ class CheckoutPage extends Component
                 'total_amount' => $this->total,   
                 'shipping_cost' => $this->shippingPrice,
                 'shipping_method' => $shippingMethodName, 
-                'discount' => $this->discount,    
+                'discount' => ($this->discount + $this->offerSavings), // Mantém soma genérica caso Precise
+                'promotional_discount' => $this->offerSavings,         // Desconto de oferta ($offerSavings) gravado no BD
+                'coupon_discount' => $this->discount,                  // Desconto de cupom ($this->discount) gravado no BD
                 'payment_method' => $this->paymentMethod, 
                 'address_json' => $address ? $address->toArray() : [], 
 
@@ -514,8 +517,7 @@ class CheckoutPage extends Component
             
             DB::commit(); // Commita as transações e libera as linhas do banco de dados
 
-            // 🛠️ NOVO: DISPARO DA FILA DE DEVOLUÇÃO DE ESTOQUE (TTL)
-            // Lembre-se de criar essa Job no terminal: php artisan make:job ReleaseUnpaidStock
+            // DISPARO DA FILA DE DEVOLUÇÃO DE ESTOQUE (TTL)
             if ($this->paymentMethod === 'pix') {
                 if (class_exists(\App\Jobs\ReleaseUnpaidStock::class)) {
                     \App\Jobs\ReleaseUnpaidStock::dispatch($order->id)->delay(now()->addSeconds(30));

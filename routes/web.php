@@ -218,6 +218,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [ProfileController::class, 'index'])->name('profile.index');
         Route::put('/update', [ProfileController::class, 'update'])->name('profile.update');
         Route::get('/pedidos', [ProfileController::class, 'orders'])->name('profile.orders');
+        Route::get('/pedidos/{id}', [ProfileController::class, 'showOrder'])->name('profile.order.show');
+        Route::post('/pedidos/{id}/repetir', [CartController::class, 'reorder'])->name('profile.order.reorder');
         Route::get('/enderecos', [ProfileController::class, 'addresses'])->name('profile.addresses');
         Route::post('/enderecos', [ProfileController::class, 'storeAddress'])->name('profile.address.store');
         Route::delete('/enderecos/{id}', [ProfileController::class, 'destroyAddress'])->name('profile.address.delete');

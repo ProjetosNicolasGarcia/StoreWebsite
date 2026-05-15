@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Order; // ✅ novo
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -30,6 +31,7 @@ class CartController extends Controller
             'images',    // Fallback de imagem
             'options',   // Para mostrar "Cor: Azul", "Tamanho: M"
             'quantity',  // Para validação de estoque visual
+            'sku',       // ✅ novo: Adicionado para evitar MissingAttributeException
         ]);
     }
 
@@ -42,18 +44,12 @@ class CartController extends Controller
         $userId = Auth::id();
 
         return CartItem::with([
-            // Carrega o produto
             'product' => function($q) {
-                // Selecionamos campos vitais. 
-                // Se removeu base_price/sale_price da tabela products, o Model usa accessors, 
-                // então trazemos tudo ou os campos remanescentes. Por segurança, trazemos tudo do produto.
                 $q->select('*'); 
             },
-            // [OTIMIZAÇÃO CRÍTICA] Carrega a categoria para exibir no "badge" do item no menu lateral
             'product.categories' => function($q) {
                 $q->select('categories.id', 'categories.name', 'categories.slug');
             },
-            // Carrega a variante de forma otimizada
             'variant' => fn($q) => $this->variantFields($q)
         ])
         ->where(function ($query) use ($userId, $sessionId) {
@@ -67,24 +63,17 @@ class CartController extends Controller
     }
 
     /**
-     * Exibe a página do carrinho e calcula o total dinâmico.
+     * Exibe a página do carrinho (atualmente obsoleta conforme sua descrição).
      */
     public function index()
     {
         $items = $this->getCartItems();
 
-        // Lógica de Cálculo do Total
         $total = $items->sum(function ($item) {
-            // Prioridade: Variante
             if ($item->variant) {
-                // Tenta usar accessors do Model ProductVariant se existirem (ex: getFinalPriceAttribute)
-                // Caso contrário, calcula manual
                 $price = $item->variant->sale_price ?? $item->variant->price;
                 return $item->quantity * $price;
             }
-            
-            // Fallback: Produto Pai (Item legado ou sem variante)
-            // Usa os métodos do Model Product que você já configurou
             return $item->quantity * ($item->product->isOnSale() ? $item->product->sale_price : $item->product->base_price);
         });
 
@@ -92,9 +81,53 @@ class CartController extends Controller
     }
 
     /**
-     * Adiciona um item ao carrinho.
+     * ✅ NOVO: Repete uma compra, adicionando itens ao carrinho e abrindo a sidebar.
      */
-   public function add(Request $request, $productId)
+    public function reorder(Request $request, $id)
+    {
+        // Busca o pedido garantindo que pertença ao usuário logado
+        $order = Auth::user()->orders()->with('items')->findOrFail($id);
+        
+        $sessionId = Session::getId();
+        $userId = Auth::id();
+
+        foreach ($order->items as $orderItem) {
+            $conditions = [
+                'product_id' => $orderItem->product_id,
+                'product_variant_id' => $orderItem->product_variant_id,
+            ];
+
+            // Define se o vínculo é por usuário ou por sessão
+            if ($userId) {
+                $conditions['user_id'] = $userId;
+            } else {
+                $conditions['session_id'] = $sessionId;
+            }
+
+            // Upsert: Se o item já existe no carrinho, incrementa a quantidade. Se não, cria.
+            $cartItem = CartItem::where($conditions)->first();
+
+            if ($cartItem) {
+                $cartItem->increment('quantity', $orderItem->quantity);
+            } else {
+                CartItem::create(array_merge($conditions, ['quantity' => $orderItem->quantity]));
+            }
+        }
+
+        // ✏️ ALTERADO: Retorna para a página de pedidos/detalhes e sinaliza abertura do carrinho lateral
+        return back()->with([
+            'success' => 'Itens adicionados ao seu carrinho!',
+            'open_cart' => true // Essa chave é o que seu layout/sidebar usa para abrir automaticamente
+        ]);
+    }
+
+    /**
+     * Adiciona um item ao carrinho via página de produto.
+     */
+   /**
+     * Adiciona um item ao carrinho via página de produto.
+     */
+    public function add(Request $request, $productId)
     {
         $request->validate([
             'variant_id' => 'required|exists:product_variants,id',
@@ -104,7 +137,7 @@ class CartController extends Controller
         $quantity = $request->input('quantity', 1);
         $variantId = $request->input('variant_id');
 
-        // [SEGURANÇA 1] Integridade do Produto
+        // Validação do Produto
         $product = Product::findOrFail($productId);
         if (!$product->is_active) {
             if ($request->wantsJson()) {
@@ -113,45 +146,36 @@ class CartController extends Controller
             return redirect()->back()->with('error', 'Este produto não está mais disponível.');
         }
 
-        // 2. Verificação de Estoque da Variante
+        // Validação da Variante
         $variant = ProductVariant::findOrFail($variantId);
-
-        // [SEGURANÇA 2] Integridade da Variante (Anti-Fraude)
         if ($variant->product_id !== $product->id) {
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'error' => 'Inconsistência detectada: Variante inválida.'], 400);
             }
-            abort(400, 'Inconsistência detectada: Variante inválida para este produto.');
+            abort(400, 'Inconsistência detectada: Variante inválida.');
         }
 
+        // Validação de Estoque
         if ($variant->quantity < $quantity) {
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'error' => 'Estoque insuficiente para esta opção.'], 400);
             }
-            return redirect()->back()->with('error', 'Estoque insuficiente para esta opção.');
+            return redirect()->back()->with('error', 'Estoque insuficiente.');
         }
 
-        // 3. Definição do Escopo (Usuário ou Sessão)
+        // Definição do Escopo (Usuário ou Sessão)
         $conditions = [
             'product_id' => $productId,
             'product_variant_id' => $variantId 
         ];
 
-        $attributes = [
-            'user_id' => Auth::id(),
-            'session_id' => Session::getId()
-        ];
-
-        // Se logado, usa ID. Se não, usa Sessão.
         if (Auth::check()) {
-            unset($attributes['session_id']); // Limpa sessão se tiver user
             $conditions['user_id'] = Auth::id();
         } else {
-            unset($attributes['user_id']);
             $conditions['session_id'] = Session::getId();
         }
 
-        // 4. Lógica de "Atualizar ou Criar" (Upsert)
+        // Lógica de Upsert
         $item = CartItem::where($conditions)->first();
 
         if ($item) {
@@ -160,7 +184,7 @@ class CartController extends Controller
             CartItem::create(array_merge($conditions, ['quantity' => $quantity]));
         }
 
-        // Retorno Assíncrono (AJAX)
+        // ✅ CORREÇÃO: Restauro do Retorno Assíncrono (AJAX)
         if ($request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'Adicionado ao carrinho']);
         }
@@ -172,7 +196,6 @@ class CartController extends Controller
 
         return redirect()->back()->with('open_cart', true);
     }
-
     /**
      * Atualiza a quantidade de um item (+/-).
      */
@@ -182,7 +205,7 @@ class CartController extends Controller
         $userId = Auth::id();
 
         $item = CartItem::where('id', $id)
-            ->with('variant') // Carrega variante para checar estoque
+            ->with('variant')
             ->where(function ($query) use ($userId, $sessionId) {
                 if ($userId) $query->where('user_id', $userId);
                 else $query->where('session_id', $sessionId);

@@ -19,7 +19,6 @@ class OrderController extends Controller
     {
         // 1. OTIMIZAÇÃO (Eager Loading): Busca o pedido já incluindo o usuário, 
         // os itens, os produtos, a variante comprada E as variantes gerais do produto.
-        // 🛠️ CORREÇÃO: 'items.product' alterado para 'items.product.variants'
         $order = Order::with([
             'user', 
             'items.product.variants', 

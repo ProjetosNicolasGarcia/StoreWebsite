@@ -123,19 +123,20 @@ class ProfileController extends Controller
     /**
      * Lista o histórico de pedidos do cliente.
      */
-    public function orders()
-    {
-        $user = Auth::user();
+        public function orders()
+        {
+            $user = Auth::user();
 
-        $orders = $user->orders()
-            ->with(['items.product' => function($query) {
-                $query->select('id', 'name', 'slug', 'image_url');
-            }])
-            ->latest()
-            ->paginate(10);
+            $orders = $user->orders()
+                ->with([
+                    'items.variant', 
+                    'items.product.variants' // ✅ IMPORTANTE: Carrega as variantes irmãs para busca em memória
+                ])
+                ->latest()
+                ->paginate(10);
 
-        return view('profile.orders', compact('orders'));
-    }
+            return view('profile.orders', compact('orders'));
+        }
 
     /**
      * Lista os endereços cadastrados.
@@ -213,6 +214,21 @@ class ProfileController extends Controller
             ->filter(); // Remove nulos caso algum produto tenha sido apagado
 
         return view('profile.favorites', compact('products'));
+    }
+
+  public function showOrder($id)
+    {
+        // Strict Authorization
+        $order = Auth::user()->orders()
+            ->with([
+                'items.product.variants', // ✅ OBRIGATÓRIO: Carrega a herança para a página de detalhes
+                'items.variant'
+            ])
+            ->findOrFail($id);
+
+        $subtotal = $order->items->sum('total');
+
+        return view('profile.order', compact('order', 'subtotal'));
     }
     
 }
