@@ -34,3 +34,7 @@ class OrderController extends Controller
         return view('shop.success', compact('order'));
     }
 }
+
+
+
+#Github upload test, just for showcase to my friend :)
