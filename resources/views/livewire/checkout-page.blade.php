@@ -166,9 +166,10 @@
                                 type="text"
                                 wire:model="newAddress.number"
                                 aria-required="true"
+                                :class="highlightNumber ? 'ring-2 ring-black border-black bg-gray-100 scale-[1.02] shadow-sm transition-all duration-300' : 'transition-all duration-300 focus:ring-black focus:border-black'"
                                 class="appearance-none rounded-none block w-full px-3 py-3 border
                                     {{ $errors->has('newAddress.number') ? 'border-red-500' : 'border-gray-300' }}
-                                    bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                                    bg-white placeholder-gray-400 text-gray-900 focus:outline-none sm:text-sm">
                         </div>
 
                         <div>
@@ -801,6 +802,12 @@
             addrId:    @entangle('selectedAddressId').live,
             newAddr:   @entangle('useNewAddress').live,
             orderTotal: @entangle('total'),
+            
+            // Controle de CEP e destaque de Número
+            zipCode: @entangle('newAddress.zip_code').live,
+            streetValue: @entangle('newAddress.street').live,
+            cepComplete: false,
+            highlightNumber: false,
 
             currentBin: '', 
 
@@ -817,7 +824,6 @@
                 mpInstance = new MercadoPago(publicKey, { locale: 'pt-BR' });
 
                 // 🛠️ CORREÇÃO DEFINITIVA: Injeção forçada do script Antifraude
-                // Se o Livewire falhou em executar o script do <head>, o Alpine cria um novo na hora.
                 if (typeof window.MP_DEVICE_SESSION_ID === 'undefined') {
                     let mpSecurityScript = document.createElement('script');
                     mpSecurityScript.src = "https://www.mercadopago.com/v2/security.js";
@@ -834,6 +840,31 @@
                 this.$watch('orderTotal', (newTotal) => {
                     if (this.payMethod === 'credit_card' && this.currentBin) {
                         this.fetchInstallments(this.currentBin);
+                    }
+                });
+
+                // Lógica de monitoramento para o UX do campo Número
+                this.$watch('zipCode', (val) => {
+                    if (val && val.length === 9) {
+                        this.cepComplete = true;
+                    } else {
+                        this.cepComplete = false;
+                    }
+                });
+
+                this.$watch('streetValue', (newVal) => {
+                    if (this.cepComplete && newVal && this.newAddr) {
+                        this.$nextTick(() => {
+                            const numField = document.getElementById('checkout-numero');
+                            if (numField && !numField.value) {
+                                numField.focus();
+                                this.highlightNumber = true;
+                                // Remove o destaque visual após 3 segundos
+                                setTimeout(() => { this.highlightNumber = false; }, 3000);
+                                // Reseta a flag para prevenir focus loop
+                                this.cepComplete = false; 
+                            }
+                        });
                     }
                 });
 
