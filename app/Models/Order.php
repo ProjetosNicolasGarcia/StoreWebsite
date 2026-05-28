@@ -138,4 +138,10 @@ class Order extends Model
             default => 'secondary',
         };
     }
+
+    public function tickets()
+{
+    return $this->hasMany(Ticket::class);
+}
+
 }

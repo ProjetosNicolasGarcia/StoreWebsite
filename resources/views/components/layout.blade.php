@@ -266,8 +266,8 @@
             <div>
                 <h4 class="text-white font-bold uppercase mb-6 tracking-wider" id="footer-ajuda">Ajuda</h4>
                 <ul class="space-y-3" aria-labelledby="footer-ajuda">
-                    <li><a href="{{ route('pages.faq') }}" class="hover:text-white transition">Dúvidas Gerais (FAQ)</a></li>
-                    <li><a href="{{ route('pages.contact') }}" class="hover:text-white transition">Fale Conosco</a></li>
+                    {{-- ✏️ alterado: Rotas legadas substituídas pela rota help unificada --}}
+                    <li><a href="{{ route('help') }}" class="hover:text-white transition">Central de Ajuda</a></li>
                 </ul>
             </div>
             <div>

@@ -46,6 +46,7 @@ class ShopController extends Controller
         return $data;
     }
 
+    // ✏️ alterado: Apenas recupera a Categoria e passa para a View. A listagem de produtos agora é do Livewire.
     public function category($slug)
     {
         $category = $this->rememberWithLock(
@@ -55,27 +56,15 @@ class ShopController extends Controller
             fn() => Category::where('slug', $slug)->firstOrFail()
         );
 
-        $page = request('page', 1);
-        $products = $this->rememberWithLock(
-            ['catalog', 'products', 'categories'],
-            "category_products_{$slug}_page_{$page}", // Chave dinâmica baseada na página
-            3600,
-            fn() => $category->products()
-                ->where('is_active', true)
-                ->with(['variants' => fn($q) => $this->variantFields($q)])
-                ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)])
-                ->latest()
-                ->paginate(12)
-        );
-
         return view('shop.listing', [
+            'category' => $category, // Passado para o Livewire consumir
             'title' => $category->name,
             'description' => null,
             'image_url' => $category->image_url,
-            'products' => $products
         ]);
     }
 
+    // ✏️ alterado: Apenas recupera a Coleção e passa para a View. 
     public function collection($slug)
     {
         $collection = $this->rememberWithLock(
@@ -85,27 +74,15 @@ class ShopController extends Controller
             fn() => Collection::where('slug', $slug)->where('is_active', true)->firstOrFail()
         );
 
-        $page = request('page', 1);
-        $products = $this->rememberWithLock(
-            ['catalog', 'products', 'collections'],
-            "collection_products_{$slug}_page_{$page}",
-            3600,
-            fn() => $collection->products()
-                ->where('is_active', true)
-                ->with(['variants' => fn($q) => $this->variantFields($q)])
-                ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)])
-                ->latest()
-                ->paginate(12)
-        );
-
         return view('shop.listing', [
+            'collection' => $collection, // Passado para o Livewire consumir
             'title' => $collection->title,
             'description' => $collection->description,
             'image_url' => $collection->image_url,
-            'products' => $products
         ]);
     }
 
+    // Mantido original (apenas a exibição individual não usa os filtros reativos)
     public function show($slug)
     {
         $product = $this->rememberWithLock(
@@ -157,48 +134,21 @@ class ShopController extends Controller
         return view('shop.product', compact('product', 'relatedProducts', 'preSelectedVariant'));
     }
 
+    // ✏️ alterado: Redireciona a query string do navbar para a tela do Livewire
     public function search(Request $request)
     {
         $query = $request->input('q');
         if (!$query) return redirect()->route('home');
         
-        $terms = explode(' ', $query);
-        $page = $request->input('page', 1);
-        
-        // Hash MD5 protege contra chaves gigantes e caracteres estranhos.
-        $searchHash = md5($query . '_page_' . $page);
-
-        $products = $this->rememberWithLock(
-            ['catalog', 'products'],
-            "search_results_{$searchHash}",
-            60, // TTL extremamente curto (60s) para evitar inchaço de memória por bots.
-            function () use ($terms) {
-                return Product::where('is_active', true)
-                    ->where(function ($q) use ($terms) {
-                        foreach ($terms as $term) {
-                            $q->where(function ($subQ) use ($term) {
-                                $subQ->where('products.name', 'like', "%{$term}%")
-                                     ->orWhere('products.description', 'like', "%{$term}%")
-                                     ->orWhereHas('variants', function ($variantQ) use ($term) {
-                                         $variantQ->where('sku', 'like', "%{$term}%"); 
-                                     });
-                            });
-                        }
-                    })
-                    ->with(['variants' => fn($q) => $this->variantFields($q)])
-                    ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)])
-                    ->paginate(20);
-            }
-        );
-
         return view('shop.listing', [
+            'searchQuery' => $query, // Passado para o Livewire consumir
             'title' => "Resultados para: \"{$query}\"",
             'description' => null,
             'image_url' => null,
-            'products' => $products
         ]);
     }
 
+    // Mantido original para o dropdown ajax de auto-complete
     public function suggestions(Request $request)
     {
         $query = $request->input('q');
@@ -242,31 +192,18 @@ class ShopController extends Controller
         return response()->json($results);
     }
 
+    // ✏️ alterado: Passa a flag de ofertas para o Livewire filtrar dinamicamente
     public function offers()
     {
-        $page = request('page', 1);
-
-        $products = $this->rememberWithLock(
-            ['catalog', 'products'],
-            "offers_page_{$page}",
-            3600,
-            function () {
-                return Product::onSaleQuery()
-                    ->with(['variants' => fn($q) => $this->variantFields($q)])
-                    ->with(['categories' => fn($q) => $q->select('categories.id', 'categories.name', 'categories.slug')->take(1)])
-                    ->latest()
-                    ->paginate(12);
-            }
-        );
-
         return view('shop.listing', [
-            'products' => $products,
+            'isOffers' => true, // Passado para o Livewire saber o escopo
             'title' => 'Ofertas Especiais',
             'description' => 'Aproveite nossos descontos por tempo limitado.',
             'image_url' => null
         ]);
     }
 
+    // Mantido original
     public function simulateShipping(Request $request, ShippingService $shippingService)
     {
         // O frete depende de API externa (Correios/Transportadora), logo, NÃO deve ser feito cache em disco por hora, 

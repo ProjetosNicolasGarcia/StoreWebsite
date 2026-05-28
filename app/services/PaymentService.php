@@ -1,4 +1,5 @@
 <?php
+// app/Services/PaymentService.php
 
 namespace App\Services;
 
@@ -19,20 +20,44 @@ class PaymentService
         MercadoPagoConfig::setRuntimeEnviroment(MercadoPagoConfig::LOCAL);
     }
 
+    /**
+     * ✏️ alterado: Constrói o Antifraude (APENAS PARA CARTÃO DE CRÉDITO).
+     * Sanitiza caracteres e fixa categorias para evitar Crash 500 no MP.
+     */
     private function buildAdditionalInfo(Order $order): array
     {
         $order->loadMissing('items');
 
+        // 1. Mapeia os produtos reais do pedido
         $mpItems = $order->items->map(function ($item) {
+            // Remove aspas simples e duplas para evitar a quebra do parser JSON interno do MP
+            $safeTitle = preg_replace('/[\'"]/', '', $item->product_name ?? 'Produto');
+
             return [
                 "id" => (string) $item->product_id,
-                "title" => mb_substr($item->product_name ?? 'Produto', 0, 250),
-                "description" => mb_substr($item->product_name ?? 'Produto', 0, 250),
-                "category_id" => "others",
+                "title" => mb_substr($safeTitle, 0, 250),
+                "description" => mb_substr($safeTitle, 0, 250),
+                "category_id" => "others", // Obrigatório usar 'others' para evitar falha de schema
                 "quantity" => (int) $item->quantity,
-                "unit_price" => (float) $item->unit_price,
+                "unit_price" => round((float) $item->unit_price, 2),
             ];
         })->toArray();
+
+        // 2. Adiciona o Frete (Apenas valores positivos e categoria segura)
+        if (isset($order->shipping_cost) && $order->shipping_cost > 0) {
+            $mpItems[] = [
+                "id" => "shipping",
+                "title" => "Custo de Entrega",
+                "description" => "Frete logístico",
+                "category_id" => "others", // Nunca usar 'shipping'
+                "quantity" => 1,
+                "unit_price" => round((float) $order->shipping_cost, 2),
+            ];
+        }
+
+        // ATENÇÃO: O Mercado Pago NÃO aceita valores negativos em unit_price.
+        // Portanto, NÃO enviamos descontos nesta matriz para evitar o erro 400/500.
+        // A API tolerará a ligeira divergência matemática no antifraude.
 
         $phone = preg_replace('/\D/', '', $order->customer_phone ?? '');
         $areaCode = substr($phone, 0, 2) ?: '11';
@@ -41,8 +66,8 @@ class PaymentService
         return [
             'items' => $mpItems,
             'payer' => [
-                'first_name' => $order->customer_first_name ?? 'Nome',
-                'last_name' => trim($order->customer_last_name ?? '') === '' ? 'Sobrenome' : $order->customer_last_name,
+                'first_name' => mb_substr($order->customer_first_name ?? 'Nome', 0, 250),
+                'last_name' => mb_substr(trim($order->customer_last_name ?? '') === '' ? 'Sobrenome' : $order->customer_last_name, 0, 250),
                 'phone' => [
                     'area_code' => $areaCode,
                     'number' => $number
@@ -51,32 +76,26 @@ class PaymentService
         ];
     }
 
-    // 🛠️ O método agora aceita o $deviceId opcional para injetar no cabeçalho
     private function processPaymentWithSDK(array $payload, ?string $deviceId = null): array
     {
         try {
             $client = new PaymentClient();
             $requestOptions = new RequestOptions();
             
-            // 🛠️ Injeta as chaves de idempotência e o Fingerprint do Dispositivo
             $headers = ["X-Idempotency-Key: " . (string) Str::uuid()];
             if (!empty($deviceId)) {
                 $headers[] = "X-Meli-Session-Id: " . $deviceId;
             }
             $requestOptions->setCustomHeaders($headers);
 
-            // Chamada oficial da API através do pacote
             $payment = $client->create($payload, $requestOptions);
-            Log::info($payload);
+            Log::info('Payload de Pagamento Efetuado', $payload);
 
-            // 1. Falha severa da API (Não retornou o objeto esperado)
             if ($payment === null || (isset($payment->error) && $payment->error)) {
-                $errorMsg = $payment->error->message ?? 'Erro na requisição SDK';
                 Log::error('Erro SDK MercadoPago', ['payload' => $payload, 'error' => $payment->error ?? 'Desconhecido']);
                 return ['success' => false, 'message' => 'Ocorreu uma falha de comunicação com o gateway de pagamento.'];
             }
 
-            // 2. 🛠️ O MAPEAMENTO DE RECUSAS (O Cartão passou, mas a transação foi recusada)
             if ($payment->status === 'rejected') {
                 $friendlyMessage = $this->translateMercadoPagoError($payment->status_detail);
                 
@@ -88,11 +107,10 @@ class PaymentService
                 return [
                     'success' => false,
                     'status'  => 'rejected',
-                    'message' => $friendlyMessage // Devolve a mensagem amigável para o front-end
+                    'message' => $friendlyMessage
                 ];
             }
 
-            // 3. Status de Sucesso ou Pendente (Boleto/PIX)
             return [
                 'success' => true,
                 'payment_id' => $payment->id,
@@ -106,7 +124,6 @@ class PaymentService
             $response = $e->getApiResponse();
             $content = $response ? $response->getContent() : [];
             
-            // GARANTIA ABSOLUTA CONTRA TYPEERROR DE JSON_DECODE
             if (is_string($content)) {
                 $contentArray = json_decode($content, true) ?? ['raw_error' => $content];
             } elseif (is_object($content)) {
@@ -123,7 +140,7 @@ class PaymentService
             
             Log::error('Exceção Detalhada MercadoPago', $errorData);
             
-            return ['success' => false, 'message' => 'Pagamento recusado pela API. Veja o log do sistema.'];
+            return ['success' => false, 'message' => 'Pagamento recusado pela API. Reveja os dados fornecidos.'];
             
         } catch (\Throwable $th) {
             Log::error('MP_FALHA_SISTEMICA', [
@@ -137,26 +154,24 @@ class PaymentService
 
     public function createPixPayment(Order $order, string $cpf, string $firstName, string $lastName, string $email): array
     {
-        // 🛠️ Identificação B2B ou B2C
         $cleanDocument = preg_replace('/\D/', '', $cpf);
         $docType = strlen($cleanDocument) === 14 ? 'CNPJ' : 'CPF';
 
+        // ✏️ alterado: Removido 'additional_info' e 'statement_descriptor' do PIX para evitar conflito de schema
         $payload = [
             'transaction_amount' => round((float) $order->total_amount, 2),
             'description' => "Pedido #" . str_pad($order->id, 6, '0', STR_PAD_LEFT),
             'payment_method_id' => 'pix',
             'external_reference' => (string) $order->id,
-            'statement_descriptor' => 'MINHALOJA',
             'payer' => [
                 'email' => $email,
-                'first_name' => $firstName,
-                'last_name' => trim($lastName) === '' ? 'Sobrenome' : $lastName,
+                'first_name' => mb_substr($firstName, 0, 250),
+                'last_name' => mb_substr(trim($lastName) === '' ? 'Sobrenome' : $lastName, 0, 250),
                 'identification' => [
                     'type' => $docType,
                     'number' => $cleanDocument
                 ]
-            ],
-            'additional_info' => $this->buildAdditionalInfo($order)
+            ]
         ];
 
         return $this->processPaymentWithSDK($payload);
@@ -165,21 +180,19 @@ class PaymentService
     public function createBoletoPayment(Order $order, string $cpf, string $firstName, string $lastName, string $email, array $address): array
     {
         $streetNumber = preg_replace('/\D/', '', $address['number'] ?? '');
-        
-        // 🛠️ Identificação B2B ou B2C
         $cleanDocument = preg_replace('/\D/', '', $cpf);
         $docType = strlen($cleanDocument) === 14 ? 'CNPJ' : 'CPF';
 
+        // ✏️ alterado: Removido 'additional_info' e 'statement_descriptor' do Boleto
         $payload = [
             'transaction_amount' => round((float) $order->total_amount, 2),
             'description' => "Pedido #" . str_pad($order->id, 6, '0', STR_PAD_LEFT),
             'payment_method_id' => 'bolbradesco', 
             'external_reference' => (string) $order->id,
-            'statement_descriptor' => 'MINHALOJA',
             'payer' => [
                 'email' => $email,
-                'first_name' => $firstName,
-                'last_name' => trim($lastName) === '' ? 'Sobrenome' : $lastName,
+                'first_name' => mb_substr($firstName, 0, 250),
+                'last_name' => mb_substr(trim($lastName) === '' ? 'Sobrenome' : $lastName, 0, 250),
                 'entity_type' => $docType === 'CNPJ' ? 'association' : 'individual',
                 'identification' => [
                     'type' => $docType,
@@ -193,14 +206,12 @@ class PaymentService
                     'city' => mb_substr($address['city'] ?? 'Cidade', 0, 250),
                     'federal_unit' => strtoupper(substr($address['state'] ?? 'SP', 0, 2))
                 ]
-            ],
-            'additional_info' => $this->buildAdditionalInfo($order)
+            ]
         ];
 
         return $this->processPaymentWithSDK($payload);
     }
 
-    // 🛠️ O método agora aceita o $deviceId como último parâmetro
     public function createCreditCardPayment(Order $order, string $cpf, string $firstName, string $lastName, string $email, string $token, int $installments, string $paymentMethodId, ?string $issuerId = null, ?string $deviceId = null): array
     {
         $cleanDocument = preg_replace('/\D/', '', $cpf);
@@ -223,21 +234,17 @@ class PaymentService
                     'number' => $cleanDocument
                 ]
             ],
-            // 🛠️ Passamos apenas o IP no additional_info para não causar colisão de array de itens
-            'additional_info' => [
-                'ip_address' => request()->ip()
-            ]
+            // O Cartão de Crédito é o único que mantém o Additional Info para aprovação Antifraude
+            'additional_info' => $this->buildAdditionalInfo($order)
         ];
 
-       # if (!empty($deviceId)) {
-       #     $payload['device_id'] = $deviceId;
-     #   }
+        // Anexa IP extra separadamente
+        $payload['additional_info']['ip_address'] = request()->ip();
 
         if (!empty($issuerId) && $issuerId !== 'null') {
             $payload['issuer_id'] = $issuerId;
         }
 
-        // 🛠️ Passamos o $deviceId adiante para ele ser injetado nos Cabeçalhos HTTP
         return $this->processPaymentWithSDK($payload, $deviceId);
     }
 
@@ -259,10 +266,6 @@ class PaymentService
         }
     }
 
-    /**
-     * 🛠️ NOVO: Dicionário de Tradução de Recusas do Mercado Pago
-     * Traduz o código de recusa para uma mensagem amigável e acionável para o cliente.
-     */
     private function translateMercadoPagoError(?string $statusDetail): string
     {
         return match ($statusDetail) {

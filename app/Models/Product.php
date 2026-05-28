@@ -50,6 +50,7 @@ class Product extends Model
         return $this->belongsToMany(Category::class)
                     ->using(CategoryProduct::class);
     }
+    
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);
@@ -100,7 +101,7 @@ class Product extends Model
     }
 
     // =========================================================================
-    // ACESSORES DE FRONTEND
+    // ACESSORES DE FRONTEND & PERFORMANCE
     // =========================================================================
 
     // Atalhos para facilitar o uso no Blade: $product->price
@@ -133,6 +134,14 @@ class Product extends Model
         if (round($percentage) >= 100 && $variant->sale_price > 0) return 99;
 
         return round($percentage);
+    }
+
+    /**
+     * Calcula e retorna a média aritmética de avaliações do produto.
+     */
+    public function getAverageRatingAttribute(): float
+    {
+        return (float) ($this->reviews()->avg('rating') ?? 0.0);
     }
 
     // =========================================================================

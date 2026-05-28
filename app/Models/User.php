@@ -123,4 +123,9 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->hasMany(CartItem::class);
     }
+
+    public function tickets()
+{
+    return $this->hasMany(Ticket::class);
+}
 }

@@ -1,6 +1,25 @@
 {{-- resources/views/profile/order.blade.php --}}
 <x-profile.layout>
-    <div class="max-w-5xl mx-auto px-4 pt-8 pb-20">
+    {{-- ✏️ alterado: Injeção do estado Alpine.js para o modal de avaliação --}}
+    <div class="max-w-5xl mx-auto px-4 pt-8 pb-20" x-data="{ 
+        reviewModalOpen: false, activeProductId: null, activeProductName: '', 
+        rating: 5, comment: '', existingImages: [], hoverRating: 0, removedImages: [],
+        openReviewModal(id, name, review) {
+            this.activeProductId = id; 
+            this.activeProductName = name;
+            this.removedImages = [];
+            if(review) { 
+                this.rating = review.rating; 
+                this.comment = review.comment; 
+                this.existingImages = review.images || []; 
+            } else { 
+                this.rating = 5; 
+                this.comment = ''; 
+                this.existingImages = []; 
+            }
+            this.reviewModalOpen = true;
+        }
+    }">
         
         {{-- CABEÇALHO DA PÁGINA --}}
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-10 pb-6">
@@ -75,9 +94,9 @@
                 <h2 class="text-xl font-black uppercase tracking-tight text-gray-900 mb-6">Itens do Pedido</h2>
                 <div class="flex flex-col">
                     @foreach($order->items as $item)
-                        <div class="py-6 first:pt-0 last:pb-0 flex gap-4 sm:gap-6 items-start sm:items-center">
+                        <div class="py-6 first:pt-0 last:pb-0 flex gap-4 sm:gap-6 items-start sm:items-center border-b border-gray-100 last:border-0">
                             
-                            {{-- Foto do Item (fixada à esquerda) --}}
+                            {{-- Foto do Item --}}
                             <div class="w-20 h-24 sm:w-24 sm:h-28 min-w-[5rem] sm:min-w-[6rem] bg-white border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center p-2 rounded-none">
                                 @php
                                     $imagePath = null;
@@ -126,9 +145,10 @@
                             
                             {{-- Container Flexível para Detalhes e Subtotal --}}
                             <div class="flex-1 min-w-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-6">
-                                {{-- Detalhes do Item --}}
                                 <div class="flex-1 min-w-0">
-                                    <h4 class="font-black text-sm sm:text-base uppercase tracking-tight text-gray-900 truncate">{{ $item->product->name }}</h4>
+                                    <a href="{{ route('shop.product', $item->product->slug) }}" class="font-black text-sm sm:text-base uppercase tracking-tight text-gray-900 truncate hover:text-gray-600 transition-colors">
+                                        {{ $item->product->name }}
+                                    </a>
                                     
                                     @if($item->variant)
                                         @php
@@ -146,12 +166,27 @@
                                     </p>
                                 </div>
                                 
-                                {{-- Subtotal do Item --}}
-                                <div class="text-left sm:text-right flex-shrink-0 mt-1 sm:mt-0">
+                                <div class="text-left sm:text-right flex-shrink-0 mt-1 sm:mt-0 space-y-3">
                                     <p class="font-black text-base sm:text-lg text-gray-900">R$ {{ number_format($item->total, 2, ',', '.') }}</p>
+                                    
+                                    {{-- ✏️ alterado: Injeta os dados dinâmicos da avaliação para Edição/Criação --}}
+                                    @if($order->status === 'delivered')
+                                        @php 
+                                            // Consulta direta e segura para evitar LazyLoadingViolationException
+                                            $review = \App\Models\Review::where('user_id', auth()->id())
+                                                ->where('product_id', $item->product_id)
+                                                ->first(); 
+                                                
+                                            $reviewData = $review ? json_encode(['rating' => $review->rating, 'comment' => $review->comment, 'images' => $review->images ?? []]) : 'null';
+                                        @endphp
+                                        <button type="button" 
+                                                @click="openReviewModal('{{ $item->product_id }}', '{{ addslashes($item->product->name) }}', {{ $reviewData }})"
+                                                class="w-full sm:w-auto block text-center px-4 py-2 border border-black rounded-none bg-black text-white font-black text-[10px] tracking-widest uppercase hover:bg-white hover:text-black transition-colors cursor-pointer">
+                                            {{ $review ? 'Editar Avaliação' : 'Avaliar Produto' }}
+                                        </button>
+                                    @endif
                                 </div>
                             </div>
-
                         </div>
                     @endforeach
                 </div>
@@ -163,13 +198,11 @@
                 {{-- Dados do Comprador --}}
                 <section class="bg-white border border-gray-300 p-6 sm:p-8 rounded-none">
                     <h2 class="text-xl font-black uppercase tracking-tight text-gray-900 mb-6">Dados do Comprador</h2>
-                    
                     <div class="flex flex-col">
                         <div class="pb-6">
                             <p class="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Nome Completo</p>
                             <p class="text-sm font-bold text-gray-900 uppercase tracking-widest">{{ $order->customer_first_name }} {{ $order->customer_last_name }}</p>
                         </div>
-                        
                         <div class="py-6">
                             <p class="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Documento (CPF)</p>
                             @php
@@ -178,7 +211,6 @@
                             @endphp
                             <p class="text-sm font-bold text-gray-900 uppercase tracking-widest">{{ $formattedCpf }}</p>
                         </div>
-
                         <div class="pt-6">
                             <p class="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Telefone</p>
                             @php
@@ -199,7 +231,6 @@
                 {{-- Informações da Entrega --}}
                 <section class="bg-white border border-gray-300 p-6 sm:p-8 rounded-none">
                     <h2 class="text-xl font-black uppercase tracking-tight text-gray-900 mb-6">Informações da Entrega</h2>
-                    
                     <div class="flex flex-col h-full">
                         <div class="pb-6">
                             <p class="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Endereço de Destino</p>
@@ -215,7 +246,6 @@
                                 {{ $formattedCep }}
                             </p>
                         </div>
-
                         <div class="pt-6">
                             <p class="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Método e Custo</p>
                             <p class="text-sm font-bold text-gray-900 uppercase tracking-widest">{{ $order->shipping_method ?? 'Correios' }}</p>
@@ -291,7 +321,6 @@
                         <span class="text-gray-900">R$ {{ number_format($order->shipping_cost, 2, ',', '.') }}</span>
                     </div>
                     
-                    {{-- Exibição Condicional: Desconto Promocional --}}
                     @if(isset($order->promotional_discount) && $order->promotional_discount > 0)
                         <div class="flex justify-between items-center text-sm font-black uppercase tracking-widest text-green-600">
                             <span>Desconto Promocional</span>
@@ -299,7 +328,6 @@
                         </div>
                     @endif
 
-                    {{-- Exibição Condicional: Cupom de Desconto --}}
                     @if(isset($order->coupon_discount) && $order->coupon_discount > 0)
                         <div class="flex justify-between items-center text-sm font-black uppercase tracking-widest text-green-600">
                             <span>Cupom Aplicado {{ !empty($order->coupon_code) ? '(' . $order->coupon_code . ')' : '' }}</span>
@@ -307,7 +335,6 @@
                         </div>
                     @endif
 
-                    {{-- Exibição Condicional: Desconto Genérico (Fallback de Segurança) --}}
                     @if(isset($order->discount) && $order->discount > 0 && empty($order->promotional_discount) && empty($order->coupon_discount))
                         <div class="flex justify-between items-center text-sm font-black uppercase tracking-widest text-green-600">
                             <span>Descontos</span>
@@ -329,17 +356,81 @@
                     Repetir Compra
                 </button>
                 
-                <button class="w-full bg-black text-white border-2 border-black font-black uppercase tracking-widest text-[10px] sm:text-xs py-4 hover:bg-white hover:text-black transition-colors rounded-none cursor-pointer" onclick="alert('Central de ajuda em desenvolvimento.')">
+                <a href="{{ route('help', ['order' => $order->id]) }}" class="w-full text-center block bg-black text-white border-2 border-black font-black uppercase tracking-widest text-[10px] sm:text-xs py-4 hover:bg-white hover:text-black transition-colors rounded-none cursor-pointer">
                     Preciso de Ajuda
-                </button>
+                </a>
+            </div>
+        </div>
 
-                @if($order->status === 'delivered')
-                    <button class="col-span-1 sm:col-span-2 w-full bg-white text-black border-2 border-black font-black uppercase tracking-widest text-[10px] sm:text-xs py-4 hover:bg-black hover:text-white transition-colors rounded-none cursor-pointer" onclick="alert('Avaliação em breve.')">
-                        Avaliar Experiência
-                    </button>
-                @endif
+      {{-- FORMULÁRIO MODAL DE AVALIAÇÃO --}}
+<div x-show="reviewModalOpen" 
+     class="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto bg-opacity-60 backdrop-blur-sm p-4"
+     style="display: none;"
+     x-transition>
+    
+    <div class="bg-white border border-gray-300 w-full max-w-lg p-6 sm:p-8 rounded-none relative shadow-xl" @click.away="reviewModalOpen = false">
+        
+        <button type="button" @click="reviewModalOpen = false" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 font-light text-2xl focus:outline-none">✕</button>
+        
+        <h3 class="text-lg font-black uppercase tracking-tight text-gray-900 mb-1">Avaliar Produto</h3>
+        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-6 truncate" x-text="activeProductName"></p>
+
+        <form :action="'/minha-conta/produtos/' + activeProductId + '/avaliar'" method="POST" enctype="multipart/form-data" class="space-y-6">
+            @csrf
+            {{-- Campo Oculto para remover imagens --}}
+            <input type="hidden" name="removed_images" :value="JSON.stringify(removedImages)">
+
+            <div>
+                <label class="text-xs font-black uppercase text-gray-500 block mb-2">Sua Nota *</label>
+                <input type="hidden" name="rating" :value="rating">
+                <div class="flex gap-1 text-gray-300">
+                    <template x-for="i in 5">
+                        <button type="button" @click="rating = i" @mouseenter="hoverRating = i" @mouseleave="hoverRating = 0"
+                                class="focus:outline-none text-3xl cursor-pointer transition-colors duration-200" 
+                                :style="(hoverRating ? hoverRating >= i : rating >= i) ? 'color: #facc15' : 'color: #d1d5db'">★</button>
+                    </template>
+                </div>
             </div>
 
+            <div>
+                <label for="comment" class="text-xs font-black uppercase text-gray-500 block mb-2">Depoimento</label>
+                <textarea id="comment" name="comment" x-model="comment" rows="4" maxlength="1000" class="w-full border border-gray-300 p-3 rounded-none focus:border-black focus:ring-0"></textarea>
+            </div>
+
+            {{-- ✏️ SEÇÃO DE UPLOAD ATUALIZADA --}}
+            <div x-data="{ fileCount: 0 }">
+                <label class="text-xs font-black uppercase text-gray-500 block mb-2">Fotos</label>
+                
+                {{-- Botão estilizado simulando o input --}}
+                <label for="image-upload" class="flex items-center justify-center w-full bg-white text-black border border-black font-black text-xs uppercase tracking-widest h-12 hover:bg-black hover:text-white transition-colors cursor-pointer rounded-none">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Procurar Imagens
+                </label>
+                
+                <input id="image-upload" type="file" name="images[]" multiple accept="image/jpeg, image/png, image/webp" class="hidden" @change="fileCount = $event.target.files.length">
+                
+                <p x-show="fileCount > 0" style="display: none;" class="text-[10px] font-bold text-green-600 mt-2 uppercase tracking-widest">
+                    <span x-text="fileCount"></span> arquivo(s) novo(s) selecionado(s)
+                </p>
+                
+                {{-- Container reativo de imagens existentes --}}
+                <div x-show="existingImages.length > 0" class="flex gap-3 flex-wrap mt-3">
+                    <template x-for="img in existingImages" :key="img">
+                        <div class="relative w-16 h-16 border border-gray-200 bg-gray-50" x-show="!removedImages.includes(img)">
+                            <img :src="'/storage/' + img" class="w-full h-full object-cover">
+                            <button type="button" @click="removedImages.push(img)" class="cursor-pointer absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow hover:bg-red-700 transition-colors focus:outline-none" title="Remover imagem">✕</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 pt-2">
+                <button type="button" @click="reviewModalOpen = false" class="cursor-pointer w-full bg-red-600 text-white border border-red-600 font-black text-xs uppercase tracking-widest h-12 hover:bg-white hover:text-red-600 transition-colors duration-200 rounded-none focus:outline-none">Cancelar</button>
+                <button type="submit" class="cursor-pointer w-full bg-black text-white border border-black font-black text-xs uppercase tracking-widest h-12 hover:bg-white hover:text-black transition-colors rounded-none">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
         </div>
     </div>
 </x-profile.layout>

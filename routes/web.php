@@ -11,7 +11,10 @@ use App\Http\Controllers\StoreAuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\OrderController;
-use App\Http\Controllers\FavoriteController; 
+use App\Http\Controllers\FavoriteController;
+use App\Livewire\HelpCenter;
+use App\Http\Controllers\ReviewController;
+
 
 // =========================================================================
 // ROTAS PÚBLICAS (Home, Loja, Carrinho)
@@ -123,54 +126,12 @@ Route::get('/acessibilidade', function () {
     ]);
 })->name('pages.accessibility');
 
-// FAQ (Dúvidas Gerais)
-Route::get('/duvidas-gerais', function () {
-    $faqTopics = [
-        [
-            'title' => 'Entregas',
-            'slug' => 'entregas',
-            'questions' => [
-                ['question' => 'Qual é o prazo de entrega?', 'answer' => 'O prazo varia de 3 a 10 dias úteis dependendo da região.'],
-                ['question' => 'Como rastrear meu pedido?', 'answer' => 'Você receberá o código por e-mail após o envio.'],
-                ['question' => 'Vocês entregam em todo o Brasil?', 'answer' => 'Sim, enviamos para todo o território nacional.']
-            ]
-        ],
-        [
-            'title' => 'Pagamentos',
-            'slug' => 'pagamentos',
-            'questions' => [
-                ['question' => 'Quais são as formas de pagamento?', 'answer' => 'Cartão de crédito, boleto e PIX com desconto.'],
-                ['question' => 'É seguro digitar meu cartão no site?', 'answer' => 'Totalmente. Utilizamos criptografia SSL.']
-            ]
-        ],
-        [
-            'title' => 'Trocas e Devoluções',
-            'slug' => 'trocas',
-            'questions' => [
-                ['question' => 'Como faço para devolver um produto?', 'answer' => 'Você tem até 7 dias corridos para solicitar a devolução.'],
-                ['question' => 'A troca tem custo?', 'answer' => 'A primeira troca é por nossa conta!']
-            ]
-        ]
-    ];
-    return view('pages.faq-page', compact('faqTopics'));
-})->name('pages.faq');
+// Central de Ajuda Unificada (Substitui as antigas rotas de FAQ e Fale Conosco)
+Route::get('/ajuda', HelpCenter::class)->name('help');
 
-// Fale Conosco
-Route::get('/fale-conosco', function () {
-    return view('pages.contact');
-})->name('pages.contact');
+Route::get('/ajuda/abrir-ticket', \App\Livewire\CreateTicket::class)->name('ticket.create');
 
-Route::post('/fale-conosco', function (Request $request) {
-    $validated = $request->validate([
-        'name' => 'required|min:3',
-        'email' => 'required|email',
-        'subject' => 'required',
-        'order_number' => 'nullable|string',
-        'message' => 'required|min:10',
-    ]);
-    return back()->with('success', 'Sua mensagem foi enviada com sucesso! Responderemos em breve.');
-})->name('pages.contact.send');
-
+// Favoritos
 Route::post('/favoritos/toggle', [FavoriteController::class, 'toggle'])->name('favorites.toggle');
 
 // =========================================================================
@@ -223,7 +184,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/enderecos', [ProfileController::class, 'addresses'])->name('profile.addresses');
         Route::post('/enderecos', [ProfileController::class, 'storeAddress'])->name('profile.address.store');
         Route::delete('/enderecos/{id}', [ProfileController::class, 'destroyAddress'])->name('profile.address.delete');
-        Route::get('/favoritos', [ProfileController::class, 'favorites'])->name('profile.favorites'); // <-- NOVA ROTA
+        Route::get('/favoritos', [ProfileController::class, 'favorites'])->name('profile.favorites');
+        Route::post('/produtos/{product}/avaliar', [ReviewController::class, 'store'])->name('profile.product.review'); 
     });
 });
 
@@ -236,7 +198,6 @@ Route::middleware(['auth'])->group(function () {
     // Direcionar para a página de sucesso do pedido (AGORA USANDO O ORDERCONTROLLER)
     Route::get('/pedido-confirmado/{order}', [OrderController::class, 'success'])->name('checkout.success');
    
-
     // Rotas para completar perfil
     Route::get('/completar-perfil', [StoreAuthController::class, 'showCompleteProfile'])->name('auth.complete-profile');
     Route::post('/completar-perfil', [StoreAuthController::class, 'updateProfile'])->name('auth.update-profile');

@@ -41,7 +41,8 @@
                         @endforeach
 
                         {{-- Link de Ajuda --}}
-                        <a href="{{ route('pages.contact') }}" 
+                        {{-- ✏️ alterado: Apontando para a nova rota 'help' --}}
+                        <a href="{{ route('help') }}" 
                            class="text-xl transition-all duration-200 pl-4 border-l-4 border-transparent font-medium text-gray-400 hover:text-gray-900 hover:border-gray-200 block focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2">
                             Precisa de Ajuda?
                         </a>
