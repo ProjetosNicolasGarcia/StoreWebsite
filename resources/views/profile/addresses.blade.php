@@ -8,86 +8,114 @@
             loadingAddress: false,
             loadingCities: false,
             
-            // Objeto de dados do formulário vinculado via x-model
-            form: {
-                zip_code: '',
-                street: '',
-                number: '',
-                complement: '',
-                neighborhood: '',
-                city: '',
-                state: ''
-            },
+            zip_code: '',
+            street: '',
+            number: '',
+            complement: '',
+            neighborhood: '',
+            city: '',
+            state: '',
             
-            // Armazena a lista de cidades retornada pela API do IBGE
             cities: [],
 
-            // --- FUNÇÕES DE MÁSCARA ---
-            formatCEP(value) {
-                return value.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2').substring(0, 9);
-            },
-            onlyNumbers(value) {
-                return value.replace(/\D/g, '');
-            },
-
-            // --- INTEGRAÇÃO VIACEP ---
-            async fetchAddress() {
-                const cleanCep = this.form.zip_code.replace(/\D/g, '');
+            // --- MANIPULAÇÃO DO CEP E MÁSCARA ---
+            handleCep(e) {
+                let value = e.target.value.replace(/\D/g, '');
                 
-                // Executa a busca apenas quando o CEP atinge 8 dígitos
-                if (cleanCep.length === 8) {
-                    this.loadingAddress = true;
-                    try {
-                        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-                        const data = await response.json();
+                if (value.length > 5) {
+                    value = value.replace(/^(\d{5})(\d)/, '$1-$2');
+                }
+                value = value.substring(0, 9);
+                
+                this.zip_code = value;
+                e.target.value = value;
+                
+                // Dispara a busca quando o CEP atinge 9 caracteres
+                if (value.length === 9) {
+                    this.fetchAddress();
+                }
+            },
 
-                        if (!data.erro) {
-                            this.form.street = data.logradouro;
-                            this.form.neighborhood = data.bairro;
-                            this.form.complement = data.complemento;
-                            this.form.state = data.uf;
-                            
-                            // Atualiza lista de cidades baseada no estado retornado
-                            await this.fetchCities(); 
-                            this.form.city = data.localidade;
-                            
-                            // Move o foco para o campo 'Número' para otimizar o preenchimento
-                            this.$nextTick(() => document.getElementById('numberInput').focus());
-                        } else {
-                            alert('CEP não encontrado.');
-                        }
-                    } catch (error) {
-                        console.error('Erro ao buscar CEP:', error);
-                    } finally {
-                        this.loadingAddress = false;
+            handleNumber(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                this.number = value;
+                e.target.value = value;
+            },
+
+            clearAddressFields() {
+                this.street = '';
+                this.neighborhood = '';
+                this.city = '';
+                this.state = '';
+                this.cities = [];
+            },
+
+            // --- INTEGRAÇÃO BRASILAPI (Substituindo ViaCEP por estabilidade) ---
+            async fetchAddress() {
+                const cleanCep = this.zip_code.replace(/\D/g, '');
+                if (cleanCep.length !== 8) return;
+                
+                this.loadingAddress = true;
+                
+                try {
+                    const response = await fetch(`https://brasilapi.com.br/api/cep/v1/${cleanCep}`);
+                    
+                    if (!response.ok) {
+                        alert('O CEP digitado não foi encontrado ou é inválido.');
+                        this.clearAddressFields();
+                        return;
                     }
+
+                    const data = await response.json();
+
+                    // Preenche os dados primários retornados pela BrasilAPI
+                    this.street = data.street || '';
+                    this.neighborhood = data.neighborhood || '';
+                    this.state = data.state || '';
+                    
+                    // Busca os municípios de forma independente para evitar quebra do fluxo
+                    await this.fetchCities().catch(err => console.warn('Falha silenciosa no IBGE', err));
+                    
+                    this.$nextTick(() => {
+                        this.city = data.city || '';
+                        document.getElementById('numberInput')?.focus();
+                    });
+
+                } catch (error) {
+                    console.error('Falha de conexão com a API de CEP:', error);
+                    alert('Erro de conexão ao tentar buscar o CEP. Verifique sua rede e tente novamente.');
+                    this.clearAddressFields();
+                } finally {
+                    this.loadingAddress = false;
                 }
             },
 
             // --- INTEGRAÇÃO IBGE (Cidades) ---
             async fetchCities() {
-                if (!this.form.state) return;
+                if (!this.state) {
+                    this.cities = [];
+                    return;
+                }
                 
                 this.loadingCities = true;
-                this.cities = []; // Reseta a lista anterior
+                this.cities = []; 
 
                 try {
-                    const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${this.form.state}/municipios`);
+                    const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${this.state}/municipios`);
+                    if(!response.ok) throw new Error('Serviço IBGE indisponível');
+                    
                     const data = await response.json();
-                    // Ordenação alfabética das cidades
                     this.cities = data.sort((a, b) => a.nome.localeCompare(b.nome));
                 } catch (error) {
-                    console.error('Erro ao carregar cidades:', error);
+                    console.error('Erro na API do IBGE:', error);
+                    throw error; // Repassa o erro para ser ignorado no catch() do fetchAddress
                 } finally {
                     this.loadingCities = false;
                 }
             }
         }" 
-        {{-- Monitora mudanças no estado para atualizar dinamicamente a lista de cidades --}}
-        x-init="$watch('form.state', value => fetchCities())"
     >
         
-        {{-- Cabeçalho da Seção e Controle do Formulário --}}
         <div class="flex justify-between items-center mb-8">
             <h2 id="addresses-heading" class="text-2xl font-black text-gray-900 uppercase tracking-tight">Endereços</h2>
             
@@ -101,11 +129,9 @@
             </button>
         </div>
 
-        {{-- Formulário de Cadastro: Exibido condicionalmente via Alpine.js --}}
         <div id="new-address-form" x-show="showForm" x-transition.opacity class="bg-white p-6 rounded-none mb-10 border border-gray-200 shadow-sm" role="region" aria-labelledby="form-heading">
             <h3 id="form-heading" class="font-bold text-lg mb-6 text-gray-900 flex items-center gap-2 uppercase tracking-wide">
                 Novo Endereço
-                {{-- Indicador de carregamento (CEP) --}}
                 <div aria-live="polite">
                     <svg aria-hidden="true" x-show="loadingAddress" class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="display: none;">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -119,55 +145,49 @@
                 @csrf
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
                     
-                    {{-- Campo: CEP --}}
                     <div class="md:col-span-4">
                         <label for="zip_code" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">CEP</label>
                         <input type="text" id="zip_code" name="zip_code" 
-                               x-model="form.zip_code"
-                               @input="form.zip_code = formatCEP($el.value); fetchAddress()"
+                               x-model="zip_code"
+                               @input="handleCep($event)"
                                maxlength="9"
                                placeholder="00000-000"
                                aria-required="true"
                                class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     </div>
 
-                    {{-- Campo: Logradouro (Rua) --}}
                     <div class="md:col-span-8">
                         <label for="street" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Rua / Avenida</label>
-                        <input type="text" id="street" name="street" x-model="form.street"
+                        <input type="text" id="street" name="street" x-model="street"
                                aria-required="true"
                                class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     </div>
 
-                    {{-- Campo: Número --}}
                     <div class="md:col-span-3">
                         <label for="numberInput" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Número</label>
                         <input type="text" name="number" id="numberInput"
-                               x-model="form.number"
-                               @input="form.number = onlyNumbers($el.value)"
+                               x-model="number"
+                               @input="handleNumber($event)"
                                aria-required="true"
                                class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     </div>
 
-                    {{-- Campo: Complemento --}}
                     <div class="md:col-span-5">
                         <label for="complement" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Complemento</label>
-                        <input type="text" id="complement" name="complement" x-model="form.complement"
+                        <input type="text" id="complement" name="complement" x-model="complement"
                                class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     </div>
 
-                    {{-- Campo: Bairro --}}
                     <div class="md:col-span-4">
                         <label for="neighborhood" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Bairro</label>
-                        <input type="text" id="neighborhood" name="neighborhood" x-model="form.neighborhood"
+                        <input type="text" id="neighborhood" name="neighborhood" x-model="neighborhood"
                                aria-required="true"
                                class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all">
                     </div>
 
-                    {{-- Seleção de Estado (UF) --}}
                     <div class="md:col-span-4">
                         <label for="state" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Estado</label>
-                        <select id="state" name="state" x-model="form.state" @change="fetchCities()"
+                        <select id="state" name="state" x-model="state" @change="fetchCities().then(() => city = '')"
                                 aria-required="true"
                                 class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all uppercase appearance-none cursor-pointer">
                             <option value="" disabled selected>Selecione...</option>
@@ -201,11 +221,10 @@
                         </select>
                     </div>
 
-                    {{-- Seleção de Cidade: Alimentada dinamicamente pela API do IBGE --}}
                     <div class="md:col-span-8 relative">
                         <label for="city" class="block text-sm font-bold text-gray-700 mb-1 uppercase tracking-widest">Cidade</label>
                         
-                        <select id="city" name="city" x-model="form.city" :disabled="!form.state || loadingCities"
+                        <select id="city" name="city" x-model="city" :disabled="!state || loadingCities"
                                 aria-required="true"
                                 :aria-busy="loadingCities.toString()"
                                 class="block w-full h-12 px-4 rounded-none border border-gray-500 bg-white text-gray-900 shadow-none focus:border-black focus:ring-black transition-all appearance-none disabled:bg-white disabled:text-gray-400 cursor-pointer">
@@ -215,7 +234,6 @@
                             </template>
                         </select>
 
-                        {{-- Spinner de carregamento das cidades --}}
                         <div aria-live="polite">
                             <div x-show="loadingCities" class="absolute right-4 top-10" style="display: none;">
                                 <svg aria-hidden="true" class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -237,7 +255,6 @@
             </form>
         </div>
 
-        {{-- Exibição da Lista de Endereços Cadastrados --}}
         @if($addresses->count() > 0)
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6" aria-label="Lista de endereços salvos" role="region">
                 @foreach($addresses as $address)
@@ -252,7 +269,6 @@
                             <p class="text-xs text-gray-400 mt-1 font-mono tracking-wide" aria-label="CEP {{ $address->zip_code }}">{{ $address->zip_code }}</p>
                         </address>
                         
-                        {{-- Botão de Exclusão com Confirmação Nativa --}}
                         <form action="{{ route('profile.address.delete', $address->id) }}" method="POST" class="absolute top-6 right-6" onsubmit="return confirm('Tem certeza que deseja remover este endereço?');">
                             @csrf
                             @method('DELETE')
@@ -266,7 +282,6 @@
                 @endforeach
             </div>
         @else
-            {{-- Estado Vazio (Empty State) --}}
             <div class="text-center py-12 bg-white rounded-none border border-dashed border-gray-300" role="status" aria-live="polite">
                 <p class="text-gray-500 italic">Você ainda não cadastrou nenhum endereço.</p>
             </div>

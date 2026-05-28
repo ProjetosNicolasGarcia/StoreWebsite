@@ -177,9 +177,16 @@
 
                         {{-- BOTÃO DE COMPRAR --}}
                         <div class="absolute bottom-0 left-0 w-full opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-20">
-                            @php $variantCount = $product->variants->count(); @endphp
+                            @php 
+                                $variantCount = $product->variants->count(); 
+                                $totalStock = $product->variants->sum('quantity');
+                            @endphp
 
-                            @if($variantCount > 1)
+                            @if($totalStock <= 0)
+                                <div class="w-full bg-gray-100 border-t border-gray-200 text-gray-400 py-3 text-center uppercase font-bold text-xs tracking-widest cursor-default" aria-disabled="true">
+                                    ESGOTADO
+                                </div>
+                            @elseif($variantCount > 1)
                                 <a href="{{ route('shop.product', $product->slug) }}" 
                                    class="w-full block bg-black text-white border-t border-gray-200 py-3 text-center uppercase font-bold text-xs tracking-widest hover:bg-white hover:text-black transition-colors duration-300 cursor-pointer"
                                    aria-label="Ver opções de {{ $product->name }} para adicionar ao carrinho">
@@ -395,9 +402,16 @@
 
                                 {{-- BOTÃO DE COMPRAR --}}
                                 <div class="absolute bottom-0 left-0 w-full opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-20">
-                                    @php $variantCount = $product->variants->count(); @endphp
+                                    @php 
+                                        $variantCount = $product->variants->count(); 
+                                        $totalStock = $product->variants->sum('quantity');
+                                    @endphp
 
-                                    @if($variantCount > 1)
+                                    @if($totalStock <= 0)
+                                        <div class="w-full bg-gray-100 border-t border-gray-200 text-gray-400 py-3 text-center uppercase font-bold text-xs tracking-widest cursor-default" aria-disabled="true">
+                                            ESGOTADO
+                                        </div>
+                                    @elseif($variantCount > 1)
                                         <a href="{{ route('shop.product', $product->slug) }}" 
                                            class="w-full block bg-black text-white border-t border-gray-200 py-3 text-center uppercase font-bold text-xs tracking-widest hover:bg-white hover:text-black transition-colors duration-300 cursor-pointer"
                                            aria-label="Ver opções de {{ $product->name }} para adicionar ao carrinho">

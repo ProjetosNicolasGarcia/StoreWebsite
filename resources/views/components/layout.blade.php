@@ -149,8 +149,20 @@
                             <template x-for="product in suggestions" :key="product.id">
                                 <li>
                                     <a :href="'/product/' + product.slug" class="flex items-center p-4 hover:bg-gray-50 transition border-b border-gray-50 last:border-0 group" :aria-label="'Ver produto: ' + product.name">
-                                        <div class="h-12 w-12 flex-shrink-0 bg-gray-100 rounded overflow-hidden mr-4 border border-gray-200" aria-hidden="true">
-                                            <img :src="'/storage/' + product.image_url" :alt="product.name" loading="lazy" decoding="async" class="h-full w-full object-cover">
+                                        <div class="h-12 w-12 flex-shrink-0 bg-gray-100 rounded overflow-hidden mr-4 border border-gray-200 flex items-center justify-center" aria-hidden="true">
+                                            {{-- Lógica de renderização de imagem corrigida --}}
+                                            <template x-if="product.image_url">
+                                                <img :src="product.image_url.startsWith('http') ? product.image_url : (product.image_url.startsWith('/storage') ? product.image_url : '/storage/' + product.image_url.replace(/^\/+/, ''))" 
+                                                     :alt="product.name" 
+                                                     loading="lazy" 
+                                                     decoding="async" 
+                                                     class="h-full w-full object-cover">
+                                            </template>
+                                            <template x-if="!product.image_url">
+                                                <svg class="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </template>
                                         </div>
                                         <div class="flex flex-col">
                                             <p class="text-base font-bold text-gray-900 group-hover:text-black" x-text="product.name"></p>
@@ -266,7 +278,6 @@
             <div>
                 <h4 class="text-white font-bold uppercase mb-6 tracking-wider" id="footer-ajuda">Ajuda</h4>
                 <ul class="space-y-3" aria-labelledby="footer-ajuda">
-                    {{-- ✏️ alterado: Rotas legadas substituídas pela rota help unificada --}}
                     <li><a href="{{ route('help') }}" class="hover:text-white transition">Central de Ajuda</a></li>
                 </ul>
             </div>

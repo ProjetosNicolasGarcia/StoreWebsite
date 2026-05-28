@@ -37,12 +37,13 @@ class SecurityHeaders
             // CSP Ajustado: 
             // 1. Incluído o domínio .com do Mercado Pago no script-src, connect-src e frame-src
             // 2. Removidos os domínios do VLibras, mantendo apenas a estrutura do UserWay
+            // 3. Adicionados brasilapi.com.br e servicodados.ibge.gov.br no connect-src
             $csp = "default-src 'self'; " .
                    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://*.userway.org https://sdk.mercadopago.com https://*.mercadopago.com https://*.mercadopago.com.br https://*.mlstatic.com; " .
                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.bunny.net https://*.userway.org; " .
                    "font-src 'self' https://fonts.gstatic.com https://fonts.bunny.net data: https://*.userway.org; " .
                    "img-src 'self' data: blob: https: http:; " .
-                   "connect-src 'self' https://*.userway.org https://cdn.jsdelivr.net wss: https://api.mercadopago.com https://*.mercadopago.com https://*.mercadopago.com.br https://*.mlstatic.com https://*.mercadolibre.com; " .
+                   "connect-src 'self' https://*.userway.org https://cdn.jsdelivr.net wss: https://api.mercadopago.com https://*.mercadopago.com https://*.mercadopago.com.br https://*.mlstatic.com https://*.mercadolibre.com https://brasilapi.com.br https://servicodados.ibge.gov.br; " .
                    "frame-src 'self' https://*.userway.org https://*.mercadopago.com https://*.mercadopago.com.br https://*.mlstatic.com https://*.mercadolibre.com https://www.youtube.com; " .
                    "worker-src 'self' blob:; " .
                    "form-action 'self'; " .
